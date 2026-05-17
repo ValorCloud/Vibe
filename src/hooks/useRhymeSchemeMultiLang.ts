@@ -25,14 +25,6 @@ export function getRhymeSchemeLabelFromLetters(letters: string[]): SchemeResult[
   return 'CUSTOM';
 }
 
-/**
- * Expand a short repeatable scheme pattern to `targetCount` letters.
- *
- * Rules:
- * - Monorhyme (all same letter, e.g. "AAAA") → repeat that letter N times.
- * - Even-unit patterns (AABB, ABAB, ABBA, ABABAB…) → tile the base unit.
- * - Otherwise → return the original string unchanged (caller falls back to raw detection).
- */
 function expandScheme(scheme: string, targetCount: number): string {
   if (!scheme || targetCount <= 0) return scheme;
   const letters = scheme.split('');
@@ -40,8 +32,9 @@ function expandScheme(scheme: string, targetCount: number): string {
 
   // Monorhyme
   const uniqueLetters = new Set(letters);
-  if (uniqueLetters.size === 1) {
-    return letters[0].repeat(targetCount);
+  const firstLetter = letters[0];
+  if (uniqueLetters.size === 1 && firstLetter !== undefined) {
+    return firstLetter.repeat(targetCount);
   }
 
   // Find the shortest repeating unit (period)
@@ -49,10 +42,10 @@ function expandScheme(scheme: string, targetCount: number): string {
     const unit = letters.slice(0, period);
     const isRepeating = letters.every((l, i) => l === unit[i % period]);
     if (isRepeating) {
-      // Tile the unit to targetCount, re-mapping letters to stay alphabetically consistent
       const result: string[] = [];
       for (let i = 0; i < targetCount; i++) {
-        result.push(unit[i % period]);
+        const ch = unit[i % period];
+        result.push(ch !== undefined ? ch : unit[0] ?? 'A');
       }
       return result.join('');
     }
@@ -68,7 +61,6 @@ export function applyLocalSchemeOverride(
 ): SchemeResult {
   if (!localScheme) return raw;
 
-  // Expand repeatable patterns to match actual line count before length check.
   const expandedScheme = expandScheme(localScheme, expectedLineCount);
   const localLetters = expandedScheme.split('');
 
@@ -88,11 +80,6 @@ export function applyLocalSchemeOverride(
   };
 }
 
-/**
- * Derives the rhyme scheme for a stanza where each line may have a different
- * language. Wraps `detectRhymeSchemeMultiLang` with memoisation, meta-line
- * filtering, safe fallback, and optional `forcedScheme` support.
- */
 export function useRhymeSchemeMultiLang(
   lines: MultiLangLine[],
   isProxied?: boolean,
