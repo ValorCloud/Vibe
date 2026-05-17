@@ -63,10 +63,18 @@ export const SectionEditor = React.memo(function SectionEditor({
   const [pendingName, setPendingName] = useState<string>(sectionName);
   const [pendingRhyme, setPendingRhyme] = useState<string>(committedRhyme);
   const [pendingLang, setPendingLang] = useState<AdaptationLangId>(sectionTargetLanguage);
+  const [isApplying, setIsApplying] = useState(false);
 
   useEffect(() => { setPendingName(sectionName); }, [sectionName]);
   useEffect(() => { setPendingRhyme(committedRhyme); }, [committedRhyme]);
   useEffect(() => { setPendingLang(sectionTargetLanguage); }, [sectionTargetLanguage]);
+
+  // Release local lock once the parent async state takes over or finishes
+  useEffect(() => {
+    if (!isGenerating && !isAdaptingLanguage) {
+      setIsApplying(false);
+    }
+  }, [isGenerating, isAdaptingLanguage]);
 
   const hasLyrics = useMemo(
     () => section.lines.some(
@@ -87,10 +95,12 @@ export const SectionEditor = React.memo(function SectionEditor({
     !isGenerating &&
     !isAnalyzing &&
     !isAdaptingLanguage &&
+    !isApplying &&
     langApplyable;
 
   const handleApply = useCallback(() => {
     if (!canApply) return;
+    setIsApplying(true);
 
     const rhymeChanged = pendingRhyme !== committedRhyme;
     const nameChanged = pendingName !== sectionName;
@@ -132,6 +142,7 @@ export const SectionEditor = React.memo(function SectionEditor({
         : (t.editor?.applyPending ?? 'Apply all pending changes to this section');
 
   const isSectionDropTarget = dragOverIndex === sectionIndex && draggedItemIndex !== null && draggedItemIndex !== sectionIndex;
+  const isProcessing = isGenerating || isApplying;
 
   const onDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault(); e.stopPropagation();
@@ -196,7 +207,26 @@ export const SectionEditor = React.memo(function SectionEditor({
 
       <div className="flex-1 pt-2.5 px-3.5 pb-2" style={{ minWidth: 0, width: '100%', overflow: 'visible' }}>
 
-        <div className="mb-2 flex items-start justify-between gap-3 flex-wrap">
+        <div className="mb-2 flex items-start justify-between gap-3 flex-wrap relative">
+          {/* Indeterminate regeneration progress bar */}
+          {isProcessing && (
+            <div
+              role="progressbar"
+              aria-label="Regenerating section"
+              aria-busy="true"
+              className="absolute bottom-0 left-0 right-0 h-[2px] overflow-hidden rounded-full"
+              style={{ background: 'oklch(from var(--lcars-cyan, #4fc3f7) l c h / 0.18)' }}
+            >
+              <div
+                className="h-full w-1/3 rounded-full"
+                style={{
+                  background: 'var(--lcars-cyan, #4fc3f7)',
+                  animation: 'section-regen-slide 1.4s ease-in-out infinite',
+                }}
+              />
+            </div>
+          )}
+
           <SectionHeader
             section={section}
             sectionIndex={sectionIndex}
@@ -240,7 +270,7 @@ export const SectionEditor = React.memo(function SectionEditor({
                     : 'border-zinc-600/30 text-zinc-500 dark:text-zinc-600 cursor-not-allowed opacity-40',
                 ].join(' ')}
               >
-                {isAdaptingLanguage
+                {(isAdaptingLanguage || isApplying)
                   ? <Loader2 className="h-3 w-3 animate-spin" />
                   : <Check className="h-3 w-3" />}
                 <span>{t.editor?.adaptApply ?? 'Apply'}</span>

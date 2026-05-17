@@ -50,3 +50,10 @@
   from { --lcars-gradient-angle: 0deg; }
   to   { --lcars-gradient-angle: 360deg; }
 }
+
+/* Indeterminate progress bar — section regeneration indicator */
+@keyframes section-regen-slide {
+  0%   { transform: translateX(-300%); }
+  50%  { transform: translateX(150%); }
+  100% { transform: translateX(-300%); }
+}
