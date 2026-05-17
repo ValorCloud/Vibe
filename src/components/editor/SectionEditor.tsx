@@ -104,6 +104,7 @@ export const SectionEditor = React.memo(function SectionEditor({
 
     const rhymeChanged = pendingRhyme !== committedRhyme;
     const nameChanged = pendingName !== sectionName;
+    const langChanged = pendingLang !== sectionTargetLanguage;
 
     if (nameChanged) {
       renameSectionWithRenumber(section.id, pendingName);
@@ -113,15 +114,27 @@ export const SectionEditor = React.memo(function SectionEditor({
       setSectionRhymeScheme(section.id, pendingRhyme);
     }
 
+    // Track whether any async operation was actually dispatched
+    let asyncDispatched = false;
+
     if (hasLyrics && (rhymeChanged || nameChanged)) {
+      asyncDispatched = true;
       setTimeout(() => regenerateSection(section.id, { rhymeScheme: pendingRhyme }), 0);
     }
 
-    if (pendingLang !== sectionTargetLanguage) {
+    if (langChanged) {
       onSectionTargetLanguageChange?.(section.id, pendingLang);
       if (adaptSectionLanguage) {
+        asyncDispatched = true;
         adaptSectionLanguage(section.id, pendingLang);
       }
+    }
+
+    // If no async operation was launched, no external state will ever flip
+    // isGenerating/isAdaptingLanguage, so the cleanup useEffect will never
+    // re-fire. Reset immediately.
+    if (!asyncDispatched) {
+      setIsApplying(false);
     }
   }, [
     canApply,
