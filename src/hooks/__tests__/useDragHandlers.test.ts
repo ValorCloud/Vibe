@@ -1,7 +1,7 @@
 import React, { useLayoutEffect } from 'react';
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { DragProvider, useDrag } from '../../contexts/DragContext';
+import { DragProvider, useDragActions } from '../../contexts/DragContext';
 import { SongProvider, useSongContext } from '../../contexts/SongContext';
 import { DragHandlersProvider, useDragHandlersContext } from '../../contexts/DragHandlersContext';
 import type { Section } from '../../types';
@@ -11,7 +11,7 @@ const makeSection = (id: string, name: string, lines: Section['lines'] = []): Se
 function DragInitializer(
   { children, draggedItemIndex }: { children?: React.ReactNode; draggedItemIndex?: number | null }
 ) {
-  const { setDraggedItemIndex } = useDrag();
+  const { setDraggedItemIndex } = useDragActions();
 
   useLayoutEffect(() => {
     setDraggedItemIndex(draggedItemIndex ?? null);

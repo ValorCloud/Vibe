@@ -35,6 +35,7 @@ export function useEditorHandlers({ state, isMobileOrTablet }: UseEditorHandlers
     updateSongAndStructureWithHistory,
     setSongLanguage,
     setTitle,
+    setTitleOrigin,
     setPastedText,
     setSectionTargetLanguages,
     hasRealLyricContent,
@@ -137,13 +138,20 @@ export function useEditorHandlers({ state, isMobileOrTablet }: UseEditorHandlers
   });
 
   // ── Import handlers ──────────────────────────────────────────────
+  // Set title origin to 'user' so the auto-title generator does not overwrite
+  // a title extracted from an imported file.
+  const handleSetImportTitle = useCallback((v: string) => {
+    setTitle(v);
+    setTitleOrigin('user');
+  }, [setTitle, setTitleOrigin]);
+
   const { handleImportInputChange, handleImportChooseFile } = useImportHandlers({
     importInputRef,
     loadFileForAnalysis,
     setIsPasteModalOpen,
     setPastedText,
     setSongLanguage,
-    setSongTitle: setTitle,
+    setSongTitle: handleSetImportTitle,
   });
 
   // ── Derived composite callbacks ───────────────────────────────────────

@@ -403,8 +403,7 @@ export const usePasteImport = ({
     const chunks = splitPastedLyricsIntoChunks(textToProcess);
     if (chunks.length === 0) return;
 
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const firstChunkLabel: string = chunks[0]!.displayLabel;
+    const firstChunkLabel = chunks[0]?.displayLabel ?? '';
     setIsAnalyzing(true);
     setImportProgress({
       current: 0,

@@ -70,6 +70,9 @@ const normalizeSnapshot = (snapshot: SongHistorySnapshot): SongHistorySnapshot =
 const cappedPast = (past: SongHistorySnapshot[]): SongHistorySnapshot[] =>
   past.length > MAX_HISTORY ? past.slice(past.length - MAX_HISTORY) : past;
 
+const cappedFuture = (future: SongHistorySnapshot[]): SongHistorySnapshot[] =>
+  future.length > MAX_HISTORY ? future.slice(0, MAX_HISTORY) : future;
+
 // ─── Delta helpers ────────────────────────────────────────────────────────────
 
 const sectionFingerprint = (s: Section): string => {
@@ -224,7 +227,7 @@ export const useSongHistoryState = (
         song: previous.song,
         structure: previous.structure,
         past: current.past.slice(0, -1),
-        future: [{ song: current.song, structure: current.structure }, ...current.future],
+        future: cappedFuture([{ song: current.song, structure: current.structure }, ...current.future]),
       };
     });
   }, [applyMeta]);

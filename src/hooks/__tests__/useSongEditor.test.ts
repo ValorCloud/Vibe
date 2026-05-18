@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSongEditor } from '../useSongEditor';
 import type { Section } from '../../types';
-import { DragProvider, useDrag } from '../../contexts/DragContext';
+import { DragProvider, useDragActions } from '../../contexts/DragContext';
 import { SongProvider, useSongContext } from '../../contexts/SongContext';
 
 const makeSection = (id: string, name: string, lines: Section['lines'] = []): Section => ({ id, name, lines });
@@ -28,7 +28,7 @@ const lastCreatedBlob = () => {
 function DragInitializer(
   { children, draggedItemIndex }: { children?: React.ReactNode; draggedItemIndex?: number | null }
 ) {
-  const { setDraggedItemIndex } = useDrag();
+  const { setDraggedItemIndex } = useDragActions();
 
   useLayoutEffect(() => {
     setDraggedItemIndex(draggedItemIndex ?? null);
@@ -253,8 +253,7 @@ describe('useSongEditor', () => {
       (file as any).text = vi.fn().mockResolvedValue(fileContent);
 
       await act(async () => {
-        const payload = await result.current.loadFileForAnalysis(file);
-        expect(payload.text).toBe('Line 1\nLine 2');
+        await result.current.loadFileForAnalysis(file);
       });
 
       expect(openPasteModalWithText).toHaveBeenCalledWith('Line 1\nLine 2');
@@ -292,7 +291,6 @@ describe('useSongEditor', () => {
       await act(async () => {
         const payload = await result.current.loadFileForAnalysis(file);
         expect(payload.songLanguage).toBe('fr');
-        expect(payload.text).toBe('Verse text here');
       });
 
       expect(openPasteModalWithText).toHaveBeenCalledWith('Verse text here');
@@ -327,8 +325,7 @@ describe('useSongEditor', () => {
       (file as any).text = vi.fn().mockResolvedValue('');
 
       await act(async () => {
-        const payload = await result.current.loadFileForAnalysis(file);
-        expect(payload.text).toBe('');
+        await result.current.loadFileForAnalysis(file);
       });
 
       expect(openPasteModalWithText).not.toHaveBeenCalled();

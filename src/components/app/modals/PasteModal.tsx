@@ -53,7 +53,7 @@ export function PasteModal({
   // Auto-scroll active line into view
   useEffect(() => {
     if (activeLineRef.current && scrollContainerRef.current) {
-      activeLineRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      activeLineRef.current.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
     }
   }, [activeLine]);
 

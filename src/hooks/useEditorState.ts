@@ -79,6 +79,7 @@ export function useEditorState() {
     rhymeScheme: songCtx.rhymeScheme,
     title: songCtx.title,
     setTitle: songCtx.setTitle,
+    setTitleOrigin: songCtx.setTitleOrigin,
     titleOrigin: songCtx.titleOrigin,
     topic: songCtx.topic,
     setTopic: songCtx.setTopic,

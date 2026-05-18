@@ -184,6 +184,10 @@ export const SectionEditor = React.memo(function SectionEditor({
 
   const isProxied = isProxiedForSection(section.id);
 
+  // Stable digest used as a memo dep to detect per-line language changes even
+  // when the lineLanguages object reference stays the same.
+  const lineLanguagesDigest = section.lines.map(l => lineLanguages[l.id] ?? '').join('\x00');
+
   const multiLangLines = useMemo(
     () =>
       section.lines
@@ -192,12 +196,8 @@ export const SectionEditor = React.memo(function SectionEditor({
           text: l.text,
           lang: lineLanguages[l.id] ?? sectionTargetLanguage,
         })),
-    [
-      section.lines,
-      sectionTargetLanguage,
-      lineLanguages,
-      section.lines.map(l => lineLanguages[l.id] ?? '').join('\x00'),
-    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [section.lines, sectionTargetLanguage, lineLanguages, lineLanguagesDigest],
   );
 
   const schemeResult = useRhymeSchemeMultiLang(multiLangLines, isProxied, committedRhyme);

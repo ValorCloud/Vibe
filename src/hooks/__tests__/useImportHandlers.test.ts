@@ -6,12 +6,10 @@ import { useImportHandlers } from '../useImportHandlers';
 describe('useImportHandlers', () => {
   it('restores imported song language metadata when present', async () => {
     const loadFileForAnalysis = vi.fn(async () => ({ songLanguage: 'ar' }));
-    const setIsImportModalOpen = vi.fn();
     const setSongLanguage = vi.fn();
     const { result } = renderHook(() => useImportHandlers({
       importInputRef: { current: null },
       loadFileForAnalysis,
-      setIsImportModalOpen,
       setIsPasteModalOpen: vi.fn(),
       setPastedText: vi.fn(),
       setSongLanguage,
@@ -29,7 +27,6 @@ describe('useImportHandlers', () => {
       await result.current.handleImportInputChange(event);
     });
 
-    expect(setIsImportModalOpen).toHaveBeenCalledWith(false);
     expect(loadFileForAnalysis).toHaveBeenCalledWith(file);
     expect(setSongLanguage).toHaveBeenCalledWith('ar');
     expect(event.target.value).toBe('');

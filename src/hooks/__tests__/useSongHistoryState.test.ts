@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSongHistoryState } from '../useSongHistoryState';
 import type { Section } from '../../types';
@@ -224,9 +224,12 @@ describe('useSongHistoryState', () => {
     act(() => result.current.updateSongWithHistory([S1, S2]));
     expect(result.current.past).toHaveLength(1);
 
-    // Use replaceStateWithoutHistory which internally uses applySnapshot with trackHistory: false
+    // replaceStateWithoutHistory uses applySnapshot with trackHistory: false,
+    // which resets the full history (past and future are cleared) so callers
+    // always start from a clean undo stack after a silent replacement.
     act(() => result.current.replaceStateWithoutHistory([S1, S2, S3], ['Verse 1', 'Chorus', 'Bridge']));
-    expect(result.current.past).toHaveLength(1); // Should remain 1
+    expect(result.current.past).toHaveLength(0);
+    expect(result.current.song).toHaveLength(3);
   });
 
   it('handles sections with lines correctly', () => {
@@ -298,5 +301,156 @@ describe('useSongHistoryState', () => {
     expect(line?.rhymingSyllables).toBe('');
     expect(line?.rhyme).toBe('');
     expect(line?.syllables).toBe(0);
+  });
+});
+
+// ─── undo / redo + meta ────────────────────────────────────────────────────────
+
+const makeMeta = (title: string) => ({
+  title,
+  titleOrigin: 'user' as const,
+  topic: 'test-topic',
+  mood: 'happy',
+  rhymeScheme: 'AABB',
+  targetSyllables: 8,
+  genre: 'pop',
+  tempo: 120,
+  instrumentation: 'guitar',
+  rhythm: '4/4',
+  narrative: 'story',
+  musicalPrompt: '',
+});
+
+describe('useSongHistoryState — undo/redo with meta', () => {
+  it('undo calls all metaSetters when previous snapshot carries meta', () => {
+    const setTitle = vi.fn();
+    const setTitleOrigin = vi.fn();
+    const setTopic = vi.fn();
+    const setMood = vi.fn();
+    const metaSetters = {
+      setTitle, setTitleOrigin, setTopic, setMood,
+      setRhymeScheme: vi.fn(),
+      setTargetSyllables: vi.fn(),
+      setGenre: vi.fn(),
+      setTempo: vi.fn(),
+      setInstrumentation: vi.fn(),
+      setRhythm: vi.fn(),
+      setNarrative: vi.fn(),
+      setMusicalPrompt: vi.fn(),
+    };
+
+    const { result } = renderHook(() =>
+      useSongHistoryState([S1], ['Verse 1'], metaSetters)
+    );
+
+    const prevMeta = makeMeta('Old Song');
+
+    // Simulate a navigation (new-song) that pushes a snapshot with meta
+    act(() => result.current.navigateWithHistory([S2], ['Chorus'], prevMeta));
+
+    // Undo should restore the previous snapshot and call metaSetters
+    act(() => result.current.undo());
+
+    expect(result.current.song).toHaveLength(1);
+    expect(setTitle).toHaveBeenCalledWith('Old Song');
+    expect(setTitleOrigin).toHaveBeenCalledWith('user');
+    expect(setTopic).toHaveBeenCalledWith('test-topic');
+    expect(setMood).toHaveBeenCalledWith('happy');
+  });
+
+  it('undo does not call metaSetters when previous snapshot has no meta', () => {
+    const setTitle = vi.fn();
+    const metaSetters = {
+      setTitle,
+      setTitleOrigin: vi.fn(),
+      setTopic: vi.fn(),
+      setMood: vi.fn(),
+      setRhymeScheme: vi.fn(),
+      setTargetSyllables: vi.fn(),
+      setGenre: vi.fn(),
+      setTempo: vi.fn(),
+      setInstrumentation: vi.fn(),
+      setRhythm: vi.fn(),
+      setNarrative: vi.fn(),
+      setMusicalPrompt: vi.fn(),
+    };
+
+    const { result } = renderHook(() =>
+      useSongHistoryState([S1], ['Verse 1'], metaSetters)
+    );
+
+    // Regular song update — no meta in the snapshot
+    act(() => result.current.updateSongWithHistory([S1, S2]));
+    act(() => result.current.undo());
+
+    expect(setTitle).not.toHaveBeenCalled();
+  });
+
+  it('undo is safe when metaSetters are not provided and snapshot has meta', () => {
+    const { result } = renderHook(() =>
+      useSongHistoryState([S1], ['Verse 1'])
+    );
+
+    const prevMeta = makeMeta('No Crash');
+
+    // navigateWithHistory stores meta; undo should not throw even without metaSetters
+    act(() => result.current.navigateWithHistory([S2], ['Chorus'], prevMeta));
+    expect(() => act(() => result.current.undo())).not.toThrow();
+    expect(result.current.song).toHaveLength(1);
+  });
+
+  it('redo does not call metaSetters for non-navigation future snapshots', () => {
+    const setTitle = vi.fn();
+    const metaSetters = {
+      setTitle,
+      setTitleOrigin: vi.fn(),
+      setTopic: vi.fn(),
+      setMood: vi.fn(),
+      setRhymeScheme: vi.fn(),
+      setTargetSyllables: vi.fn(),
+      setGenre: vi.fn(),
+      setTempo: vi.fn(),
+      setInstrumentation: vi.fn(),
+      setRhythm: vi.fn(),
+      setNarrative: vi.fn(),
+      setMusicalPrompt: vi.fn(),
+    };
+
+    const { result } = renderHook(() =>
+      useSongHistoryState([S1], ['Verse 1'], metaSetters)
+    );
+
+    const prevMeta = makeMeta('Redo Song');
+    act(() => result.current.navigateWithHistory([S2], ['Chorus'], prevMeta));
+
+    // undo: restores [S1], pushes {song:[S2]} (no meta) to future
+    act(() => result.current.undo());
+    setTitle.mockClear();
+
+    // redo: future snapshot has no meta — setTitle must NOT be called
+    act(() => result.current.redo());
+    expect(setTitle).not.toHaveBeenCalled();
+    expect(result.current.song).toHaveLength(1);
+  });
+
+  it('future stack is capped at MAX_HISTORY after many undos', () => {
+    const { result } = renderHook(() =>
+      useSongHistoryState([S1], ['Verse 1'])
+    );
+
+    // Build up 55 history entries (exceeds MAX_HISTORY of 50)
+    for (let i = 0; i < 55; i++) {
+      act(() => result.current.updateSongWithHistory([
+        ...result.current.song,
+        makeSection(`extra${i}`, `Extra ${i}`),
+      ]));
+    }
+
+    // Undo all available entries — future should be capped at MAX_HISTORY (50)
+    for (let i = 0; i < 55; i++) {
+      act(() => result.current.undo());
+    }
+
+    expect(result.current.future.length).toBeLessThanOrEqual(50);
   });
 });

@@ -7,7 +7,6 @@ const createMockUIState = (): UIStateBag => ({
   setIsAboutOpen: vi.fn(),
   setIsSettingsOpen: vi.fn(),
   setApiErrorModal: vi.fn(),
-  setIsImportModalOpen: vi.fn(),
   setIsExportModalOpen: vi.fn(),
   setIsSectionDropdownOpen: vi.fn(),
   setIsSimilarityModalOpen: vi.fn(),
@@ -24,7 +23,6 @@ const createMockUIState = (): UIStateBag => ({
   isAboutOpen: false,
   isSettingsOpen: false,
   apiErrorModal: { open: false, message: '' },
-  isImportModalOpen: false,
   isExportModalOpen: false,
   isSectionDropdownOpen: false,
   isSimilarityModalOpen: false,
@@ -96,9 +94,6 @@ describe('ModalContext', () => {
 
       act(() => { result.current.openModal('settings'); });
       expect(mockUIState.setIsSettingsOpen).toHaveBeenCalledWith(true);
-
-      act(() => { result.current.openModal('import'); });
-      expect(mockUIState.setIsImportModalOpen).toHaveBeenCalledWith(true);
 
       act(() => { result.current.openModal('export'); });
       expect(mockUIState.setIsExportModalOpen).toHaveBeenCalledWith(true);
@@ -174,9 +169,6 @@ describe('ModalContext', () => {
 
       act(() => { result.current.closeModal('settings'); });
       expect(mockUIState.setIsSettingsOpen).toHaveBeenCalledWith(false);
-
-      act(() => { result.current.closeModal('import'); });
-      expect(mockUIState.setIsImportModalOpen).toHaveBeenCalledWith(false);
 
       act(() => { result.current.closeModal('export'); });
       expect(mockUIState.setIsExportModalOpen).toHaveBeenCalledWith(false);
@@ -280,11 +272,9 @@ describe('ModalContext', () => {
       act(() => {
         result.current.openModal('about');
         result.current.openModal('settings');
-        result.current.openModal('import');
       });
       expect(mockUIState.setIsAboutOpen).toHaveBeenCalledWith(true);
       expect(mockUIState.setIsSettingsOpen).toHaveBeenCalledWith(true);
-      expect(mockUIState.setIsImportModalOpen).toHaveBeenCalledWith(true);
     });
   });
 

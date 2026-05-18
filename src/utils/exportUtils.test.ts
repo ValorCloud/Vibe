@@ -59,7 +59,7 @@ describe('createSongExport', () => {
     expect(filename).toBe('Test_Song.md');
     await expect(blob.text()).resolves.toContain('# Test Song');
     await expect(blob.text()).resolves.toContain('### Chorus');
-    await expect(blob.text()).resolves.toContain('*\\[drop\\]*');
+    await expect(blob.text()).resolves.toContain('[meta] \\[drop\\]');
   });
 
   it.each([

@@ -8,7 +8,6 @@ const createUiState = (overrides: Partial<UIStateBag> = {}): UIStateBag => ({
   setIsAboutOpen: vi.fn(),
   setIsSettingsOpen: vi.fn(),
   setApiErrorModal: vi.fn(),
-  setIsImportModalOpen: vi.fn(),
   setIsExportModalOpen: vi.fn(),
   setIsSectionDropdownOpen: vi.fn(),
   setIsSimilarityModalOpen: vi.fn(),
@@ -25,7 +24,6 @@ const createUiState = (overrides: Partial<UIStateBag> = {}): UIStateBag => ({
   isAboutOpen: false,
   isSettingsOpen: false,
   apiErrorModal: { open: false, message: '' },
-  isImportModalOpen: false,
   isExportModalOpen: false,
   isSectionDropdownOpen: false,
   isSimilarityModalOpen: false,
@@ -83,7 +81,6 @@ describe('useKeyboardShortcuts', () => {
     ['analysis modal', createUiState({ isAnalysisModalOpen: true }), 'setIsAnalysisModalOpen', false],
     ['paste modal', createUiState({ isPasteModalOpen: true }), 'setIsPasteModalOpen', false],
     ['export modal', createUiState({ isExportModalOpen: true }), 'setIsExportModalOpen', false],
-    ['import modal', createUiState({ isImportModalOpen: true }), 'setIsImportModalOpen', false],
     ['settings modal', createUiState({ isSettingsOpen: true }), 'setIsSettingsOpen', false],
     ['about modal', createUiState({ isAboutOpen: true }), 'setIsAboutOpen', false],
   ] as const)('dismisses the %s from ModalContext on Escape', (_label, uiState, setterName, expectedValue) => {

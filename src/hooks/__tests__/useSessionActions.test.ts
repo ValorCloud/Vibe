@@ -101,6 +101,7 @@ const makeParams = (overrides = {}) => ({
   rhymeScheme: 'AABB',
   appState: makeAppState(),
   replaceStateWithoutHistory: vi.fn(),
+  navigateWithHistory: vi.fn(),
   clearHistory: vi.fn(),
   clearSelection: vi.fn(),
   resetWebSimilarityIndex: vi.fn(),
@@ -155,18 +156,11 @@ describe('useSessionActions', () => {
   });
 
   describe('handleCreateEmptySong', () => {
-    it('calls replaceStateWithoutHistory', () => {
+    it('calls navigateWithHistory to preserve the old song in undo stack', () => {
       const params = makeParams();
       const { result } = renderHook(() => useSessionActions(params));
       act(() => { result.current.handleCreateEmptySong(); });
-      expect(params.replaceStateWithoutHistory).toHaveBeenCalledTimes(1);
-    });
-
-    it('calls clearHistory', () => {
-      const params = makeParams();
-      const { result } = renderHook(() => useSessionActions(params));
-      act(() => { result.current.handleCreateEmptySong(); });
-      expect(params.clearHistory).toHaveBeenCalledTimes(1);
+      expect(params.navigateWithHistory).toHaveBeenCalledTimes(1);
     });
 
     it('calls resetSuggestionCycle', () => {
