@@ -80,5 +80,17 @@ export function AppPanelOrchestrator() {
     setIsLeftPanelOpen(!hasRealLyricContent);
   }, [hasRealLyricContent, isSessionHydrated, setIsLeftPanelOpen]);
 
+  // ── Effect 5: Collapse left panel as soon as lyrics content appears ───
+  // Covers all three entry points: file import, paste modal, direct typing.
+  // Runs only after initial sync (ref guard) so it doesn't fight Effect 4.
+  const prevHasRealLyricContentRef = useRef(false);
+  useEffect(() => {
+    if (!hasSyncedInitialLeftPanelRef.current) return;
+    if (hasRealLyricContent && !prevHasRealLyricContentRef.current) {
+      setIsLeftPanelOpen(false);
+    }
+    prevHasRealLyricContentRef.current = hasRealLyricContent;
+  }, [hasRealLyricContent, setIsLeftPanelOpen]);
+
   return null;
 }
