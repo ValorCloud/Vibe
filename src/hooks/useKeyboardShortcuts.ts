@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useModalDispatch, useModalState } from '../contexts/ModalContext';
-import { useAppNavigationContext } from '../contexts/AppStateContext';
 
 export type KeyboardShortcutCategory = 'edit' | 'navigation' | 'file' | 'ai';
 
@@ -93,7 +92,6 @@ export const useKeyboardShortcuts = ({
 }: UseKeyboardShortcutsParams) => {
   const { closeModal, openModal } = useModalDispatch();
   const { uiState } = useModalState();
-  const { setActiveTab } = useAppNavigationContext();
   const {
     promptModal,
     confirmModal,
@@ -109,6 +107,7 @@ export const useKeyboardShortcuts = ({
     isAboutOpen,
     isSearchReplaceOpen,
     isKeyboardShortcutsModalOpen,
+    setActiveTab,
     setPromptModal,
     setConfirmModal,
     setApiErrorModal,
