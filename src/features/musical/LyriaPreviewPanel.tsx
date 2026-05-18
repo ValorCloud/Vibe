@@ -255,7 +255,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         onClick={() => void handleGenerate()}
         style={{ alignSelf: 'flex-start' }}
       >
-        {isGenerating ? 'Génération en cours…' : 'Générer le preview 30'''}
+        {isGenerating ? 'Génération en cours…' : "Générer le preview 30''"}
       </Button>
 
       {/* Status / result */}
