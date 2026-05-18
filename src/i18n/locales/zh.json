@@ -27,14 +27,15 @@
     "lyrics": "歌词",
     "musical": "音乐",
     "similarity": "相似度",
-    "import": "导入",
-    "export": "导出",
+    "load_import": "加载 / 导入",
+    "save_export": "保存 / 导出",
     "versions": "歌词版本",
     "undo": "撤销",
     "redo": "重做",
     "reset": "重置",
     "aiUnavailable": "AI 不可用",
-    "send_to_suno": "发送到SUNO"
+    "send_to_lyria": "发送到LYRIA",
+    "copy_lyrics": "复制歌词"
   },
   "mobileNav": {
     "navigation": "移动导航",
@@ -452,8 +453,8 @@
     "rhymeScheme": "选择所有段落的默认押韵方案",
     "targetSyllables": "设置每行的目标音节数",
     "viewMode": "在不同歌词编辑器视图之间切换",
-    "sendToSunoConfirm": "Opening SUNO…",
-    "sendToSuno": "Open SUNO with your musical prompt",
+    "sendToLyriaConfirm": "正在打开Musical…",
+    "sendToLyria": "打开 Musical 标签以使用 Lyria 生成预览",
     "quantizeLineDone": "Line quantized"
   },
   "sections": {

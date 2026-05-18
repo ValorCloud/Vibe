@@ -23,14 +23,15 @@
     "lyrics": "LETRAS",
     "musical": "MUSICAL",
     "similarity": "Similaridade",
-    "import": "Importar",
-    "export": "Exportar",
+    "load_import": "Carregar / Importar",
+    "save_export": "Guardar / Exportar",
     "versions": "Versões da letra",
     "undo": "Desfazer",
     "redo": "Refazer",
     "reset": "Redefinir",
     "aiUnavailable": "IA INDISPONÍVEL",
-    "send_to_suno": "Enviar ao SUNO"
+    "send_to_lyria": "Enviar ao LYRIA",
+    "copy_lyrics": "Copiar letra"
   },
   "mobileNav": {
     "navigation": "Navegação móvel",
@@ -412,8 +413,8 @@
     "aiGeneratedTitle": "Título gerado por IA",
     "userEnteredTitle": "Título inserido pelo utilizador",
     "openSearch": "Buscar e substituir nas letras (Ctrl+F)",
-    "sendToSunoConfirm": "Opening SUNO…",
-    "sendToSuno": "Open SUNO with your musical prompt",
+    "sendToLyriaConfirm": "A abrir Musical…",
+    "sendToLyria": "Abrir a aba Musical para gerar prévia com Lyria",
     "quantizeLineDone": "Line quantized"
   },
   "sections": {

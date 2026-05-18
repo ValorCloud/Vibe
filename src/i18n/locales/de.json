@@ -23,14 +23,15 @@
     "lyrics": "TEXTE",
     "musical": "MUSIK",
     "similarity": "Ähnlichkeit",
-    "import": "Importieren",
-    "export": "Exportieren",
+    "load_import": "Laden / Importieren",
+    "save_export": "Speichern / Exportieren",
     "versions": "Liedtext-Versionen",
     "undo": "Rückgängig",
     "redo": "Wiederholen",
     "reset": "Zurücksetzen",
     "aiUnavailable": "KI NICHT VERFÜGBAR",
-    "send_to_suno": "An SUNO senden"
+    "send_to_lyria": "An LYRIA senden",
+    "copy_lyrics": "Liedtext kopieren"
   },
   "mobileNav": {
     "navigation": "Mobile Navigation",
@@ -412,8 +413,8 @@
     "aiGeneratedTitle": "KI-generierter Titel",
     "userEnteredTitle": "Vom Benutzer eingegebener Titel",
     "openSearch": "Suche & Ersetzen in Liedtexten (Ctrl+F)",
-    "sendToSunoConfirm": "SUNO wird geöffnet…",
-    "sendToSuno": "SUNO mit Ihrem musikalischen Prompt öffnen",
+    "sendToLyriaConfirm": "Musical wird geöffnet…",
+    "sendToLyria": "Musical-Tab öffnen, um Lyria-Vorschau zu erzeugen",
     "quantizeLineDone": "Zeile quantisiert"
   },
   "sections": {

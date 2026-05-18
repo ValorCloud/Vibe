@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
-import { Sparkles, Undo2, Redo2, PanelRight, Menu, KeyboardRegular, WandSparkles, Music, Check, AlertTriangle, Copy } from '../ui/icons';
+import { Sparkles, Undo2, Redo2, PanelRight, Menu, KeyboardRegular, WandSparkles, Check, Copy } from '../ui/icons';
 import { Tooltip } from '../ui/Tooltip';
 import { IconButton } from '../ui/IconButton';
 import { useTranslation } from '../../i18n';
@@ -9,10 +9,7 @@ import { useAppNavigationContext } from '../../contexts/AppStateContext';
 import { useTopRibbonActions } from '../../hooks/useTopRibbonActions';
 import { RibbonMenuPanel } from './RibbonMenuPanel';
 import { RibbonTabs } from './RibbonTabs';
-import { SUNO_CREATE_URL } from '../../constants/externalUrls';
 import { copyToClipboard } from '../../utils/clipboard';
-
-const MAX_SUNO_PROMPT_LENGTH = 1800;
 
 /**
  * TopRibbon — assembly component (~100 lines).
@@ -29,7 +26,7 @@ interface Props {
 export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, onOpenNewEmpty }: Props) {
   const { past, future, undo, redo } = useSongHistoryContext();
   const { isGenerating, clearSelection } = useComposerContext();
-  const { musicalPrompt, song } = useSongContext();
+  const { song } = useSongContext();
   const { activeTab, setActiveTab, isLeftPanelOpen, setIsLeftPanelOpen, isStructureOpen, setIsStructureOpen } = useAppNavigationContext();
   const { openKeyboardShortcuts, isAnalyzing } = useTopRibbonActions();
   const { t } = useTranslation();
@@ -44,13 +41,9 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-  const sunoSentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const sunoTruncatedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [sunoSent, setSunoSent] = useState(false);
-  const [sunoTruncated, setSunoTruncated] = useState(false);
+  const lyriaSentTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [lyriaSent, setLyriaSent] = useState(false);
   const [lyricsCopied, setLyricsCopied] = useState(false);
-
-  const isPromptTruncated = musicalPrompt.trim().length > MAX_SUNO_PROMPT_LENGTH;
 
   const lyricsText = useMemo(() => {
     if (!song || song.length === 0) return '';
@@ -84,45 +77,26 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
   };
 
   useEffect(() => () => {
-    if (sunoSentTimeoutRef.current) clearTimeout(sunoSentTimeoutRef.current);
-    if (sunoTruncatedTimeoutRef.current) clearTimeout(sunoTruncatedTimeoutRef.current);
+    if (lyriaSentTimeoutRef.current) clearTimeout(lyriaSentTimeoutRef.current);
   }, []);
 
-  const handleSendToSuno = () => {
-    const prompt = musicalPrompt.trim();
-    const wasTruncated = prompt.length > MAX_SUNO_PROMPT_LENGTH;
-    const safePrompt = prompt.slice(0, MAX_SUNO_PROMPT_LENGTH);
-    const url = safePrompt
-      ? `${SUNO_CREATE_URL}?prompt=${encodeURIComponent(safePrompt)}`
-      : SUNO_CREATE_URL;
-    window.open(url, '_blank', 'noopener,noreferrer');
-    if (sunoSentTimeoutRef.current) clearTimeout(sunoSentTimeoutRef.current);
-    if (sunoTruncatedTimeoutRef.current) clearTimeout(sunoTruncatedTimeoutRef.current);
-    setSunoSent(true);
-    sunoSentTimeoutRef.current = setTimeout(() => {
-      setSunoSent(false);
+  const handleSendToLyria = () => {
+    // Switch to the Musical tab where the Lyria preview/full-song panels live.
+    setActiveTab('musical');
+    if (lyriaSentTimeoutRef.current) clearTimeout(lyriaSentTimeoutRef.current);
+    setLyriaSent(true);
+    lyriaSentTimeoutRef.current = setTimeout(() => {
+      setLyriaSent(false);
     }, 2000);
-    if (wasTruncated) {
-      setSunoTruncated(true);
-      sunoTruncatedTimeoutRef.current = setTimeout(() => {
-        setSunoTruncated(false);
-      }, 3000);
-    } else {
-      setSunoTruncated(false);
-    }
   };
 
-  const sunoTooltip = sunoSent
-    ? (t.tooltips.sendToSunoConfirm ?? 'Opening SUNO…')
-    : sunoTruncated
-      ? (t.tooltips.sendToSunoTruncated ?? `Prompt truncated to ${MAX_SUNO_PROMPT_LENGTH} chars`).replace('{max}', String(MAX_SUNO_PROMPT_LENGTH))
-      : isPromptTruncated
-        ? (t.tooltips.sendToSunoWillTruncate ?? `Prompt exceeds ${MAX_SUNO_PROMPT_LENGTH} chars — will be trimmed`).replace('{max}', String(MAX_SUNO_PROMPT_LENGTH))
-        : (t.tooltips.sendToSuno ?? 'Call SUNO with your musical prompt');
+  const lyriaTooltip = lyriaSent
+    ? (t.tooltips.sendToLyriaConfirm ?? 'Opening Musical…')
+    : (t.tooltips.sendToLyria ?? 'Open the Musical tab to generate a preview with Lyria');
 
   const lyricsTooltip = lyricsCopied
     ? (t.tooltips.copyLyricsConfirm ?? 'Lyrics copied to clipboard')
-    : (t.tooltips.copyLyrics ?? 'Copy lyrics for SUNO');
+    : (t.tooltips.copyLyrics ?? 'Copy lyrics');
 
   return (
     <div
@@ -167,40 +141,32 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
             </button>
           </Tooltip>
         )}
-        {/* Call SUNO button + Copy Lyrics (lyrics tab only) */}
+        {/* Send to LYRIA button + Copy Lyrics (lyrics tab only) */}
         <div className="flex items-center gap-1">
-          <Tooltip title={sunoTooltip}>
+          <Tooltip title={lyriaTooltip}>
             <button
-              onClick={handleSendToSuno}
-              disabled={sunoSent}
-              aria-label={t.ribbon.send_to_suno ?? 'Call SUNO'}
+              onClick={handleSendToLyria}
+              disabled={lyriaSent}
+              aria-label={t.ribbon.send_to_lyria ?? 'Send to LYRIA'}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all disabled:cursor-not-allowed disabled:opacity-70"
               style={{
-                background: sunoSent
+                background: lyriaSent
                   ? 'color-mix(in srgb, var(--lcars-cyan, #4f98a3) 12%, transparent)'
-                  : sunoTruncated || isPromptTruncated
-                    ? 'color-mix(in srgb, var(--lcars-amber, #f59e0b) 12%, transparent)'
-                    : 'color-mix(in srgb, var(--lcars-violet, #a86fdf) 12%, transparent)',
-                color: sunoSent
+                  : 'color-mix(in srgb, var(--lcars-violet, #a86fdf) 12%, transparent)',
+                color: lyriaSent
                   ? 'var(--lcars-cyan, #4f98a3)'
-                  : sunoTruncated || isPromptTruncated
-                    ? 'var(--lcars-amber, #f59e0b)'
-                    : 'var(--lcars-violet, #a86fdf)',
+                  : 'var(--lcars-violet, #a86fdf)',
                 border: `1px solid ${
-                  sunoSent
+                  lyriaSent
                     ? 'color-mix(in srgb, var(--lcars-cyan, #4f98a3) 25%, transparent)'
-                    : sunoTruncated || isPromptTruncated
-                      ? 'color-mix(in srgb, var(--lcars-amber, #f59e0b) 25%, transparent)'
-                      : 'color-mix(in srgb, var(--lcars-violet, #a86fdf) 25%, transparent)'
+                    : 'color-mix(in srgb, var(--lcars-violet, #a86fdf) 25%, transparent)'
                 }`,
               }}
             >
-              {sunoSent
+              {lyriaSent
                 ? <Check className="w-3.5 h-3.5" />
-                : sunoTruncated || isPromptTruncated
-                  ? <AlertTriangle className="w-3.5 h-3.5" />
-                  : <Music className="w-3.5 h-3.5" />}
-              <span className="hidden lg:inline">{t.ribbon.send_to_suno ?? 'Call SUNO'}</span>
+                : <Sparkles className="w-3.5 h-3.5" />}
+              <span className="hidden lg:inline">{t.ribbon.send_to_lyria ?? 'Send to LYRIA'}</span>
             </button>
           </Tooltip>
 
@@ -209,11 +175,11 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
               <button
                 onClick={handleCopyLyrics}
                 disabled={!lyricsText}
-                aria-label={t.tooltips.copyLyrics ?? 'Copy lyrics'}
+                aria-label={t.ribbon.copy_lyrics ?? t.tooltips.copyLyrics ?? 'Copy Lyrics'}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wide border border-[var(--border-color)] text-[var(--text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {lyricsCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                <span className="hidden lg:inline">{lyricsCopied ? (t.musical?.copied ?? 'Copied!') : (t.editor?.emptyState?.pasteLyrics ?? 'Copy Lyrics')}</span>
+                <span className="hidden lg:inline">{lyricsCopied ? (t.musical?.copied ?? 'Copied!') : (t.ribbon.copy_lyrics ?? 'Copy Lyrics')}</span>
               </button>
             </Tooltip>
           )}

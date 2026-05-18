@@ -73,8 +73,10 @@ export interface Translations {
     lyrics: string;
     musical: string;
     similarity: string;
-    import: string;
-    export: string;
+    /** Label for the menu entry that opens the import dialog (e.g. "Load / Import") */
+    load_import: string;
+    /** Label for the menu entry that opens the export dialog (e.g. "Save / Export") */
+    save_export: string;
     versions: string;
     undo: string;
     redo: string;
@@ -84,8 +86,10 @@ export interface Translations {
     menu?: string;
     /** Aria-label for the burger menu trigger */
     menuAria?: string;
-    /** Label for the "Send to SUNO" button in the ribbon */
-    send_to_suno?: string;
+    /** Label for the "Send to LYRIA" button in the ribbon */
+    send_to_lyria?: string;
+    /** Label for the "Copy Lyrics" button in the ribbon */
+    copy_lyrics?: string;
   };
 
   mobileNav: {
@@ -587,12 +591,8 @@ export interface Translations {
     browseLibrary: string;
     openSettings: string;
     sponsor: string;
-    sendToSunoConfirm?: string;
-    sendToSuno?: string;
-    /** Tooltip shown after Send to SUNO when the prompt was truncated */
-    sendToSunoTruncated?: string;
-    /** Tooltip shown on Send to SUNO when the prompt exceeds max length and will be trimmed */
-    sendToSunoWillTruncate?: string;
+    sendToLyriaConfirm?: string;
+    sendToLyria?: string;
     quantizeLineDone?: string;
     /** Tooltip shown on the Copy Lyrics button */
     copyLyrics?: string;

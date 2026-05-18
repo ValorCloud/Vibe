@@ -26,14 +26,15 @@
     "lyrics": "가사",
     "musical": "음악",
     "similarity": "유사도",
-    "import": "가져오기",
-    "export": "내보내기",
+    "load_import": "불러오기 / 가져오기",
+    "save_export": "저장 / 내보내기",
     "versions": "가사 버전",
     "undo": "실행 취소",
     "redo": "다시 실행",
     "reset": "초기화",
     "aiUnavailable": "AI 사용 불가",
-    "send_to_suno": "SUNO로 보내기"
+    "send_to_lyria": "LYRIA로 보내기",
+    "copy_lyrics": "가사 복사"
   },
   "mobileNav": {
     "navigation": "모바일 탐색",
@@ -447,8 +448,8 @@
     "closeLeftPanel": "Close lyrics generation panel",
     "detectLanguage": "Detect song language",
     "redetectLanguage": "Detected: {langs} — click to re-detect",
-    "sendToSunoConfirm": "Opening SUNO…",
-    "sendToSuno": "Open SUNO with your musical prompt",
+    "sendToLyriaConfirm": "Musical 여는 중…",
+    "sendToLyria": "Musical 탭을 열어 Lyria 미리듣기 생성",
     "quantizeLineDone": "Line quantized"
   },
   "sections": {

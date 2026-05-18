@@ -71,13 +71,14 @@ vi.mock('../../i18n', () => ({
         openLeftPanel: 'Open panel',
         collapseRight: 'Collapse',
         showSidebar: 'Show sidebar',
-        sendToSuno: 'Open SUNO with your musical prompt',
-        sendToSunoConfirm: 'Opening SUNO…',
+        sendToLyria: 'Open the Musical tab to generate a preview with Lyria',
+        sendToLyriaConfirm: 'Opening Musical…',
         quantizeLineDone: 'Line quantized',
       },
       ribbon: {
         aiUnavailable: 'AI unavailable',
-        send_to_suno: 'Send to SUNO',
+        send_to_lyria: 'Send to LYRIA',
+        copy_lyrics: 'Copy Lyrics',
         menu: 'Menu',
         menuAria: 'Open main menu',
       },
@@ -95,9 +96,6 @@ vi.mock('./RibbonMenuPanel', () => ({
 }));
 vi.mock('./RibbonTabs', () => ({
   RibbonTabs: () => <div data-testid="ribbon-tabs" />,
-}));
-vi.mock('../../constants/externalUrls', () => ({
-  SUNO_CREATE_URL: 'https://suno.com/create',
 }));
 
 // ── Default props ────────────────────────────────────────────────────────────
@@ -217,29 +215,21 @@ describe('TopRibbon', () => {
     expect(screen.getByLabelText('Processing')).toBeDefined();
   });
 
-  it('truncates long SUNO prompts before encoding them into the URL', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
-    mockMusicalPrompt = 'a'.repeat(2000);
+  it('switches to the Musical tab when Send to LYRIA is clicked', () => {
+    mockMusicalPrompt = 'a beautiful afro-pop ballad';
     renderRibbon();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send to SUNO' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send to LYRIA' }));
 
-    expect(openSpy).toHaveBeenCalledWith(
-      `https://suno.com/create?prompt=${'a'.repeat(1800)}`,
-      '_blank',
-      'noopener,noreferrer',
-    );
-    openSpy.mockRestore();
+    expect(mockSetActiveTab).toHaveBeenCalledWith('musical');
   });
 
-  it('uses a distinct confirmation tooltip after sending to SUNO', () => {
-    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+  it('uses a distinct confirmation tooltip after Send to LYRIA', () => {
     renderRibbon();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Send to SUNO' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Send to LYRIA' }));
 
-    expect(screen.getByTitle('Opening SUNO…')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Send to SUNO' })).toBeDisabled();
-    openSpy.mockRestore();
+    expect(screen.getByTitle('Opening Musical…')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Send to LYRIA' })).toBeDisabled();
   });
 });

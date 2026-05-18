@@ -129,13 +129,13 @@ export function RibbonMenuPanel({
       <Tooltip title={t.tooltips.import}>
         <button onClick={() => run(openImport)} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
           <Upload className="w-4 h-4 text-[var(--accent-color)]" />
-          {t.ribbon.import}
+          {t.ribbon.load_import ?? 'Load / Import'}
         </button>
       </Tooltip>
       <Tooltip title={t.tooltips.export}>
         <button onClick={() => run(openExport)} disabled={song.length === 0} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10 disabled:opacity-50`}>
           <Download className="w-4 h-4 text-[var(--text-secondary)]" />
-          {t.ribbon.export}
+          {t.ribbon.save_export ?? 'Save / Export'}
         </button>
       </Tooltip>
       <Tooltip title={canPasteLyrics ? (t.tooltips.pasteAvailable ?? 'Paste lyrics from clipboard') : (t.tooltips.pasteUnavailable ?? 'No lyrics detected in clipboard')}>

@@ -23,14 +23,15 @@
     "lyrics": "الكلمات",
     "musical": "موسيقى",
     "similarity": "التشابه",
-    "import": "استيراد",
-    "export": "تصدير",
+    "load_import": "تحميل / استيراد",
+    "save_export": "حفظ / تصدير",
     "versions": "إصدارات الكلمات",
     "undo": "تراجع",
     "redo": "إعادة",
     "reset": "إعادة تعيين",
     "aiUnavailable": "الذكاء الاصطناعي غير متاح",
-    "send_to_suno": "إرسال إلى SUNO"
+    "send_to_lyria": "إرسال إلى LYRIA",
+    "copy_lyrics": "نسخ الكلمات"
   },
   "mobileNav": {
     "navigation": "التنقل على الجوال",
@@ -412,8 +413,8 @@
     "aiGeneratedTitle": "عنوان مُولَّد بالذكاء الاصطناعي",
     "userEnteredTitle": "عنوان أدخله المستخدم",
     "openSearch": "بحث واستبدال في الكلمات (Ctrl+F)",
-    "sendToSunoConfirm": "Opening SUNO…",
-    "sendToSuno": "Open SUNO with your musical prompt",
+    "sendToLyriaConfirm": "فتح Musical…",
+    "sendToLyria": "افتح علامة تبويب موسيقى لتوليد المعاينة عبر Lyria",
     "quantizeLineDone": "Line quantized"
   },
   "sections": {
