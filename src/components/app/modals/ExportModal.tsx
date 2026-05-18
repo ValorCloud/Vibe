@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Download, FileCode2, FileText, Library, X } from '../../ui/icons';
 import { Button } from '../../ui/Button';
 import { useTranslation } from '../../../i18n';
@@ -35,7 +35,6 @@ function FormatBadge({ label, color }: { label: string; color: string }) {
 export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport }: Props) {
   const { t } = useTranslation();
   const exportDialog = t.exportDialog ?? ({} as NonNullable<typeof t.exportDialog>);
-  const exportFormats = exportDialog.formats ?? ({} as NonNullable<NonNullable<typeof t.exportDialog>['formats']>);
   const saveToLibrary = t.saveToLibrary ?? ({} as NonNullable<typeof t.saveToLibrary>);
   const actions = (t as { actions?: { cancel?: string } }).actions;
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('txt');
@@ -44,44 +43,47 @@ export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport }: Props)
     if (isOpen) setSelectedFormat('txt');
   }, [isOpen]);
 
-  const formats = [
-    {
-      value: 'txt' as const,
-      label: exportFormats.txt ?? 'TXT',
-      extension: '.txt',
-      icon: <FileText className="w-5 h-5" />,
-      accent: '#38bdf8',
-      surface: 'rgba(56, 189, 248, 0.14)',
-      border: 'rgba(56, 189, 248, 0.28)',
-    },
-    {
-      value: 'markup' as const,
-      label: exportFormats.markup ?? 'MARKUP',
-      extension: '.md',
-      icon: <FileCode2 className="w-5 h-5" />,
-      accent: '#a855f7',
-      surface: 'rgba(168, 85, 247, 0.14)',
-      border: 'rgba(168, 85, 247, 0.28)',
-    },
-    {
-      value: 'odt' as const,
-      label: exportFormats.odt ?? 'ODT',
-      extension: '.odt',
-      icon: <FormatBadge label="ODT" color="#22c55e" />,
-      accent: '#22c55e',
-      surface: 'rgba(34, 197, 94, 0.14)',
-      border: 'rgba(34, 197, 94, 0.28)',
-    },
-    {
-      value: 'docx' as const,
-      label: exportFormats.docx ?? 'DOCX',
-      extension: '.docx',
-      icon: <FormatBadge label="DOC" color="#2563eb" />,
-      accent: '#2563eb',
-      surface: 'rgba(37, 99, 235, 0.14)',
-      border: 'rgba(37, 99, 235, 0.28)',
-    },
-  ];
+  const formats = useMemo(() => {
+    const exportFormats = t.exportDialog?.formats ?? ({} as NonNullable<NonNullable<typeof t.exportDialog>['formats']>);
+    return [
+      {
+        value: 'txt' as const,
+        label: exportFormats.txt ?? 'TXT',
+        extension: '.txt',
+        icon: <FileText className="w-5 h-5" />,
+        accent: '#38bdf8',
+        surface: 'rgba(56, 189, 248, 0.14)',
+        border: 'rgba(56, 189, 248, 0.28)',
+      },
+      {
+        value: 'markup' as const,
+        label: exportFormats.markup ?? 'MARKUP',
+        extension: '.md',
+        icon: <FileCode2 className="w-5 h-5" />,
+        accent: '#a855f7',
+        surface: 'rgba(168, 85, 247, 0.14)',
+        border: 'rgba(168, 85, 247, 0.28)',
+      },
+      {
+        value: 'odt' as const,
+        label: exportFormats.odt ?? 'ODT',
+        extension: '.odt',
+        icon: <FormatBadge label="ODT" color="#22c55e" />,
+        accent: '#22c55e',
+        surface: 'rgba(34, 197, 94, 0.14)',
+        border: 'rgba(34, 197, 94, 0.28)',
+      },
+      {
+        value: 'docx' as const,
+        label: exportFormats.docx ?? 'DOCX',
+        extension: '.docx',
+        icon: <FormatBadge label="DOC" color="#2563eb" />,
+        accent: '#2563eb',
+        surface: 'rgba(37, 99, 235, 0.14)',
+        border: 'rgba(37, 99, 235, 0.28)',
+      },
+    ];
+  }, [t]);
 
   if (!isOpen) return null;
 
