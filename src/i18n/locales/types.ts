@@ -592,6 +592,10 @@ export interface Translations {
     /** Tooltip shown on Send to SUNO when the prompt exceeds max length and will be trimmed */
     sendToSunoWillTruncate?: string;
     quantizeLineDone?: string;
+    /** Tooltip shown on the Copy Lyrics button */
+    copyLyrics?: string;
+    /** Tooltip shown after lyrics have been successfully copied to clipboard */
+    copyLyricsConfirm?: string;
   };
 
   sections: {

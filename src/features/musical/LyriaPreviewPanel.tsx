@@ -74,24 +74,31 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
 
   async function handleGenerate(): Promise<void> {
     setTaskStatus({ phase: 'generating' });
+
+    // Build style — use conditional spread to satisfy exactOptionalPropertyTypes
     const style: LyriaStyleDescriptor = {
       genre,
-      mood,
-      tempo: tempo ? Number(tempo) : undefined,
-      instruments,
-      vocalStyle,
+      ...(mood ? { mood } : {}),
+      ...(tempo ? { tempo: Number(tempo) } : {}),
+      ...(instruments ? { instruments } : {}),
+      ...(vocalStyle ? { vocalStyle } : {}),
     };
+
+    // Build params — negativePrompt is optional, omit key entirely when empty
+    const baseParams = {
+      lyrics,
+      style,
+      title: songTitle,
+      mode: 'clip' as const,
+    };
+    const params = negativePrompt
+      ? { ...baseParams, negativePrompt }
+      : baseParams;
 
     try {
       setTaskStatus({ phase: 'polling', elapsed: 0 });
       const clip = await generateAndPoll(
-        {
-          lyrics,
-          style,
-          title: songTitle,
-          mode: 'clip',
-          negativePrompt: negativePrompt || undefined,
-        },
+        params,
         {
           intervalMs: 2_000,
           timeoutMs: 90_000,
@@ -136,7 +143,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         }
         header={
           <Text weight="semibold" size={400}>
-            Lyria 3 — Preview 30’’
+            Lyria 3 — Preview 30''
           </Text>
         }
         description={
@@ -162,7 +169,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
           <Badge
             key={g}
             appearance={genre === g ? 'filled' : 'outline'}
-            color={genre === g ? 'brand' : 'neutral'}
+            color={genre === g ? 'brand' : 'subtle'}
             style={{ cursor: 'pointer' }}
             onClick={() => setGenre(g)}
           >
@@ -177,7 +184,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
           <Badge
             key={m}
             appearance={mood === m ? 'filled' : 'outline'}
-            color={mood === m ? 'subtle' : 'neutral'}
+            color={mood === m ? 'subtle' : 'subtle'}
             style={{ cursor: 'pointer' }}
             onClick={() => setMood(m)}
           >
@@ -248,7 +255,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         onClick={() => void handleGenerate()}
         style={{ alignSelf: 'flex-start' }}
       >
-        {isGenerating ? 'Génération en cours…' : 'Générer le preview 30’’'}
+        {isGenerating ? 'Génération en cours…' : 'Générer le preview 30'''}
       </Button>
 
       {/* Status / result */}
