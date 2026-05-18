@@ -10,6 +10,9 @@ import { useTranslation } from '../../../i18n';
 import { useSongContext } from '../../../contexts/SongContext';
 import { useComposerContext } from '../../../contexts/ComposerContext';
 import { useSuno } from '../../../hooks/useSuno';
+import { LyriaPreviewPanel } from '../../../features/musical/LyriaPreviewPanel';
+import { LyriaFullSongPanel } from '../../../features/musical/LyriaFullSongPanel';
+import type { LyriaClip } from '../../../types/lyria';
 
 interface Props {
   hasApiKey: boolean;
@@ -35,6 +38,12 @@ export function MusicalTab({
   const { t } = useTranslation();
   const { generate, status } = useSuno();
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
+  const [approvedClip, setApprovedClip] = useState<LyriaClip | null>(null);
+
+  const lyricsText = song
+    .flatMap(s => s.lines.map(l => l.text))
+    .filter(l => l.trim() !== '')
+    .join('\n');
 
   const handleWorkflowStepComplete = useCallback((step: number) => {
     setCompletedSteps(prev => new Set(prev).add(step));
@@ -83,6 +92,24 @@ export function MusicalTab({
           hasApiKey={hasApiKey}
           generateMusicalPrompt={generateMusicalPrompt}
         />
+
+        {/* ── Lyria 3 Preview 30'' ──────────────────────────────────── */}
+        <LyriaPreviewPanel
+          lyrics={lyricsText}
+          songTitle={title ?? ''}
+          onFullSong={(clip) => setApprovedClip(clip)}
+        />
+
+        {/* ── Lyria 3 Pro — titre complet (conditionnel) ──────────── */}
+        {approvedClip && (
+          <LyriaFullSongPanel
+            clip={approvedClip}
+            lyrics={lyricsText}
+            songTitle={title ?? ''}
+          />
+        )}
+
+        {/* ── Suno fallback ──────────────────────────────────────────── */}
         <div className="space-y-2">
           <Tooltip
             title={!musicalPrompt.trim()
