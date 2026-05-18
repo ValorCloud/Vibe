@@ -14,6 +14,9 @@ interface Props {
 
 export function ImportModal({ isOpen, hasExistingWork, onClose, onOpenLibrary, onChooseFile, onPasteLyrics }: Props) {
   const { t } = useTranslation();
+  const importDialog = t.importDialog ?? ({} as NonNullable<typeof t.importDialog>);
+  const saveToLibrary = t.saveToLibrary ?? ({} as NonNullable<typeof t.saveToLibrary>);
+  const actions = (t as { actions?: { cancel?: string } }).actions;
 
   if (!isOpen) return null;
 
@@ -43,7 +46,7 @@ export function ImportModal({ isOpen, hasExistingWork, onClose, onOpenLibrary, o
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={t.importDialog.title}
+        aria-label={importDialog.title ?? 'Import lyrics'}
         className="relative w-full h-full flex flex-col dialog-surface rounded-none sm:rounded-[22px_6px_22px_6px] shadow-2xl overflow-hidden"
       >
 
@@ -57,18 +60,18 @@ export function ImportModal({ isOpen, hasExistingWork, onClose, onOpenLibrary, o
             </div>
             <div>
               <h3 className="text-sm font-bold tracking-widest text-[var(--text-primary)] uppercase">
-                {t.importDialog.title}
+                 {importDialog.title ?? 'Import lyrics'}
               </h3>
               {hasExistingWork && (
                 <p className="text-xs text-amber-500 uppercase tracking-wider mt-0.5">
-                  {t.importDialog.warning}
+                   {importDialog.warning ?? 'Existing lyrics will be replaced'}
                 </p>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            aria-label={t.importDialog.cancel}
+            aria-label={importDialog.cancel ?? actions?.cancel ?? 'Cancel'}
             className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-app)] rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
@@ -78,22 +81,24 @@ export function ImportModal({ isOpen, hasExistingWork, onClose, onOpenLibrary, o
         {/* Body */}
         <div className="p-6 space-y-4 bg-[var(--bg-app)]">
           <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-            {hasExistingWork ? t.importDialog.replaceDescription : t.importDialog.emptyDescription}
+            {hasExistingWork
+              ? (importDialog.replaceDescription ?? 'Importing will replace your current lyrics.')
+              : (importDialog.emptyDescription ?? 'Paste lyrics or choose a file to import.')}
           </p>
-          <p className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{t.importDialog.supportedFiles}</p>
+          <p className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{importDialog.supportedFiles ?? 'Supported files: .txt, .md, .docx, .odt'}</p>
         </div>
 
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] flex items-center justify-between gap-3 flex-shrink-0 flex-wrap">
           <Button onClick={onOpenLibrary} variant="outlined" color="inherit" startIcon={<Library className="w-4 h-4" />}>
-            {t.saveToLibrary.title}
+            {saveToLibrary.title ?? 'Library'}
           </Button>
           <div className="flex items-center gap-3 flex-wrap justify-end">
             <Button onClick={onPasteLyrics} variant="outlined" color="primary">
-              {t.editor.emptyState.pasteLyrics}
+              {(t.editor as { emptyState?: { pasteLyrics?: string } } | undefined)?.emptyState?.pasteLyrics ?? 'Paste Lyrics'}
             </Button>
             <Button onClick={onChooseFile} variant="contained" color="primary">
-              {t.importDialog.chooseFile}
+              {importDialog.chooseFile ?? 'Choose file'}
             </Button>
           </div>
         </div>

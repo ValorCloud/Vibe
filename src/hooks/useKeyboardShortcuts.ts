@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useModalDispatch, useModalState } from '../contexts/ModalContext';
-import { useAppNavigationContext } from '../contexts/AppStateContext';
+import { useOptionalAppNavigationContext } from '../contexts/AppStateContext';
 
 export type KeyboardShortcutCategory = 'edit' | 'navigation' | 'file' | 'ai';
 
@@ -93,7 +93,7 @@ export const useKeyboardShortcuts = ({
 }: UseKeyboardShortcutsParams) => {
   const { closeModal, openModal } = useModalDispatch();
   const { uiState } = useModalState();
-  const { setActiveTab } = useAppNavigationContext();
+  const nav = useOptionalAppNavigationContext();
   const {
     promptModal,
     confirmModal,
@@ -126,13 +126,15 @@ export const useKeyboardShortcuts = ({
   } = uiState;
 
   useEffect(() => {
+    const setActiveTab = nav?.setActiveTab;
+
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented) return;
 
       // Alt+B — aller à l'onglet Musical
       if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'b') {
         e.preventDefault();
-        setActiveTab('musical');
+        nav?.setActiveTab?.('musical');
         return;
       }
 
@@ -190,8 +192,9 @@ export const useKeyboardShortcuts = ({
     setIsAboutOpen, setIsAnalysisModalOpen, setIsExportModalOpen,
     setIsPasteModalOpen, setIsResetModalOpen, setIsSaveToLibraryModalOpen, setIsSettingsOpen,
     setIsSimilarityModalOpen, setIsVersionsModalOpen,
-    setApiErrorModal, undo,
-    setIsSearchReplaceOpen, setIsKeyboardShortcutsModalOpen,
-    setActiveTab, onLyriaGenerate,
-  ]);
+     setApiErrorModal, undo,
+     setIsSearchReplaceOpen, setIsKeyboardShortcutsModalOpen,
+     nav,
+     nav?.setActiveTab, onLyriaGenerate,
+   ]);
 };

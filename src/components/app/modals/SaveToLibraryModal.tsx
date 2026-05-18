@@ -35,6 +35,8 @@ export function SaveToLibraryModal({
   hasCurrentSong = true,
 }: Props) {
   const { t } = useTranslation();
+  const saveToLibrary = t.saveToLibrary ?? ({} as NonNullable<typeof t.saveToLibrary>);
+  const actions = (t as { actions?: { cancel?: string; close?: string } }).actions;
   const storage = useStorageEstimate();
   const [showPurgeConfirm, setShowPurgeConfirm] = useState(false);
 
@@ -76,7 +78,7 @@ export function SaveToLibraryModal({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={t.saveToLibrary.title}
+          aria-label={saveToLibrary.title ?? 'Library'}
           className="relative w-full h-full flex flex-col fluent-animate-panel dialog-surface shadow-2xl overflow-hidden rounded-none sm:rounded-[22px_6px_22px_6px]"
         >
           {/* Header */}
@@ -86,7 +88,7 @@ export function SaveToLibraryModal({
                 <Library className="w-4 h-4 text-[var(--accent-color)]" />
               </div>
               <h3 className="text-sm font-bold tracking-widest text-[var(--text-primary)] uppercase">
-                {t.saveToLibrary.title}
+                 {saveToLibrary.title ?? 'Library'}
               </h3>
             </div>
             <button
@@ -108,7 +110,7 @@ export function SaveToLibraryModal({
                       {currentTitle}
                     </p>
                     <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                      {t.saveToLibrary.saveDescription}
+                       {saveToLibrary.saveDescription ?? 'Save Current Song'}
                     </p>
                   </div>
                 </div>
@@ -122,7 +124,7 @@ export function SaveToLibraryModal({
                   ) : (
                     <Save className="w-3.5 h-3.5" />
                   )}
-                  {isSaving ? t.saveToLibrary.saving : t.saveToLibrary.save}
+                   {isSaving ? (saveToLibrary.saving ?? 'Saving...') : (saveToLibrary.save ?? 'Save')}
                 </button>
               </div>
 
@@ -154,14 +156,14 @@ export function SaveToLibraryModal({
             <div className="px-6 pt-4 pb-2 flex items-center gap-2">
               <BookOpen className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
               <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                {t.saveToLibrary.yourLibrary} ({libraryAssets.length})
+                 {saveToLibrary.yourLibrary ?? 'Your Library'} ({libraryAssets.length})
               </span>
             </div>
 
             {libraryAssets.length === 0 ? (
               <div className="px-6 pb-6 pt-2 flex flex-col items-center justify-center text-center space-y-2">
                 <p className="text-sm text-[var(--text-secondary)]">
-                  {t.saveToLibrary.empty}
+                   {saveToLibrary.empty ?? 'No songs in library yet.'}
                 </p>
               </div>
             ) : (
@@ -193,12 +195,12 @@ export function SaveToLibraryModal({
                         <button
                           type="button"
                           onClick={() => onLoadAsset(asset)}
-                          aria-label={`${t.saveToLibrary.load}: ${asset.title}`}
-                          title={t.saveToLibrary.loadDescription}
+                           aria-label={`${saveToLibrary.load ?? 'Load'}: ${asset.title}`}
+                           title={saveToLibrary.loadDescription ?? 'Load song from library'}
                           className="fluent-animate-pressable flex items-center gap-1 rounded border border-[var(--accent-color)]/30 bg-[var(--accent-color)]/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--accent-color)] transition hover:bg-[var(--accent-color)]/20"
                         >
                           <FolderOpen className="h-3.5 w-3.5" />
-                          {t.saveToLibrary.load}
+                           {saveToLibrary.load ?? 'Load'}
                         </button>
                       )}
                       {onDeleteAsset && (
@@ -225,7 +227,7 @@ export function SaveToLibraryModal({
               <div className="flex items-center gap-2 mb-3">
                 <HardDrive className={`w-4 h-4 ${tierColor}`} />
                 <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-secondary)]">
-                  {t.saveToLibrary.storageTitle}
+                   {saveToLibrary.storageTitle ?? 'Storage'}
                 </span>
               </div>
 
@@ -245,32 +247,32 @@ export function SaveToLibraryModal({
 
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
-                  <span className="text-[var(--text-secondary)]">{t.saveToLibrary.storageLibraryData}</span>
+                   <span className="text-[var(--text-secondary)]">{saveToLibrary.storageLibraryData ?? 'Library data'}</span>
                   <span className="font-semibold text-[var(--text-primary)]">{storage.libraryUsageMB}</span>
                 </div>
                 {storage.supported && (
                   <>
                     <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">{t.saveToLibrary.storageUsed}</span>
+                       <span className="text-[var(--text-secondary)]">{saveToLibrary.storageUsed ?? 'Browser usage'}</span>
                       <span className={`font-semibold ${tierColor}`}>{storage.usageMB}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">{t.saveToLibrary.storageQuota}</span>
+                       <span className="text-[var(--text-secondary)]">{saveToLibrary.storageQuota ?? 'Browser limit'}</span>
                       <span className="font-semibold text-[var(--text-primary)]">{storage.quotaMB}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-[var(--text-secondary)]">{t.saveToLibrary.storageSaturation}</span>
+                       <span className="text-[var(--text-secondary)]">{saveToLibrary.storageSaturation ?? 'Saturation'}</span>
                       <span className={`font-bold ${tierColor}`}>{Math.round(storage.ratio * 100)}%</span>
                     </div>
                   </>
                 )}
                 <div className="flex justify-between pt-2 border-t border-[var(--border-color)] mt-2">
-                  <span className="text-[var(--text-secondary)]">{t.saveToLibrary.libraryItems}</span>
+                   <span className="text-[var(--text-secondary)]">{saveToLibrary.libraryItems ?? 'Library items'}</span>
                   <span className="font-semibold text-[var(--text-primary)]">{libraryAssets.length}</span>
                 </div>
               </div>
               <p className="mt-3 text-[11px] leading-relaxed text-[var(--text-secondary)]">
-                {t.saveToLibrary.storageScopeLocal}
+                 {saveToLibrary.storageScopeLocal ?? 'Library data covers only lyricist_library. Browser usage and limit are global estimates for this browser when available.'}
               </p>
 
               {/* Purge button */}
@@ -282,26 +284,26 @@ export function SaveToLibraryModal({
                       className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-xs font-bold rounded-lg transition-all"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      {t.saveToLibrary.purge}
+                       {saveToLibrary.purge ?? 'Purge library'}
                     </button>
                   ) : (
                     <div className="space-y-2">
                       <div className="flex items-start gap-2 p-2 bg-red-500/10 border border-red-500/30 rounded text-xs text-red-400">
                         <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <span>{t.saveToLibrary.purgeWarning}</span>
+                         <span>{saveToLibrary.purgeWarning ?? 'This will permanently delete your library.'}</span>
                       </div>
                       <div className="flex gap-2">
                         <button
                           onClick={handlePurge}
                           className="flex-1 px-3 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded transition-all"
                         >
-                          {t.saveToLibrary.confirmPurge}
+                           {saveToLibrary.confirmPurge ?? 'Confirm purge'}
                         </button>
                         <button
                           onClick={() => setShowPurgeConfirm(false)}
                           className="flex-1 px-3 py-2 bg-[var(--bg-app)] hover:bg-[var(--bg-sidebar)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs font-bold rounded transition-all"
                         >
-                          {t.saveToLibrary.cancel}
+                           {saveToLibrary.cancel ?? actions?.cancel ?? 'Cancel'}
                         </button>
                       </div>
                     </div>
@@ -314,7 +316,7 @@ export function SaveToLibraryModal({
           {/* Footer */}
           <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] flex justify-end">
             <Button onClick={onClose} variant="outlined" color="info" size="small">
-              {t.saveToLibrary.close}
+               {saveToLibrary.close ?? actions?.close ?? 'Close'}
             </Button>
           </div>
         </div>

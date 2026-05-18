@@ -94,6 +94,37 @@ function renderCombo(
 
 export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
   const { t } = useTranslation();
+  const actions = (t as { actions?: { close?: string } }).actions;
+  const keyboardShortcuts = t.keyboardShortcuts;
+  const keyboardShortcutsLegacy = keyboardShortcuts as (typeof keyboardShortcuts & { subtitle?: string }) | undefined;
+  const legacyCategory = (keyboardShortcuts as { category?: { editing?: string; navigation?: string; dialogs?: string; ai?: string } } | undefined)?.category;
+  const categories = keyboardShortcuts?.categories;
+  const shortcutLabels = keyboardShortcuts?.shortcuts;
+  const fallbackShortcuts: Record<KeyboardShortcutMetadata['id'], string> = {
+    undo: 'Undo the latest change outside text inputs.',
+    redo: 'Redo the latest reverted change outside text inputs.',
+    dismissReset: 'Dismiss the reset confirmation dialog.',
+    dismissNavigation: 'Close the settings, about, similarity, or mobile side panels.',
+    dismissFileDialogs: 'Close the import, export, versions, or library dialogs.',
+    dismissAiDialogs: 'Close AI prompts, API alerts, analysis, or pasted-lyrics import dialogs.',
+    openSearch: 'Open the search & replace panel.',
+    goToMusical: 'Jump to the Musical tab (Alt+B).',
+    lyriaGenerate: 'Trigger Lyria 30-second preview generation (Alt+A).',
+  };
+
+  const categoryLabel = (category: KeyboardShortcutMetadata['category']) => {
+    if (category === 'edit') {
+      const legacy = legacyCategory?.editing;
+      return categories?.edit ?? (legacy === 'Editing' ? 'Edit' : legacy) ?? 'Edit';
+    }
+    if (category === 'navigation') return categories?.navigation ?? legacyCategory?.navigation ?? 'Navigation';
+    if (category === 'file') {
+      const legacy = legacyCategory?.dialogs;
+      return categories?.file ?? (legacy === 'Dialogs' ? 'File' : legacy) ?? 'File';
+    }
+    const legacy = legacyCategory?.ai;
+    return categories?.ai ?? (legacy === 'AI & Musical' ? 'AI' : legacy) ?? 'AI';
+  };
 
   const shortcutsByCategory = useMemo(() => {
     return CATEGORY_ORDER.map((category) => ({
@@ -125,7 +156,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={t.keyboardShortcuts.title}
+          aria-label={keyboardShortcuts?.title ?? 'Keyboard Shortcuts'}
           className="relative w-full h-full flex flex-col shadow-2xl overflow-hidden dialog-surface rounded-none sm:rounded-[22px_6px_22px_6px]"
         >
           {/* Header */}
@@ -139,7 +170,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
               </div>
               <div>
                 <h2 className="text-sm font-bold uppercase tracking-widest text-[var(--text-primary)]">
-                  {t.keyboardShortcuts.title}
+                   {keyboardShortcuts?.title ?? 'Keyboard Shortcuts'}
                 </h2>
                 <p className="mt-0.5 text-xs uppercase tracking-[0.22em] text-[var(--accent-color)]">
                   LCARS Input Reference
@@ -149,7 +180,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              aria-label={t.keyboardShortcuts.close}
+               aria-label={keyboardShortcuts?.close ?? actions?.close ?? 'Close'}
               className="ux-interactive p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-app)] rounded-lg"
             >
               <X className="w-4 h-4" />
@@ -159,7 +190,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
           {/* Scrollable body */}
           <div className="flex-1 overflow-y-auto custom-scrollbar px-6 py-5">
             <p className="mb-5 text-sm leading-relaxed text-[var(--text-secondary)]">
-              {t.keyboardShortcuts.description}
+               {keyboardShortcuts?.description ?? keyboardShortcutsLegacy?.subtitle ?? 'Memorize these shortcuts to work faster.'}
             </p>
 
             <div className="space-y-4">
@@ -178,7 +209,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
                       }}
                     >
                       <h3 className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: styles.accent }}>
-                        {t.keyboardShortcuts.categories[category]}
+                         {categoryLabel(category)}
                       </h3>
                       <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-secondary)]">
                         {shortcuts.length}
@@ -189,10 +220,10 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
                         <thead>
                           <tr className="border-b border-[var(--border-color)] text-left">
                             <th className="px-4 py-2 text-[10px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
-                              {t.keyboardShortcuts.keysColumn}
+                               {keyboardShortcuts?.keysColumn ?? 'Keys'}
                             </th>
                             <th className="px-4 py-2 text-[10px] uppercase tracking-[0.22em] text-[var(--text-secondary)]">
-                              {t.keyboardShortcuts.actionColumn}
+                               {keyboardShortcuts?.actionColumn ?? 'Action'}
                             </th>
                           </tr>
                         </thead>
@@ -210,7 +241,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-sm leading-relaxed text-[var(--text-primary)]">
-                                {t.keyboardShortcuts.shortcuts[shortcut.id]}
+                                 {shortcutLabels?.[shortcut.id] ?? fallbackShortcuts[shortcut.id]}
                               </td>
                             </tr>
                           ))}
@@ -229,7 +260,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: Props) {
             style={{ background: 'var(--bg-sidebar)' }}
           >
             <Button onClick={onClose} variant="contained" color="primary" className="ux-interactive">
-              {t.keyboardShortcuts.close}
+               {keyboardShortcuts?.close ?? actions?.close ?? 'Close'}
             </Button>
           </div>
         </div>

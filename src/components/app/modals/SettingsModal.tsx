@@ -46,6 +46,15 @@ export function SettingsModal({
   setShowTranslationFeatures,
 }: Props) {
   const { t, language, setLanguage } = useTranslation();
+  const actions = (t as { actions?: { close?: string; save?: string } }).actions;
+  const settings = t.settings ?? ({} as NonNullable<typeof t.settings>);
+  const settingsTheme = (typeof settings.theme === 'object' ? settings.theme : undefined);
+  const settingsAudio = (typeof settings.audio === 'object' ? settings.audio : undefined);
+  const settingsLanguage = (typeof settings.language === 'object' ? settings.language : undefined);
+  const settingsScale = (typeof settings.scale === 'object' ? settings.scale : undefined);
+  const settingsEditMode = (typeof settings.editMode === 'object' ? settings.editMode : undefined);
+  const settingsTranslation = (typeof settings.translation === 'object' ? settings.translation : undefined);
+  const settingsActions = (typeof settings.actions === 'object' ? settings.actions : undefined);
   const [draftTheme, setDraftTheme] = useState(theme);
   const [draftAudioFeedback, setDraftAudioFeedback] = useState(audioFeedback);
   const [draftLanguage, setDraftLanguage] = useState(language);
@@ -131,7 +140,7 @@ export function SettingsModal({
             <div
               role="dialog"
               aria-modal="true"
-              aria-label={t.settings.title}
+              aria-label={settings.title ?? 'Settings'}
               className="relative w-full h-full flex flex-col animate-in zoom-in-95 duration-300 dialog-surface shadow-2xl overflow-hidden rounded-none sm:rounded-[22px_6px_22px_6px]"
             >
               {/* Header */}
@@ -142,7 +151,7 @@ export function SettingsModal({
                   </div>
                   <div>
                     <h3 className="text-sm font-bold tracking-widest text-[var(--text-primary)] uppercase">
-                      {t.settings.title}
+                       {settings.title ?? 'Settings'}
                     </h3>
                     <p className="text-xs text-[var(--accent-color)] uppercase tracking-wider mt-0.5">
                       {APP_VERSION_LABEL}
@@ -151,7 +160,7 @@ export function SettingsModal({
                 </div>
                 <button
                   onClick={handleClose}
-                  aria-label={t.about.close}
+                   aria-label={settingsActions?.close ?? actions?.close ?? 'Close'}
                   className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-app)] rounded-lg transition-colors"
                 >
                   <X className="w-4 h-4" />
@@ -164,7 +173,7 @@ export function SettingsModal({
                 <section aria-labelledby="settings-theme-heading">
                   <h3 id="settings-theme-heading" className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] mb-3 flex items-center gap-2">
                     <Monitor className="w-3.5 h-3.5" />
-                    {t.settings.theme.label}
+                    {settingsTheme?.label ?? 'Theme'}
                   </h3>
                   <div className="grid grid-cols-3 gap-2">
                     {(['light', 'dark', 'system'] as const).map((opt) => (
@@ -180,7 +189,11 @@ export function SettingsModal({
                       >
                         {opt === 'light' ? <Sun className="w-3.5 h-3.5" /> : opt === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Monitor className="w-3.5 h-3.5" />}
                         <span className="capitalize">
-                          {opt === 'light' ? t.settings.theme.light : opt === 'dark' ? t.settings.theme.dark : t.settings.theme.system}
+                           {opt === 'light'
+                             ? (settingsTheme?.light ?? 'Light')
+                             : opt === 'dark'
+                               ? (settingsTheme?.dark ?? 'Dark')
+                               : (settingsTheme?.system ?? 'System')}
                         </span>
                       </button>
                     ))}
@@ -191,7 +204,7 @@ export function SettingsModal({
                 <section aria-labelledby="settings-audio-heading">
                   <h3 id="settings-audio-heading" className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] mb-3 flex items-center gap-2">
                     {draftAudioFeedback ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                    {t.settings.audio.label}
+                    {settingsAudio?.label ?? 'Audio feedback'}
                   </h3>
                   <div className="grid grid-cols-2 gap-2">
                     {([true, false] as const).map((val) => (
@@ -205,7 +218,7 @@ export function SettingsModal({
                         }`}
                       >
                         {val ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-                        <span>{val ? t.settings.audio.enable : (t.settings.audio.disable ?? '')}</span>
+                         <span>{val ? (settingsAudio?.enable ?? 'Enable') : (settingsAudio?.disable ?? 'Disable')}</span>
                       </button>
                     ))}
                   </div>
@@ -215,7 +228,7 @@ export function SettingsModal({
                 <section aria-labelledby="settings-lang-heading">
                   <h3 id="settings-lang-heading" className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] mb-3 flex items-center gap-2">
                     <Globe className="w-3.5 h-3.5" />
-                    {t.settings.language.label}
+                    {settingsLanguage?.label ?? 'Language'}
                   </h3>
                   <div className="grid grid-cols-2 gap-2">
                     {SUPPORTED_UI_LOCALES.map((loc) => (
@@ -245,7 +258,7 @@ export function SettingsModal({
                 <section aria-labelledby="settings-scale-heading">
                   <h3 id="settings-scale-heading" className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] mb-3 flex items-center gap-2">
                     <Type className="w-3.5 h-3.5" />
-                    {t.settings.scale?.label ?? 'UI Scale'}
+                    {settingsScale?.label ?? 'UI Scale'}
                   </h3>
                   <div className="grid grid-cols-3 gap-2">
                     {(['small', 'medium', 'large'] as const).map((opt) => (
@@ -261,10 +274,10 @@ export function SettingsModal({
                         <span className={opt === 'small' ? 'text-[10px]' : opt === 'medium' ? 'text-xs' : 'text-sm'}>A</span>
                         <span>
                           {opt === 'small'
-                            ? (t.settings.scale?.small ?? 'Small')
+                             ? (settingsScale?.small ?? 'Small')
                             : opt === 'medium'
-                            ? (t.settings.scale?.medium ?? 'Medium')
-                            : (t.settings.scale?.large ?? 'Large')}
+                             ? (settingsScale?.medium ?? 'Medium')
+                             : (settingsScale?.large ?? 'Large')}
                         </span>
                       </button>
                     ))}
@@ -275,7 +288,7 @@ export function SettingsModal({
                 <section aria-labelledby="settings-editmode-heading">
                   <h3 id="settings-editmode-heading" className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] mb-3 flex items-center gap-2">
                     <FileCode className="w-3.5 h-3.5" />
-                    {t.settings.editMode?.label ?? 'Default Editor'}
+                    {settingsEditMode?.label ?? 'Default Editor'}
                   </h3>
                   <div className="grid grid-cols-2 gap-2">
                     {(['text', 'markdown', 'phonetic', 'section'] as const).map((opt) => (
@@ -290,12 +303,12 @@ export function SettingsModal({
                       >
                         <span>
                           {opt === 'text'
-                            ? (t.settings.editMode?.text ?? 'Text')
+                             ? (settingsEditMode?.text ?? 'Text')
                             : opt === 'section'
-                              ? (t.settings.editMode?.section ?? 'Section Editor')
+                               ? (settingsEditMode?.section ?? 'Section Editor')
                               : opt === 'phonetic'
-                                ? (t.settings.editMode?.phonetic ?? 'Phonetic')
-                                : (t.settings.editMode?.markdown ?? 'Markdown Editor')}
+                                 ? (settingsEditMode?.phonetic ?? 'Phonetic')
+                                 : (settingsEditMode?.markdown ?? 'Markdown Editor')}
                         </span>
                       </button>
                     ))}
@@ -306,7 +319,7 @@ export function SettingsModal({
                 <section aria-labelledby="settings-translation-heading">
                   <h3 id="settings-translation-heading" className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] mb-3 flex items-center gap-2">
                     <Languages className="w-3.5 h-3.5" />
-                    {t.settings.translation?.label ?? 'Translation / Adaptation'}
+                    {settingsTranslation?.label ?? 'Translation / Adaptation'}
                   </h3>
                   <div className="grid grid-cols-2 gap-2">
                     {([true, false] as const).map((val) => (
@@ -320,7 +333,7 @@ export function SettingsModal({
                         }`}
                       >
                         <Languages className="w-3.5 h-3.5" />
-                        <span>{val ? (t.settings.translation?.show ?? 'Show') : (t.settings.translation?.hide ?? 'Hide')}</span>
+                         <span>{val ? (settingsTranslation?.show ?? 'Show') : (settingsTranslation?.hide ?? 'Hide')}</span>
                       </button>
                     ))}
                   </div>
@@ -338,15 +351,15 @@ export function SettingsModal({
               {/* Footer */}
               <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] flex-shrink-0">
                 <Button onClick={handleDefault} variant="outlined" color="inherit">
-                  {t.settings.actions.default}
+                   {settingsActions?.default ?? 'Default'}
                 </Button>
                 <div className="flex gap-2">
                   <Button onClick={handleClose} variant="outlined" color="inherit">
-                    {t.settings.actions.close}
+                     {settingsActions?.close ?? actions?.close ?? 'Close'}
                   </Button>
                   <Button onClick={handleApply} variant="contained" color="primary">
-                    {t.settings.actions.save}
-                  </Button>
+                     {settingsActions?.save ?? actions?.save ?? 'Save'}
+                   </Button>
                 </div>
               </div>
             </div>

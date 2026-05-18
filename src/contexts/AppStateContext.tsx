@@ -135,3 +135,7 @@ export function useAppNavigationContext(): AppNavigationValue {
   if (!ctx) throw new Error('useAppNavigationContext must be used inside <AppStateProvider>');
   return ctx;
 }
+
+export function useOptionalAppNavigationContext(): AppNavigationValue | null {
+  return useContext(AppNavigationContext);
+}

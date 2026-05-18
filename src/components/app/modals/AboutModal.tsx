@@ -18,6 +18,8 @@ interface Props {
 
 export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
   const { t } = useTranslation();
+  const about = t.about ?? ({} as NonNullable<typeof t.about>);
+  const actions = (t as { actions?: { close?: string } }).actions;
   const bodyRef = useRef<HTMLDivElement>(null);
   const sweepItemsRef = useRef<HTMLDivElement>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
@@ -100,7 +102,7 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
               aria-atomic="true"
               className="sr-only"
             >
-              {t.about.splashAutoClose ?? `This window will close automatically in ${SPLASH_DELAY_MS / 1000} seconds.`}
+              {about.splashAutoClose ?? `This window will close automatically in ${SPLASH_DELAY_MS / 1000} seconds.`}
             </div>
           </>
         )}
@@ -122,7 +124,7 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
           </div>
           <button
             onClick={onClose}
-            aria-label={t.about.close}
+            aria-label={about.close ?? actions?.close ?? 'Close'}
             className="ux-interactive p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-app)] rounded-lg"
           >
             <X className="w-4 h-4" />
@@ -142,26 +144,26 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
           {/* Body content */}
           <div ref={sweepItemsRef} className="px-8 pt-4 pb-8 space-y-6">
             <p className="about-sweep-item text-sm text-[var(--text-secondary)] leading-relaxed max-w-xl mx-auto text-center">
-              {t.about.description}
+              {about.description ?? 'AI-powered songwriting assistant.'}
             </p>
 
             {/* Tech Info */}
             <div className="grid grid-cols-1 gap-3 pt-4 border-t border-[var(--border-color)] sm:grid-cols-2">
               <div className="about-sweep-item flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)]">
-                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{t.about.engineLabel}</span>
-                <span className="text-xs text-[var(--text-primary)] telemetry-text">{t.about.engine}</span>
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{about.engineLabel ?? 'Engine'}</span>
+                <span className="text-xs text-[var(--text-primary)] telemetry-text">{about.engine ?? 'Vibe AI'}</span>
               </div>
               <div className="about-sweep-item flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)]">
-                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{t.about.modelLabel}</span>
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{about.modelLabel ?? 'Model'}</span>
                 <span className="text-xs text-[var(--text-primary)] telemetry-text break-all text-center">{AI_MODEL_NAME}</span>
               </div>
               <div className="about-sweep-item flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)]">
-                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{t.about.apiKeyLabel}</span>
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{about.apiKeyLabel ?? 'API key'}</span>
                 <span className="text-xs text-[var(--text-primary)] telemetry-text break-all text-center">{AI_KEY_ENV_VAR}</span>
               </div>
               <div className="about-sweep-item flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)]">
-                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{t.about.licenseLabel}</span>
-                <span className="text-xs text-[var(--text-primary)] telemetry-text">{t.about.license}</span>
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{about.licenseLabel ?? 'License'}</span>
+                <span className="text-xs text-[var(--text-primary)] telemetry-text">{about.license ?? 'MIT'}</span>
               </div>
             </div>
 
@@ -173,15 +175,15 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
                   href="https://github.com/EmmanuelKerhoz/Vibe"
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={t.about.github}
+                  aria-label={about.github ?? 'GitHub'}
                   className="about-sweep-item ux-interactive flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[var(--bg-app)] hover:bg-[var(--bg-sidebar)] border border-[var(--border-color)] hover:border-[var(--accent-color)]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg text-xs font-medium"
                 >
-                  <Github className="w-4 h-4" /><span>{t.about.github}</span><ExternalLink className="w-3 h-3 opacity-50" />
+                  <Github className="w-4 h-4" /><span>{about.github ?? 'GitHub'}</span><ExternalLink className="w-3 h-3 opacity-50" />
                 </a>
                 <button
                   type="button"
                   onClick={() => setIsAssistantOpen(v => !v)}
-                  aria-label={t.about.docs}
+                  aria-label={about.docs ?? 'Documentation'}
                   aria-pressed={isAssistantOpen}
                   className={`about-sweep-item ux-interactive flex-1 flex items-center justify-center gap-2 px-4 py-2 border rounded-lg text-xs font-medium transition-all ${
                     isAssistantOpen
@@ -189,7 +191,7 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
                       : 'bg-[var(--bg-app)] hover:bg-[var(--bg-sidebar)] border-[var(--border-color)] hover:border-[var(--accent-color)]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
                 >
-                  <BookOpen className="w-4 h-4" /><span>{t.about.docs}</span>
+                  <BookOpen className="w-4 h-4" /><span>{about.docs ?? 'Documentation'}</span>
                 </button>
               </div>
 
@@ -235,7 +237,7 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
         {/* Footer */}
         <div className="px-6 py-4 border-t border-[var(--border-color)] flex justify-end flex-shrink-0" style={{ background: 'var(--bg-sidebar)' }}>
           <Button onClick={onClose} variant="contained" color="primary" className="ux-interactive">
-            {t.about.close}
+            {about.close ?? actions?.close ?? 'Close'}
           </Button>
         </div>
       </div>
