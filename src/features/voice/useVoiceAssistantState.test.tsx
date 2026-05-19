@@ -1,11 +1,14 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useVoiceAssistantState } from './useVoiceAssistantState';
 
 describe('useVoiceAssistantState', () => {
   beforeEach(() => {
-    localStorage.clear();
+    vi.spyOn(Storage.prototype, 'getItem').mockReturnValue(null);
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {});
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it('starts in first-call mode when storage is empty', () => {
     const { result } = renderHook(() =>
@@ -25,6 +28,6 @@ describe('useVoiceAssistantState', () => {
     });
 
     expect(result.current.isFirstCall).toBe(false);
-    expect(localStorage.getItem('vibe_voice_assistant_onboarding_seen')).toBe('1');
+    expect(Storage.prototype.setItem).toHaveBeenCalledWith('vibe_voice_assistant_onboarding_seen', '1');
   });
 });
