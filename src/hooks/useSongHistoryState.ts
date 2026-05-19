@@ -205,10 +205,11 @@ export const useSongHistoryState = (
 
   const applyMeta = useCallback((meta: SongMeta) => {
     if (!onMetaRestore) return;
-    if (typeof onMetaRestore === 'function') {
+    if (!('setTitle' in onMetaRestore)) {
       onMetaRestore(meta);
       return;
     }
+
     onMetaRestore.setTitle(meta.title);
     onMetaRestore.setTitleOrigin(meta.titleOrigin);
     onMetaRestore.setTopic(meta.topic);
