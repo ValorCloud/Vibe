@@ -520,7 +520,11 @@
     "sponsor": "Support the developer",
     "sendToLyriaConfirm": "Opening Musical…",
     "sendToLyria": "Open the Musical tab to generate a preview with Lyria",
-    "quantizeLineDone": "Line quantized"
+    "quantizeLineDone": "Line quantized",
+    "voiceAssistant": "Voice assistant",
+    "voiceListening": "Listening…",
+    "voiceProcessing": "Processing your request…",
+    "voiceSpeaking": "Speaking…"
   },
   "sections": {
     "intro": "Intro",

@@ -9,7 +9,6 @@ import { APP_VERSION_LABEL } from '../../version';
 import { useComposerContext } from '../../contexts/ComposerContext';
 import { useAppKpis } from '../../hooks/useAppKpis';
 import { useAppNavigationContext } from '../../contexts/AppStateContext';
-import { VoiceAssistantButton } from '../../features/voice/VoiceAssistantButton';
 import { useVoiceAssistantController } from '../../features/voice/useVoiceAssistantController';
 import type { SaveStatus } from '../../hooks/useSessionAutoSave';
 import type { Translations } from '../../i18n/locales/types';
@@ -48,7 +47,7 @@ export function StatusBar({
   hasApiKey,
   isAnalyzing,
   currentEditMode,
-  theme, setTheme, audioFeedback, setAudioFeedback,
+  theme, setTheme, audioFeedback: _audioFeedback, setAudioFeedback: _setAudioFeedback,
   onOpenAbout, onOpenSettings, hasSavedSession,
   saveStatus = 'idle', lastSavedAt = null,
   className,
@@ -109,7 +108,7 @@ export function StatusBar({
       ? `${t.statusBar.sessionSavedTooltip ?? 'Session auto-saved to this device'} — ${new Date(lastSavedAt).toLocaleTimeString(safeLocale(language))}`
       : (t.statusBar.sessionSavedTooltip ?? 'Session auto-saved to this device');
 
-  // ── Persistence dot / text — CSS tokens only (no Tailwind color classes) ──
+  // ── Persistence dot — CSS tokens only ────────────────────────────────────
   const persistenceDotClass =
     persistenceState === 'saving'  ? 'mobile-status-dot mobile-status-dot--saving'
     : persistenceState === 'unsaved' ? 'mobile-status-dot mobile-status-dot--unsaved'
@@ -132,6 +131,36 @@ export function StatusBar({
   const insights: Translations['insights'] = t.insights;
 
   const voiceActive = voiceUiState !== 'idle';
+
+  // ── Voice icon ────────────────────────────────────────────────────────────
+  const VoiceIcon = () => {
+    if (voiceUiState === 'listening') {
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+      );
+    }
+    if (voiceUiState === 'processing' || voiceUiState === 'speaking') {
+      return (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+        </svg>
+      );
+    }
+    return (
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <line x1="12" y1="19" x2="12" y2="23" />
+        <line x1="8" y1="23" x2="16" y2="23" />
+      </svg>
+    );
+  };
 
   return (
     <div className={`relative lcars-status-bar h-10 border-t border-fluent-border flex items-center justify-between px-3 lg:px-6 z-40 text-xs${className ? ` ${className}` : ''}`}>
@@ -193,7 +222,7 @@ export function StatusBar({
         </span>
       </div>
 
-      {/* Centre: Voice activation — big pill button using available horizontal space */}
+      {/* Centre: Voice activation pill — centred in the available horizontal space */}
       <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5">
         <Tooltip title={voiceLabel}>
           <button
@@ -219,15 +248,8 @@ export function StatusBar({
                 : 'none',
             }}
           >
-            {/* Inline VoiceAssistantButton icon logic without wrapper div */}
-            <VoiceAssistantButton
-              state={voiceUiState}
-              disabled={!hasApiKey}
-              onInvoke={invokeVoiceAssistant}
-            />
-            <span className="hidden lg:inline">
-              {voiceLabel}
-            </span>
+            <VoiceIcon />
+            <span className="hidden lg:inline">{voiceLabel}</span>
           </button>
         </Tooltip>
         {/* Inline voice feedback strip */}

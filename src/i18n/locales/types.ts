@@ -636,6 +636,14 @@ export interface Translations {
     copyLyrics?: string;
     /** Tooltip shown after lyrics have been successfully copied to clipboard */
     copyLyricsConfirm?: string;
+    /** Aria-label for the voice assistant button (idle state) */
+    voiceAssistant?: string;
+    /** Status label while the mic is actively listening */
+    voiceListening?: string;
+    /** Status label while AI is processing the voice input */
+    voiceProcessing?: string;
+    /** Status label while the assistant is speaking the response */
+    voiceSpeaking?: string;
   };
 
   sections: {
