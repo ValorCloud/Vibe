@@ -14,7 +14,7 @@ interface LanguagePickerProps {
   defaultLanguage?: string | undefined;
   onSetDefaultLanguage: (langCode: string) => void;
   closePicker: () => void;
-  popoverRef: React.RefObject<HTMLDivElement | null>;
+  popoverRef: React.RefObject<HTMLDivElement>;
 }
 
 export function LanguagePicker({
@@ -130,7 +130,7 @@ export function LanguagePicker({
                 </span>
                 <span className="text-[10px] truncate">
                   {lang.aiName}
-                  {lang.region ? ` – ${lang.region}` : ''}
+                  {lang.region ? ` \u2013 ${lang.region}` : ''}
                 </span>
                 {isSelected && (
                   <span className="ml-auto w-1.5 h-1.5 rounded-full bg-current flex-shrink-0" />
