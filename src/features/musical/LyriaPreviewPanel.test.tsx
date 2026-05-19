@@ -31,7 +31,7 @@ vi.mock('../../services/lyriaService', () => ({
 
 describe('LyriaPreviewPanel', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.mocked(generateAndPoll).mockClear();
     vi.mocked(generateAndPoll).mockResolvedValue({
       id: 'clip-1',
       title: 'Preview Clip',
@@ -52,7 +52,7 @@ describe('LyriaPreviewPanel', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders keyboard-focusable musical badges with accessible labels', () => {
+  it('renders musical badges with accessible labels and removal controls', () => {
     render(
       <LanguageProvider>
         <LyriaPreviewPanel
@@ -65,10 +65,11 @@ describe('LyriaPreviewPanel', () => {
       </LanguageProvider>,
     );
 
-    expect(screen.getByLabelText('Genre: afrobeats').getAttribute('tabindex')).toBe('0');
-    expect(screen.getByLabelText('Mood: joyful').getAttribute('tabindex')).toBe('0');
-    expect(screen.getByLabelText('Tempo: 100 BPM').getAttribute('tabindex')).toBe('0');
-    expect(screen.getByLabelText('Instrumentation: talking drum').getAttribute('tabindex')).toBe('0');
+    expect(screen.getByLabelText('Genre: afrobeats')).toBeTruthy();
+    expect(screen.getByLabelText('Mood: joyful')).toBeTruthy();
+    expect(screen.getByLabelText('Tempo: 100 BPM')).toBeTruthy();
+    expect(screen.getByLabelText('Instrumentation: talking drum')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Remove instrumentation from Lyria prompt' })).toBeTruthy();
   });
 
   it('syncs the Lyria style prompt with instrumentation to the prompt container', async () => {

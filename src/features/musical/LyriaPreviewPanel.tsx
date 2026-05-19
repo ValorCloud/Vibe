@@ -237,24 +237,14 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     if (!isPromptFieldIncluded(field)) return null;
     return (
       <Badge appearance="tint" color={color} size="small">
-        <span tabIndex={0} aria-label={ariaLabel}>{content}</span>
+        <span aria-label={ariaLabel}>{content}</span>
         <button
-          className="lcars-glow-focus"
+          className="lyria-prompt-badge-remove"
           type="button"
           aria-label={`Remove ${field} from Lyria prompt`}
           onClick={(event) => {
             event.stopPropagation();
             removePromptField(field);
-          }}
-          style={{
-            marginLeft: 4,
-            border: 0,
-            padding: 0,
-            background: 'transparent',
-            color: 'inherit',
-            cursor: 'pointer',
-            fontSize: 12,
-            lineHeight: 1,
           }}
         >
           ×
