@@ -58,6 +58,16 @@ export interface LyriaClip {
   errorMessage: string | null;
 }
 
+/**
+ * LyriaTaskStatus — represents the local async generation state in UI components.
+ *
+ * Phases:
+ *   idle       — initial state, nothing running
+ *   generating — request fired, waiting for first server response
+ *   polling    — async job in progress; elapsed is seconds since generation started
+ *   done       — generation succeeded; clip is the complete LyriaClip
+ *   error      — generation failed; message is the human-readable error string
+ */
 export type LyriaTaskStatus =
   | { phase: 'idle' }
   | { phase: 'generating' }

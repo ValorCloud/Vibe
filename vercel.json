@@ -1,32 +1,29 @@
 {
-  "buildCommand": "npm ci && npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "api/lyria/generate.ts": {
+      "maxDuration": 120,
+      "memory": 512
+    },
+    "api/lyria/get.ts": {
+      "maxDuration": 10
+    }
+  },
   "headers": [
     {
-      "source": "/index.html",
+      "source": "/api/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, must-revalidate" }
+        { "key": "X-Content-Type-Options",   "value": "nosniff" },
+        { "key": "X-Frame-Options",           "value": "DENY" },
+        { "key": "X-XSS-Protection",          "value": "1; mode=block" },
+        { "key": "Referrer-Policy",           "value": "strict-origin-when-cross-origin" }
       ]
     },
     {
-      "source": "/(.*)",
+      "source": "/api/lyria/generate",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-DNS-Prefetch-Control", "value": "off" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
-        { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" },
-        { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" },
-        { "key": "Strict-Transport-Security", "value": "max-age=31536000; includeSubDomains" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(self), geolocation=(), clipboard-read=(self)" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; connect-src 'self' https://generativelanguage.googleapis.com https://api.duckduckgo.com https://*.wikipedia.org; img-src 'self' data: blob: https://cdn1.suno.ai https://cdn2.suno.ai; font-src 'self' https://fonts.gstatic.com; media-src 'self' blob: https://cdn1.suno.ai https://cdn2.suno.ai; frame-ancestors 'none'; base-uri 'self'; form-action 'self'" }
+        { "key": "X-Robots-Tag", "value": "noindex" }
       ]
     }
-  ],
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
