@@ -38,7 +38,7 @@ const AppModalLayer = lazy(() =>
   import('./components/app/AppModalLayer').then(m => ({ default: m.AppModalLayer }))
 );
 
-// ── Splash shown while OPFS session loads ──────────────────────────────────
+// ── Splash shown while OPFS session loads ──────────────────────────────
 function AppSplash() {
   const { t } = useTranslation();
   const ariaLabel = t.common?.appLoading ?? 'Application loading';
@@ -170,6 +170,7 @@ function AppInnerContent() {
             className="lcars-status-bar-desktop"
             hasApiKey={hasApiKey}
             isAnalyzing={isAnalyzing}
+            currentEditMode={appState.editMode}
             hasSavedSession={hasSavedSession}
             saveStatus={saveStatus}
             lastSavedAt={lastSavedAt}
