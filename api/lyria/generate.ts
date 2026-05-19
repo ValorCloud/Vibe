@@ -8,9 +8,12 @@
  *
  * Secret: GOOGLE_GENAI_API_KEY (Vercel env — never in bundle)
  *
- * Lyria 3 via @google/genai: uses generateContent with model='lyria-3' or 'lyria-3-pro'
- * Response: base64 audio (wav) in inlineData, or a uri for async jobs.
- * We return audio as a data-URI when synchronous, or a job id for polling.
+ * Security:
+ *   - Internal token guard: LYRIA_INTERNAL_TOKEN env var must match
+ *     X-Lyria-Token request header (set by lyriaService client).
+ *   - Lyrics are wrapped in an XML-like delimiter block to prevent
+ *     prompt injection from user-controlled content.
+ *   - req.body validated structurally before use.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
@@ -19,18 +22,41 @@ import type { LyriaGenerateParams, LyriaClip, LyriaStyleDescriptor } from '../..
 
 const ai = new GoogleGenAI({ apiKey: process.env.GOOGLE_GENAI_API_KEY ?? '' });
 
+// ─── Auth guard ───────────────────────────────────────────────────────────────
+function isAuthorized(req: VercelRequest): boolean {
+  const expected = process.env.LYRIA_INTERNAL_TOKEN;
+  if (!expected) return true; // token not configured → open (dev mode)
+  const provided = req.headers['x-lyria-token'];
+  return provided === expected;
+}
+
+// ─── Input validation ─────────────────────────────────────────────────────────
+function isValidParams(body: unknown): body is LyriaGenerateParams {
+  if (!body || typeof body !== 'object') return false;
+  const b = body as Record<string, unknown>;
+  return (
+    typeof b['lyrics'] === 'string' && b['lyrics'].trim().length > 0 &&
+    (typeof b['style'] === 'string' || (typeof b['style'] === 'object' && b['style'] !== null)) &&
+    (b['mode'] === 'clip' || b['mode'] === 'full')
+  );
+}
+
+// ─── Prompt builder ───────────────────────────────────────────────────────────
 function buildPrompt(params: LyriaGenerateParams): string {
   const style: string =
     typeof params.style === 'string'
       ? params.style
       : styleDescriptorToString(params.style);
 
-  const lyricsBlock = params.lyrics.trim()
-    ? `\n\nLyrics (use verbatim):\n${params.lyrics.trim()}`
+  // Lyrics are delimited to prevent prompt injection from user-controlled content
+  const MAX_LYRICS = 4_000;
+  const safeLyrics = params.lyrics.trim().slice(0, MAX_LYRICS);
+  const lyricsBlock = safeLyrics
+    ? `\n\n<lyrics>\n${safeLyrics}\n</lyrics>`
     : '';
 
   const negBlock = params.negativePrompt
-    ? `\n\nAvoid: ${params.negativePrompt}`
+    ? `\n\nAvoid: ${params.negativePrompt.slice(0, 500)}`
     : '';
 
   return `${style}${lyricsBlock}${negBlock}`.trim();
@@ -46,6 +72,7 @@ function styleDescriptorToString(s: LyriaStyleDescriptor): string {
   return parts.join(', ');
 }
 
+// ─── Handler ──────────────────────────────────────────────────────────────────
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
@@ -55,13 +82,17 @@ export default async function handler(
     return;
   }
 
-  const params = req.body as LyriaGenerateParams;
-
-  if (!params?.lyrics || !params?.style || !params?.mode) {
-    res.status(400).json({ error: 'Missing required fields: lyrics, style, mode' });
+  if (!isAuthorized(req)) {
+    res.status(401).json({ error: 'Unauthorized' });
     return;
   }
 
+  if (!isValidParams(req.body)) {
+    res.status(400).json({ error: 'Missing or invalid required fields: lyrics (string), style (string|object), mode (clip|full)' });
+    return;
+  }
+
+  const params = req.body;
   const modelId = params.mode === 'full' ? 'lyria-3-pro' : 'lyria-3';
   const prompt = buildPrompt(params);
   const clipId = `lyria_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -73,7 +104,6 @@ export default async function handler(
       ...(params.seed != null ? { generationConfig: { seed: params.seed } } : {}),
     });
 
-    // Lyria returns audio in inlineData (base64 wav) for clip mode
     const part = response.candidates?.[0]?.content?.parts?.[0];
 
     // Synchronous audio response (clip mode)
@@ -95,11 +125,11 @@ export default async function handler(
       return;
     }
 
-    // Async job (Pro / full mode) — return processing status with job id in audioUrl
-    const jobUri: string | undefined =
-      (part as Record<string, unknown> | undefined)?.['fileData'] != null
-        ? String((part as Record<string, unknown>)['fileData'])
-        : undefined;
+    // Async job (Pro / full mode)
+    function hasFileData(p: unknown): p is { fileData: string } {
+      return typeof p === 'object' && p !== null && typeof (p as Record<string, unknown>)['fileData'] === 'string';
+    }
+    const jobUri = hasFileData(part) ? part.fileData : undefined;
 
     const clip: LyriaClip = {
       id: clipId,

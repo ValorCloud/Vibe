@@ -4,13 +4,14 @@
  * Displayed after user approves the 30s preview from LyriaPreviewPanel.
  *
  * Props:
- *   clip         — the approved LyriaClip from preview (provides style/lyrics context)
- *   lyrics       — verbatim lyrics
- *   songTitle    — title
- *   onDone       — callback with the completed full-song LyriaClip
+ *   approvedPrompt — the prompt string from the approved preview clip
+ *   lyrics         — verbatim lyrics
+ *   clipTitle      — title of the approved preview clip (display only)
+ *   songTitle      — song title passed to generation
+ *   onDone         — callback with the completed full-song LyriaClip
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Button,
   Card,
@@ -34,44 +35,62 @@ import { generateAndPoll, getLyriaKPISnapshot } from '../../services/lyriaServic
 import type { LyriaClip, LyriaTaskStatus } from '../../types/lyria';
 
 interface LyriaFullSongPanelProps {
-  clip: LyriaClip;
+  approvedPrompt: string;
+  clipTitle: string;
   lyrics: string;
   songTitle?: string;
   onDone?: (clip: LyriaClip) => void;
 }
 
 export const LyriaFullSongPanel: React.FC<LyriaFullSongPanelProps> = ({
-  clip,
+  approvedPrompt,
+  clipTitle,
   lyrics,
   songTitle = '',
   onDone,
 }) => {
+  const abortRef = useRef<AbortController | null>(null);
   const [taskStatus, setTaskStatus] = useState<LyriaTaskStatus>({ phase: 'idle' });
   const [kpi, setKpi] = useState(getLyriaKPISnapshot());
 
   const isGenerating = taskStatus.phase === 'generating' || taskStatus.phase === 'polling';
   const doneClip = taskStatus.phase === 'done' ? taskStatus.clip : null;
 
+  // Abort polling on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   async function handleGenerate(): Promise<void> {
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const { signal } = abortRef.current;
+
     setTaskStatus({ phase: 'generating' });
     try {
       setTaskStatus({ phase: 'polling', elapsed: 0 });
       const full = await generateAndPoll(
         {
           lyrics,
-          style: clip.prompt, // reuse the prompt that the user approved in preview
+          style: approvedPrompt,
           title: songTitle,
           mode: 'full',
         },
         {
           intervalMs: 5_000,
           timeoutMs: 360_000,
+          signal,
         },
       );
-      setTaskStatus({ phase: 'done', clip: full });
-      setKpi(getLyriaKPISnapshot());
-      onDone?.(full);
+      if (!signal.aborted) {
+        setTaskStatus({ phase: 'done', clip: full });
+        setKpi(getLyriaKPISnapshot());
+        onDone?.(full);
+      }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       const message = err instanceof Error ? err.message : String(err);
       setTaskStatus({ phase: 'error', message });
       setKpi(getLyriaKPISnapshot());
@@ -106,7 +125,7 @@ export const LyriaFullSongPanel: React.FC<LyriaFullSongPanelProps> = ({
         }
         action={
           <Tooltip
-            content="Gènere un titre complet (intro, couplets, refrains, pont) basé sur le preview approuvé. Modèle: Lyria 3 Pro via Vertex AI. SynthID watermarké. Durée de génération : 2–5 minutes."
+            content="Génère un titre complet (intro, couplets, refrains, pont) basé sur le preview approuvé. Modèle: Lyria 3 Pro via Gemini API. SynthID watermarké. Durée de génération : 2–5 minutes."
             relationship="label"
           >
             <Info20Regular style={{ color: tokens.colorNeutralForeground3 }} />
@@ -124,10 +143,10 @@ export const LyriaFullSongPanel: React.FC<LyriaFullSongPanelProps> = ({
         }}
       >
         <Text size={200} style={{ color: tokens.colorNeutralForeground2 }}>
-          Basé sur : <strong>{clip.title}</strong>
+          Basé sur : <strong>{clipTitle}</strong>
         </Text>
         <Text size={200} style={{ color: tokens.colorNeutralForeground3, marginTop: 4 }}>
-          Prompt : {clip.prompt.slice(0, 200)}{clip.prompt.length > 200 ? '…' : ''}
+          Prompt : {approvedPrompt.slice(0, 200)}{approvedPrompt.length > 200 ? '…' : ''}
         </Text>
       </Card>
 
@@ -145,7 +164,7 @@ export const LyriaFullSongPanel: React.FC<LyriaFullSongPanelProps> = ({
       {/* Polling progress */}
       {isGenerating && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS }}>
-          <ProgressBar thickness="medium" />
+          <ProgressBar thickness="medium" aria-label="Génération Lyria 3 Pro en cours" />
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
             Lyria 3 Pro génère votre titre. Cela peut prendre 2–5 minutes…
           </Text>
@@ -189,6 +208,7 @@ export const LyriaFullSongPanel: React.FC<LyriaFullSongPanelProps> = ({
             <audio
               src={doneClip.audioUrl}
               controls
+              aria-label={`Titre complet — ${doneClip.title}`}
               style={{ width: '100%', marginTop: tokens.spacingVerticalXS }}
             />
           )}

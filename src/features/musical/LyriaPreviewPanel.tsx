@@ -61,6 +61,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   onFullSong,
 }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [taskStatus, setTaskStatus] = useState<LyriaTaskStatus>({ phase: 'idle' });
   const [kpi, setKpi] = useState(getLyriaKPISnapshot());
@@ -76,14 +77,36 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   const isGenerating = taskStatus.phase === 'generating' || taskStatus.phase === 'polling';
   const doneClip = taskStatus.phase === 'done' ? taskStatus.clip : null;
 
+  // Abort polling on unmount
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  // Reset playback state when a new clip is generated
+  useEffect(() => {
+    if (doneClip) {
+      audioRef.current?.pause();
+      setIsPlaying(false);
+    }
+  }, [doneClip]);
+
   const handleGenerate = useCallback(async (): Promise<void> => {
     if (isGenerating || !lyrics.trim()) return;
+
+    // Cancel any previous in-flight request
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    const { signal } = abortRef.current;
+
     setTaskStatus({ phase: 'generating' });
 
+    const tempoNum = Number(tempo);
     const style: LyriaStyleDescriptor = {
       genre,
       ...(mood ? { mood } : {}),
-      ...(tempo ? { tempo: Number(tempo) } : {}),
+      ...(tempoNum > 0 ? { tempo: tempoNum } : {}),
       ...(instruments ? { instruments } : {}),
       ...(vocalStyle ? { vocalStyle } : {}),
     };
@@ -105,11 +128,15 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         {
           intervalMs: 2_000,
           timeoutMs: 90_000,
+          signal,
         },
       );
-      setTaskStatus({ phase: 'done', clip });
-      setKpi(getLyriaKPISnapshot());
+      if (!signal.aborted) {
+        setTaskStatus({ phase: 'done', clip });
+        setKpi(getLyriaKPISnapshot());
+      }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return;
       const message = err instanceof Error ? err.message : String(err);
       setTaskStatus({ phase: 'error', message });
       setKpi(getLyriaKPISnapshot());
@@ -132,10 +159,8 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     if (!audioRef.current || !doneClip?.audioUrl) return;
     if (isPlaying) {
       audioRef.current.pause();
-      setIsPlaying(false);
     } else {
       void audioRef.current.play();
-      setIsPlaying(true);
     }
   }
 
@@ -202,30 +227,42 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
       {/* Genre row */}
       <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}>
         {GENRES.map((g) => (
-          <Badge
+          <button
             key={g}
-            appearance={genre === g ? 'filled' : 'outline'}
-            color={genre === g ? 'brand' : 'subtle'}
-            style={{ cursor: 'pointer' }}
+            type="button"
+            aria-pressed={genre === g}
             onClick={() => setGenre(g)}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
           >
-            {g}
-          </Badge>
+            <Badge
+              appearance={genre === g ? 'filled' : 'outline'}
+              color={genre === g ? 'brand' : 'subtle'}
+              style={{ pointerEvents: 'none' }}
+            >
+              {g}
+            </Badge>
+          </button>
         ))}
       </div>
 
       {/* Mood row */}
       <div style={{ display: 'flex', gap: tokens.spacingHorizontalS, flexWrap: 'wrap' }}>
         {MOODS.map((m) => (
-          <Badge
+          <button
             key={m}
-            appearance={mood === m ? 'filled' : 'outline'}
-            color={mood === m ? 'subtle' : 'subtle'}
-            style={{ cursor: 'pointer' }}
+            type="button"
+            aria-pressed={mood === m}
             onClick={() => setMood(m)}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
           >
-            {m}
-          </Badge>
+            <Badge
+              appearance={mood === m ? 'filled' : 'outline'}
+              color="subtle"
+              style={{ pointerEvents: 'none' }}
+            >
+              {m}
+            </Badge>
+          </button>
         ))}
       </div>
 
@@ -346,7 +383,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
             </div>
           </div>
 
-          {/* Audio player */}
+          {/* Audio player — onPlay/onPause keep isPlaying in sync with native controls */}
           {doneClip.audioUrl && (
             <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
               <Button
@@ -358,7 +395,10 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
               <audio
                 ref={audioRef}
                 src={doneClip.audioUrl}
+                onPlay={() => setIsPlaying(true)}
+                onPause={() => setIsPlaying(false)}
                 onEnded={() => setIsPlaying(false)}
+                aria-label={`Preview audio — ${doneClip.title}`}
                 style={{ flex: 1 }}
                 controls
               />
@@ -395,7 +435,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         </Label>
         {kpi.lastError && (
           <Label size="small" style={{ color: tokens.colorStatusDangerForeground1 }}>
-            Dernier erreur : {kpi.lastError}
+            Dernière erreur : {kpi.lastError}
           </Label>
         )}
       </div>
