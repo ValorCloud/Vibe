@@ -37,7 +37,10 @@ const MAX_NEGATIVE_PROMPT = 500;
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 function isAuthorized(req: VercelRequest): boolean {
   const expected = process.env.LYRIA_INTERNAL_TOKEN;
-  if (!expected) return process.env.NODE_ENV !== 'production';
+  if (!expected) {
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
+    return !isProduction;
+  }
   const provided = req.headers['x-lyria-token'];
   return provided === expected;
 }
@@ -85,9 +88,12 @@ function styleDescriptorToString(s: LyriaStyleDescriptor): string {
 
 export function sanitizePromptText(input: string, maxLength: number): string {
   return input
+    .normalize('NFKC')
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
     .replace(/<\/?(?:lyrics|system|user|assistant|prompt|instruction)s?>/gi, '')
-    .replace(/\b(?:ignore|override|bypass|reveal|disregard)\s+(?:all\s+)?(?:previous|above|system|developer)\s+(?:instructions?|prompts?|rules?)\b/gi, '[filtered instruction]')
+    .replace(/\b(?:ignore|override|bypass|reveal|disregard|discard|forget|neglect)\s+(?:all\s+)?(?:previous|prior|earlier|above|system|developer|safety)\s+(?:instructions?|directives?|prompts?|rules?|messages?)\b/gi, '[filtered instruction]')
+    .replace(/\b(?:system|developer|safety)\s+(?:instructions?|directives?|prompts?|rules?|messages?)\b/gi, '[filtered instruction]')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, maxLength);
