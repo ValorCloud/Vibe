@@ -237,6 +237,25 @@
     "vibeBoardDescription": "Sélectionnez votre genre pour définir automatiquement le BPM et les instruments",
     "subStyle": "SOUS-STYLE"
   },
+  "lyria": {
+    "musicalParamsLabel": "PARAMÈTRES MUSICAUX (DEPUIS MUSICALPARAMSPANEL)",
+    "noParams": "Aucun paramètre défini — configurez-les dans le panneau de paramètres musicaux ci-dessus.",
+    "vocalStyle": "Style vocal",
+    "vocalStylePlaceholder": "ex. voix féminine, lisse, Afrique de l'Ouest",
+    "negativePrompt": "Éviter (optionnel)",
+    "negativePromptPlaceholder": "ex. heavy metal, guitare saturée, cris",
+    "injectedLyrics": "Paroles injectées",
+    "generating": "Génération…",
+    "generatePreview": "Générer l'aperçu 30''",
+    "play": "Lecture",
+    "pause": "Pause",
+    "escalate": "Escalader vers la chanson complète (Lyria 3 Pro)",
+    "shortcutTooltip": "Alt+A pour générer rapidement",
+    "infoTooltip": "Génère un clip audio ~30s basé sur vos paroles et votre style musical. Moteur : Lyria 3 Clip via Gemini API. Audio marqué SynthID.",
+    "successCount": "Succès : {n}",
+    "errorCount": "Erreurs : {n}",
+    "lastError": "Dernière erreur : {msg}"
+  },
   "analysis": {
     "title": "Rapport d'analyse de chanson",
     "deepAnalysis": "Analyse approfondie des paroles",
@@ -500,7 +519,7 @@
     "openSettings": "Ouvrir les paramètres de l'application",
     "sponsor": "Soutenir le développeur",
     "sendToLyriaConfirm": "Ouverture de Musical…",
-    "sendToLyria": "Ouvrir l’onglet Musical pour générer un aperçu avec Lyria",
+    "sendToLyria": "Ouvrir l'onglet Musical pour générer un aperçu avec Lyria",
     "quantizeLineDone": "Ligne quantifiée"
   },
   "sections": {
