@@ -3,7 +3,7 @@
  * Fluent 2 panel: generate a 30-second Lyria 3 Clip preview from current lyrics + style.
  *
  * Props:
- *   lyrics              — verbatim lyrics string from the active song/section in the editor
+ *   lyrics              — verbatim lyrics string from SongContext (passed silently to generation, not displayed)
  *   songTitle           — pre-fills the title field
  *   initialGenre        — genre from SongContext / MusicalParamsPanel
  *   initialMood         — mood from SongContext
@@ -15,9 +15,9 @@
  *   Alt+A  — trigger generate (if not already generating)
  *
  * Design contract:
- *   genre / mood / tempo / instrumentation come from SongContext via MusicalTab.
- *   They are displayed read-only in the panel — edit them in MusicalParamsPanel.
- *   vocalStyle and negativePrompt are Lyria-specific and remain local.
+ *   lyrics / genre / mood / tempo / instrumentation all come from SongContext — not displayed here.
+ *   negativePrompt ("Avoid") is the only user-editable Lyria-specific field in this panel.
+ *   vocalStyle is kept in local state for generation until relocated to its own section.
  */
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -29,7 +29,6 @@ import {
   Label,
   Spinner,
   Text,
-  Textarea,
   Badge,
   Divider,
   Input,
@@ -81,14 +80,13 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   const [taskStatus, setTaskStatus] = useState<LyriaTaskStatus>({ phase: 'idle' });
   const [kpi, setKpi] = useState(getLyriaKPISnapshot());
 
-  // Lyria-specific local state (not in SongContext)
-  const [vocalStyle, setVocalStyle] = useState('female lead, West African, smooth');
+  // vocalStyle: Lyria-specific, kept local until relocated to its own section
+  const [vocalStyle] = useState('female lead, West African, smooth');
   const [negativePrompt, setNegativePrompt] = useState('');
 
   const isGenerating = taskStatus.phase === 'generating' || taskStatus.phase === 'polling';
   const doneClip = taskStatus.phase === 'done' ? taskStatus.clip : null;
 
-  // Abort polling on unmount
   useEffect(() => {
     return () => {
       mountedRef.current = false;
@@ -96,7 +94,6 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     };
   }, []);
 
-  // Reset playback state when a new clip is generated
   useEffect(() => {
     if (doneClip) {
       audioRef.current?.pause();
@@ -149,7 +146,6 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     }
   }, [isGenerating, lyrics, initialGenre, initialMood, initialTempo, initialInstrumentation, vocalStyle, negativePrompt, songTitle]);
 
-  // Alt+A — trigger generate from anywhere on the page when this panel is mounted
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'a' && !e.defaultPrevented) {
@@ -281,31 +277,12 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         </div>
       </div>
 
-      {/* Vocal style (Lyria-specific, not in SongContext) */}
-      <Field label={L?.vocalStyle ?? 'Vocal style'}>
-        <Input
-          value={vocalStyle}
-          onChange={(_, d) => setVocalStyle(d.value)}
-          placeholder={L?.vocalStylePlaceholder ?? 'e.g. female lead, smooth, West African'}
-        />
-      </Field>
-
-      {/* Negative prompt */}
+      {/* Avoid / Negative prompt — only Lyria-specific editable field */}
       <Field label={L?.negativePrompt ?? 'Avoid (optional)'}>
         <Input
           value={negativePrompt}
           onChange={(_, d) => setNegativePrompt(d.value)}
           placeholder={L?.negativePromptPlaceholder ?? 'e.g. heavy metal, distorted guitar, screaming'}
-        />
-      </Field>
-
-      {/* Lyrics preview (read-only) */}
-      <Field label={L?.injectedLyrics ?? 'Injected lyrics'}>
-        <Textarea
-          value={lyrics}
-          readOnly
-          resize="vertical"
-          style={{ minHeight: 72, fontSize: tokens.fontSizeBase200 }}
         />
       </Field>
 
@@ -345,7 +322,6 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
             gap: tokens.spacingVerticalS,
           }}
         >
-          {/* Completion header */}
           <div
             style={{
               display: 'flex',
@@ -372,7 +348,6 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
             </div>
           </div>
 
-          {/* Audio player */}
           {doneClip.audioUrl && (
             <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
               <Button
@@ -394,7 +369,6 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
             </div>
           )}
 
-          {/* Escalate to full song */}
           {onFullSong && (
             <Button
               appearance="outline"
