@@ -5,7 +5,7 @@
  *
  * Proxy endpoints (same-origin):
  *   POST /api/lyria/generate  → starts a clip or full-song generation
- *   GET  /api/lyria/get?id=…  → polls generation status (stub until Google SDK ready)
+ *   GET  /api/lyria/get?id=…  → polls generation status (clip mode only; not used for full)
  *
  * Mode switch (clip / full) is determined by LyriaGenerateParams.mode.
  *
@@ -38,8 +38,6 @@ function pending(delta: number): void {
 }
 
 // ─── Internal token header ────────────────────────────────────────────────────
-// Matches LYRIA_INTERNAL_TOKEN on the server side.
-// In production this value is injected at build time via Vite env.
 const INTERNAL_TOKEN: string | undefined = import.meta.env.VITE_LYRIA_INTERNAL_TOKEN;
 
 function authHeaders(): Record<string, string> {
@@ -99,6 +97,12 @@ export async function getClipStatus(id: string, signal?: AbortSignal): Promise<L
 
 /**
  * Convenience: generate + poll until done or error.
+ *
+ * For `full` mode, /api/lyria/generate runs synchronously end-to-end and
+ * always returns status 'complete' (or 'error'). Polling is skipped entirely.
+ *
+ * For `clip` mode, polling is used if the initial response is not yet complete.
+ *
  * Pass opts.signal (from AbortController) to cancel on component unmount.
  */
 export async function generateAndPoll(
@@ -109,9 +113,17 @@ export async function generateAndPoll(
   const { intervalMs = 3_000, timeoutMs = defaultTimeout, signal } = opts;
 
   const clip = await generateClip(params, signal);
+
+  // Both modes are synchronous — complete or error immediately.
+  // Full mode never polls (GET /api/lyria/get is not implemented for it).
   if (clip.status === 'complete') return clip;
   if (clip.status === 'error') throw new Error(clip.errorMessage ?? '[Lyria] generation failed');
+  if (params.mode === 'full') {
+    // Should not happen if the server is correct, but guard anyway.
+    throw new Error('[Lyria] Full-song generation did not complete synchronously. Check server logs.');
+  }
 
+  // Clip mode only: poll until complete
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (signal?.aborted) throw new DOMException('Lyria poll aborted', 'AbortError');

@@ -5,7 +5,7 @@
  * Accepts a LyriaGenerateParams body, builds a Lyria prompt,
  * calls Google GenAI via generateContent:
  *   clip mode → lyria-3-clip-preview  (~30s, synchronous inlineData response)
- *   full mode → lyria-3-pro-preview   (~3min, async job)
+ *   full mode → lyria-3-pro-preview   (synchronous; may return inlineData or fileData)
  *
  * Secret: GOOGLE_GENAI_API_KEY (Vercel env — never in bundle)
  *
@@ -55,7 +55,6 @@ function buildPrompt(params: LyriaGenerateParams): string {
       ? params.style
       : styleDescriptorToString(params.style);
 
-  // Lyrics are delimited to prevent prompt injection from user-controlled content
   const MAX_LYRICS = 4_000;
   const safeLyrics = params.lyrics.trim().slice(0, MAX_LYRICS);
   const lyricsBlock = safeLyrics
@@ -77,6 +76,22 @@ function styleDescriptorToString(s: LyriaStyleDescriptor): string {
   if (s.vocalStyle) parts.push(`vocals: ${s.vocalStyle}`);
   if (s.era) parts.push(`era: ${s.era}`);
   return parts.join(', ');
+}
+
+function hasInlineData(p: unknown): p is { inlineData: { data: string; mimeType?: string } } {
+  return (
+    typeof p === 'object' && p !== null &&
+    typeof (p as Record<string, unknown>)['inlineData'] === 'object' &&
+    typeof ((p as Record<string, unknown>)['inlineData'] as Record<string, unknown>)?.['data'] === 'string'
+  );
+}
+
+function hasFileData(p: unknown): p is { fileData: { fileUri: string } } {
+  return (
+    typeof p === 'object' && p !== null &&
+    typeof (p as Record<string, unknown>)['fileData'] === 'object' &&
+    typeof ((p as Record<string, unknown>)['fileData'] as Record<string, unknown>)?.['fileUri'] === 'string'
+  );
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
@@ -103,6 +118,7 @@ export default async function handler(
   const modelId = LYRIA_MODEL[params.mode];
   const prompt = buildPrompt(params);
   const clipId = `lyria_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const title = params.title ?? (params.mode === 'full' ? 'Lyria Full Song' : 'Lyria Preview');
 
   try {
     const response = await ai.models.generateContent({
@@ -113,12 +129,12 @@ export default async function handler(
 
     const part = response.candidates?.[0]?.content?.parts?.[0];
 
-    // Synchronous audio response (clip mode — inlineData)
-    if (part && 'inlineData' in part && part.inlineData?.data) {
+    // inlineData → base64 audio (both clip and full-song may return this)
+    if (hasInlineData(part)) {
       const audioDataUri = `data:${part.inlineData.mimeType ?? 'audio/wav'};base64,${part.inlineData.data}`;
       const clip: LyriaClip = {
         id: clipId,
-        title: params.title ?? 'Lyria Preview',
+        title,
         status: 'complete',
         audioUrl: audioDataUri,
         synthIdWatermarked: true,
@@ -132,34 +148,43 @@ export default async function handler(
       return;
     }
 
-    // Async job response (Pro / full mode — fileData URI)
-    function hasFileData(p: unknown): p is { fileData: { fileUri: string } } {
-      return (
-        typeof p === 'object' && p !== null &&
-        typeof (p as Record<string, unknown>)['fileData'] === 'object' &&
-        typeof ((p as Record<string, unknown>)['fileData'] as Record<string, unknown>)?.['fileUri'] === 'string'
-      );
+    // fileData → hosted URI (treat as complete; client can play it directly)
+    if (hasFileData(part)) {
+      const clip: LyriaClip = {
+        id: clipId,
+        title,
+        status: 'complete',
+        audioUrl: part.fileData.fileUri,
+        synthIdWatermarked: true,
+        durationSeconds: null,
+        model: modelId,
+        prompt,
+        createdAt: new Date().toISOString(),
+        errorMessage: null,
+      };
+      res.status(200).json(clip);
+      return;
     }
-    const jobUri = hasFileData(part) ? part.fileData.fileUri : undefined;
 
+    // No usable audio part in the response
     const clip: LyriaClip = {
       id: clipId,
-      title: params.title ?? 'Lyria Full Song',
-      status: jobUri ? 'processing' : 'submitted',
-      audioUrl: jobUri ?? null,
-      synthIdWatermarked: true,
+      title,
+      status: 'error',
+      audioUrl: null,
+      synthIdWatermarked: false,
       durationSeconds: null,
       model: modelId,
       prompt,
       createdAt: new Date().toISOString(),
-      errorMessage: null,
+      errorMessage: 'No audio data returned by Lyria API.',
     };
-    res.status(202).json(clip);
+    res.status(502).json(clip);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const clip: LyriaClip = {
       id: clipId,
-      title: params.title ?? 'Lyria Generation',
+      title,
       status: 'error',
       audioUrl: null,
       synthIdWatermarked: false,
