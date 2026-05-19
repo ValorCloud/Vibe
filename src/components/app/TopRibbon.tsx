@@ -10,6 +10,9 @@ import { useTopRibbonActions } from '../../hooks/useTopRibbonActions';
 import { RibbonMenuPanel } from './RibbonMenuPanel';
 import { RibbonTabs } from './RibbonTabs';
 import { copyToClipboard } from '../../utils/clipboard';
+import { VoiceAssistantButton } from '../../features/voice/VoiceAssistantButton';
+import { useVoiceAssistantController } from '../../features/voice/useVoiceAssistantController';
+import type { EditMode } from '../../types';
 
 /**
  * TopRibbon — assembly component (~100 lines).
@@ -21,9 +24,10 @@ interface Props {
   handleApiKeyHelp: () => void;
   onOpenNewGeneration: () => void;
   onOpenNewEmpty: () => void;
+  currentEditMode: EditMode;
 }
 
-export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, onOpenNewEmpty }: Props) {
+export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, onOpenNewEmpty, currentEditMode }: Props) {
   const { past, future, undo, redo } = useSongHistoryContext();
   const { isGenerating, clearSelection } = useComposerContext();
   const { song } = useSongContext();
@@ -97,6 +101,27 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
   const lyricsTooltip = lyricsCopied
     ? (t.tooltips.copyLyricsConfirm ?? 'Lyrics copied to clipboard')
     : (t.tooltips.copyLyrics ?? 'Copy lyrics');
+
+  const {
+    invoke: invokeVoiceAssistant,
+    uiState: voiceUiState,
+    promptText: voicePromptText,
+    textFallback: voiceTextFallback,
+    errorText: voiceErrorText,
+  } = useVoiceAssistantController({
+    enabled: hasApiKey,
+    page: activeTab,
+    mode: currentEditMode,
+  });
+
+  const voiceTooltip =
+    voiceUiState === 'listening'
+      ? 'Listening…'
+      : voiceUiState === 'processing'
+        ? 'Processing your request…'
+        : voiceUiState === 'speaking'
+          ? 'Speaking…'
+          : 'Voice assistant';
 
   return (
     <div
@@ -201,6 +226,13 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
             <KeyboardRegular className="w-4 h-4" />
           </button>
         </Tooltip>
+        <Tooltip title={voiceTooltip}>
+          <VoiceAssistantButton
+            state={voiceUiState}
+            disabled={!hasApiKey}
+            onInvoke={invokeVoiceAssistant}
+          />
+        </Tooltip>
         <Tooltip title={panelToggleLabel}>
           <button onClick={toggleLeftPanel} aria-label={panelToggleLabel} className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-md transition-colors" style={{ color: isLeftPanelOpen ? 'var(--accent-color)' : 'var(--text-secondary)', backgroundColor: isLeftPanelOpen ? 'color-mix(in srgb, var(--accent-color) 10%, transparent)' : undefined }}>
             <WandSparkles className="w-4 h-4" />
@@ -212,6 +244,15 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
           </button>
         </Tooltip>
       </div>
+      {(voicePromptText || voiceTextFallback || voiceErrorText) && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="absolute right-4 lg:right-8 top-[calc(100%+8px)] max-w-xs rounded-md border border-[var(--border-color)] bg-[var(--bg-sidebar)] px-2.5 py-1.5 text-[10px] text-[var(--text-secondary)] shadow"
+        >
+          {voiceErrorText ?? voiceTextFallback ?? voicePromptText}
+        </div>
+      )}
     </div>
   );
 }

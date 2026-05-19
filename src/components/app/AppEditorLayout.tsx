@@ -251,6 +251,7 @@ export function AppEditorLayout({
                     handleApiKeyHelp={handleApiKeyHelp}
                     onOpenNewGeneration={handleOpenNewGeneration}
                     onOpenNewEmpty={handleCreateEmptySong}
+                    currentEditMode={editMode}
                   />
                 </Suspense>
               </ErrorBoundary>
