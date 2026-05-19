@@ -20,7 +20,6 @@ const mockSetActiveTab = vi.fn();
 const mockSetIsLeftPanelOpen = vi.fn();
 const mockSetIsStructureOpen = vi.fn();
 const mockOpenKeyboardShortcuts = vi.fn();
-const mockInvokeVoiceAssistant = vi.fn();
 
 vi.mock('../../contexts/SongContext', () => ({
   useSongHistoryContext: () => ({
@@ -56,16 +55,6 @@ vi.mock('../../hooks/useTopRibbonActions', () => ({
   useTopRibbonActions: () => ({
     openKeyboardShortcuts: mockOpenKeyboardShortcuts,
     isAnalyzing: mockIsAnalyzing,
-  }),
-}));
-
-vi.mock('../../features/voice/useVoiceAssistantController', () => ({
-  useVoiceAssistantController: () => ({
-    invoke: mockInvokeVoiceAssistant,
-    uiState: 'idle',
-    promptText: null,
-    textFallback: null,
-    errorText: null,
   }),
 }));
 
@@ -133,7 +122,6 @@ describe('TopRibbon', () => {
     mockMusicalPrompt = '';
     mockIsLeftPanelOpen = false;
     mockIsStructureOpen = false;
-    mockInvokeVoiceAssistant.mockReset();
   });
 
   it('renders without crashing', () => {
@@ -201,12 +189,6 @@ describe('TopRibbon', () => {
     renderRibbon();
     fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
     expect(mockOpenKeyboardShortcuts).toHaveBeenCalledOnce();
-  });
-
-  it('invokes the voice assistant when the microphone control is clicked', () => {
-    renderRibbon();
-    fireEvent.click(screen.getByRole('button', { name: 'Voice assistant' }));
-    expect(mockInvokeVoiceAssistant).toHaveBeenCalledOnce();
   });
 
   it('toggles left panel open', () => {
