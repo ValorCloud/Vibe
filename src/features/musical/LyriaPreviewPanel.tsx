@@ -49,6 +49,7 @@ import {
 } from '@fluentui/react-icons';
 import { generateAndPoll, getLyriaKPISnapshot } from '../../services/lyriaService';
 import type { LyriaClip, LyriaStyleDescriptor, LyriaTaskStatus } from '../../types/lyria';
+import { useLanguage } from '../../i18n/useLanguage';
 
 interface LyriaPreviewPanelProps {
   lyrics: string;
@@ -70,6 +71,9 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   initialInstrumentation = '',
   onFullSong,
 }) => {
+  const { t } = useLanguage();
+  const L = t.lyria;
+
   const audioRef = useRef<HTMLAudioElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -141,7 +145,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     }
   }, [isGenerating, lyrics, initialGenre, initialMood, initialTempo, initialInstrumentation, vocalStyle, negativePrompt, songTitle]);
 
-  // Alt+A — génère le preview depuis n'importe où dans la page quand ce panel est monté
+  // Alt+A — trigger generate from anywhere on the page when this panel is mounted
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.altKey && !e.ctrlKey && !e.metaKey && e.key === 'a' && !e.defaultPrevented) {
@@ -189,7 +193,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
             <Badge appearance="tint" color="success" size="small">
               Google DeepMind
             </Badge>
-            <Tooltip content="Alt+A pour générer rapidement" relationship="label">
+            <Tooltip content={L?.shortcutTooltip ?? 'Alt+A to generate quickly'} relationship="label">
               <Badge
                 appearance="ghost"
                 size="small"
@@ -209,7 +213,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         }
         action={
           <Tooltip
-            content="Génère un extrait audio ~30s basé sur vos paroles et votre style musical. Moteur: Lyria 3 Clip via Gemini API. Audio SynthID watermarké."
+            content={L?.infoTooltip ?? 'Generates a ~30s audio clip based on your lyrics and musical style. Engine: Lyria 3 Clip via Gemini API. SynthID watermarked audio.'}
             relationship="label"
           >
             <Info20Regular style={{ color: tokens.colorNeutralForeground3 }} />
@@ -219,7 +223,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
 
       <Divider />
 
-      {/* ── Paramètres musicaux (read-only — éditer dans MusicalParamsPanel) ─── */}
+      {/* ── Musical params (read-only — edit in MusicalParamsPanel) ─── */}
       <div
         style={{
           display: 'flex',
@@ -241,7 +245,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         >
           <LockClosed20Regular style={{ fontSize: 13, color: tokens.colorNeutralForeground3 }} />
           <Text size={100} style={{ color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Paramètres musicaux (depuis MusicalParamsPanel)
+            {L?.musicalParamsLabel ?? 'MUSICAL PARAMS (FROM MUSICALPARAMSPANEL)'}
           </Text>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS }}>
@@ -267,32 +271,32 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
           )}
           {!initialGenre && !initialMood && !initialTempo && !initialInstrumentation && (
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
-              Aucun paramètre défini — configurez-les dans les paramètres musicaux ci-dessus.
+              {L?.noParams ?? 'No params set — configure them in the musical params panel above.'}
             </Text>
           )}
         </div>
       </div>
 
       {/* Vocal style (Lyria-specific, not in SongContext) */}
-      <Field label="Style vocal">
+      <Field label={L?.vocalStyle ?? 'Vocal style'}>
         <Input
           value={vocalStyle}
           onChange={(_, d) => setVocalStyle(d.value)}
-          placeholder="e.g. female lead, smooth, West African"
+          placeholder={L?.vocalStylePlaceholder ?? 'e.g. female lead, smooth, West African'}
         />
       </Field>
 
       {/* Negative prompt */}
-      <Field label="Éviter (optionnel)">
+      <Field label={L?.negativePrompt ?? 'Avoid (optional)'}>
         <Input
           value={negativePrompt}
           onChange={(_, d) => setNegativePrompt(d.value)}
-          placeholder="e.g. heavy metal, distorted guitar, screaming"
+          placeholder={L?.negativePromptPlaceholder ?? 'e.g. heavy metal, distorted guitar, screaming'}
         />
       </Field>
 
       {/* Lyrics preview (read-only) */}
-      <Field label="Paroles injectées">
+      <Field label={L?.injectedLyrics ?? 'Injected lyrics'}>
         <Textarea
           value={lyrics}
           readOnly
@@ -309,7 +313,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         onClick={() => void handleGenerate()}
         style={{ alignSelf: 'flex-start' }}
       >
-        {isGenerating ? 'Génération en cours…' : "Générer le preview 30''"}
+        {isGenerating ? (L?.generating ?? 'Generating…') : (L?.generatePreview ?? "Generate preview 30''")}
       </Button>
 
       {/* Status / result */}
@@ -371,7 +375,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
                 appearance="subtle"
                 icon={isPlaying ? <Pause20Filled /> : <Play20Filled />}
                 onClick={togglePlayback}
-                aria-label={isPlaying ? 'Pause' : 'Lecture'}
+                aria-label={isPlaying ? (L?.pause ?? 'Pause') : (L?.play ?? 'Play')}
               />
               <audio
                 ref={audioRef}
@@ -394,7 +398,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
               style={{ alignSelf: 'flex-start' }}
               onClick={() => onFullSong(doneClip)}
             >
-              Escalader en titre complet (Lyria 3 Pro)
+              {L?.escalate ?? 'Escalate to full song (Lyria 3 Pro)'}
             </Button>
           )}
         </Card>
@@ -409,14 +413,14 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         }}
       >
         <Label size="small" style={{ color: tokens.colorNeutralForeground3 }}>
-          Succès : {kpi.successCount}
+          {(L?.successCount ?? 'Success: {n}').replace('{n}', String(kpi.successCount))}
         </Label>
         <Label size="small" style={{ color: tokens.colorNeutralForeground3 }}>
-          Erreurs : {kpi.errorCount}
+          {(L?.errorCount ?? 'Errors: {n}').replace('{n}', String(kpi.errorCount))}
         </Label>
         {kpi.lastError && (
           <Label size="small" style={{ color: tokens.colorStatusDangerForeground1 }}>
-            Dernière erreur : {kpi.lastError}
+            {(L?.lastError ?? 'Last error: {msg}').replace('{msg}', kpi.lastError)}
           </Label>
         )}
       </div>

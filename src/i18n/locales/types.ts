@@ -315,6 +315,44 @@ export interface Translations {
     subStyle?: string;
   };
 
+  /** Strings for the Lyria 3 preview panel */
+  lyria?: {
+    /** Section header: read-only musical params block */
+    musicalParamsLabel: string;
+    /** Shown when no musical params are set */
+    noParams: string;
+    /** Field label: vocal style input */
+    vocalStyle: string;
+    /** Placeholder for vocal style input */
+    vocalStylePlaceholder: string;
+    /** Field label: negative prompt input */
+    negativePrompt: string;
+    /** Placeholder for negative prompt input */
+    negativePromptPlaceholder: string;
+    /** Field label: injected lyrics textarea (read-only) */
+    injectedLyrics: string;
+    /** Button label while generation is in progress */
+    generating: string;
+    /** Button label when idle */
+    generatePreview: string;
+    /** KPI footer: success count. Use `{n}` placeholder. */
+    successCount: string;
+    /** KPI footer: error count. Use `{n}` placeholder. */
+    errorCount: string;
+    /** KPI footer: last error label. Use `{msg}` placeholder. */
+    lastError: string;
+    /** Button label to escalate preview to full song */
+    escalate: string;
+    /** Tooltip on the Alt+A shortcut badge */
+    shortcutTooltip: string;
+    /** Tooltip on the info icon in the panel header */
+    infoTooltip: string;
+    /** Aria-label for the Play button */
+    play: string;
+    /** Aria-label for the Pause button */
+    pause: string;
+  };
+
   analysis: {
     title: string;
     deepAnalysis: string;
