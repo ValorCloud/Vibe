@@ -2,7 +2,6 @@
  * Client for G2P phonemization microservice
  */
 import { z } from 'zod';
-import { isAbortError } from './withAbort';
 
 export interface PhonemeRequest {
   text: string;
@@ -54,17 +53,60 @@ const PHONEMIZE_REQUEST_TIMEOUT_MS = 15_000;
 
 const isPhonemizeEnabled = () => import.meta.env.VITE_PHONEMIZE_ENABLED !== 'false';
 
+type ComposedAbortSignal = {
+  signal: AbortSignal;
+  cleanup: () => void;
+};
+
+const createTimeoutError = (): DOMException =>
+  new DOMException('signal timed out', 'TimeoutError');
+
+const createAbortError = (): DOMException =>
+  new DOMException('aborted', 'AbortError');
+
 /**
  * Compose the caller's `AbortSignal` with a per-request timeout signal so
  * the fetch is cancelled whichever fires first.
+ *
+ * This intentionally avoids `AbortSignal.any()` because some test/runtime
+ * environments do not provide it consistently even when `AbortSignal.timeout()`
+ * exists. Returning a cleanup hook also prevents the timeout from keeping the
+ * Vitest process alive after a mocked fetch resolves immediately.
  */
 const makePhonemizeSignal = (
   outerSignal: AbortSignal | undefined,
   timeoutMs: number,
-): AbortSignal => {
-  const timeoutSignal = AbortSignal.timeout(timeoutMs);
-  if (!outerSignal) return timeoutSignal;
-  return AbortSignal.any([outerSignal, timeoutSignal]);
+): ComposedAbortSignal => {
+  const controller = new AbortController();
+
+  const abortFromOuter = () => {
+    if (!controller.signal.aborted) {
+      controller.abort(outerSignal?.reason ?? createAbortError());
+    }
+  };
+
+  const timeoutId = setTimeout(() => {
+    if (!controller.signal.aborted) {
+      controller.abort(createTimeoutError());
+    }
+  }, timeoutMs);
+
+  (timeoutId as { unref?: () => void }).unref?.();
+
+  const cleanup = () => {
+    clearTimeout(timeoutId);
+    outerSignal?.removeEventListener('abort', abortFromOuter);
+  };
+
+  if (outerSignal?.aborted) {
+    abortFromOuter();
+    cleanup();
+  } else {
+    outerSignal?.addEventListener('abort', abortFromOuter, { once: true });
+    controller.signal.addEventListener('abort', cleanup, { once: true });
+  }
+
+  return { signal: controller.signal, cleanup };
 };
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -87,12 +129,13 @@ export const phonemizeText = async (
       return null;
     }
 
+    const requestSignal = makePhonemizeSignal(signal, PHONEMIZE_REQUEST_TIMEOUT_MS);
     const response = await fetch(`${apiUrl}/api/phonemize`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, lang } satisfies PhonemeRequest),
-      signal: makePhonemizeSignal(signal, PHONEMIZE_REQUEST_TIMEOUT_MS),
-    });
+      signal: requestSignal.signal,
+    }).finally(requestSignal.cleanup);
 
     if (!response.ok) {
       console.warn(`Phonemization service returned ${response.status}`);
@@ -107,7 +150,7 @@ export const phonemizeText = async (
     }
     return parsed.data;
   } catch (error) {
-    if (signal?.aborted || isAbortError(error)) throw error;
+    if (signal?.aborted) throw error;
     console.warn('Failed to call phonemization service:', error);
     return null;
   }

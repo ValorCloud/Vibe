@@ -12,6 +12,8 @@
  * Security:
  *   - Internal token guard: if LYRIA_INTERNAL_TOKEN is set AND the client
  *     sends X-Lyria-Token, the values must match.
+ *   - Production deployments must have LYRIA_INTERNAL_TOKEN configured;
+ *     otherwise requests are rejected before rate limiting or model calls.
  *   - If no X-Lyria-Token header is sent (VITE_ var not in client bundle),
  *     the request is allowed only when it is same-origin (Origin/Referer
  *     matches the Vercel deployment host). External requests without the
@@ -50,7 +52,13 @@ const MAX_NEGATIVE_PROMPT = 500;
  */
 function isAuthorized(req: VercelRequest): boolean {
   const expected = process.env.LYRIA_INTERNAL_TOKEN;
-  const provided = req.headers['x-lyria-token'] as string | undefined;
+  const rawProvided = req.headers['x-lyria-token'];
+  const provided = Array.isArray(rawProvided) ? rawProvided[0] : rawProvided;
+
+  // Production must fail closed if the server-side internal token is missing.
+  if (process.env.VERCEL_ENV === 'production' && !expected) {
+    return false;
+  }
 
   // Token provided by client → must match (always enforced regardless of env)
   if (provided !== undefined) {
