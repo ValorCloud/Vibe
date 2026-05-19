@@ -49,7 +49,7 @@ import {
 } from '@fluentui/react-icons';
 import { generateAndPoll, getLyriaKPISnapshot } from '../../services/lyriaService';
 import type { LyriaClip, LyriaStyleDescriptor, LyriaTaskStatus } from '../../types/lyria';
-import { useLanguage } from '../../i18n/useLanguage';
+import { useLanguage } from '../../i18n';
 
 interface LyriaPreviewPanelProps {
   lyrics: string;
