@@ -351,6 +351,34 @@ export interface Translations {
     play: string;
     /** Aria-label for the Pause button */
     pause: string;
+    /** Helper text under the Avoid (negative prompt) input */
+    negativePromptHint?: string;
+    /** Short label shown when generate is disabled because lyrics are empty */
+    lyricsRequired?: string;
+    /** Tooltip explaining why generate is disabled when lyrics are empty */
+    lyricsRequiredHint?: string;
+    /** Title of the MessageBar shown when generation fails */
+    errorTitle?: string;
+    /** Friendly description for 401/403 (auth) errors */
+    errorAuth?: string;
+    /** Actionable hint for 401/403 (auth) errors */
+    errorAuthHint?: string;
+    /** Friendly description for 429 (rate limit) errors */
+    errorRateLimit?: string;
+    /** Actionable hint for 429 (rate limit) errors */
+    errorRateLimitHint?: string;
+    /** Friendly description for timeout errors */
+    errorTimeout?: string;
+    /** Actionable hint for timeout errors */
+    errorTimeoutHint?: string;
+    /** Friendly description for 5xx (server) errors */
+    errorServer?: string;
+    /** Actionable hint for 5xx (server) errors */
+    errorServerHint?: string;
+    /** Friendly description for network/offline errors */
+    errorNetwork?: string;
+    /** Actionable hint for network/offline errors */
+    errorNetworkHint?: string;
   };
 
   analysis: {

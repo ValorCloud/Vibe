@@ -42,43 +42,74 @@ const MAX_NEGATIVE_PROMPT = 500;
 
 // ─── Auth guard ───────────────────────────────────────────────────────────────
 /**
- * Two-path auth:
- * 1. If X-Lyria-Token is present → must match LYRIA_INTERNAL_TOKEN exactly.
- * 2. If X-Lyria-Token is absent  → allow only same-origin requests
- *    (Origin or Referer header matches the Vercel deployment host).
- *    This covers the case where VITE_LYRIA_INTERNAL_TOKEN is not set in the
- *    client bundle — the browser always sends Origin/Referer for same-origin
- *    fetches, external scrapers do not.
+ * Two-path auth (defence-in-depth alongside rate limiting):
+ *
+ * 1. If X-Lyria-Token is present on the request → it MUST match
+ *    LYRIA_INTERNAL_TOKEN exactly. A mismatched token is always rejected,
+ *    even if the request is same-origin (prevents stale clients from
+ *    accidentally bypassing rotation).
+ *
+ * 2. If X-Lyria-Token is absent → allow only when the request is same-origin
+ *    relative to the host it was actually sent to (`req.headers.host`).
+ *    Browsers always send Origin (for cross-origin/CORS-relevant fetches)
+ *    or at least Referer for same-origin navigations; external scrapers
+ *    typically send neither, or a foreign Origin.
+ *
+ * Why we compare against `req.headers.host` instead of `process.env.VERCEL_URL`:
+ *   `VERCEL_URL` is the per-deployment hostname (e.g.
+ *   `lyricist-<hash>-<scope>.vercel.app`). The user may visit via the
+ *   production project alias, a custom domain, or any branch alias — all
+ *   of which produce a different Host header but legitimately point at
+ *   the same deployment. Comparing against `req.headers.host` accepts
+ *   every legitimate alias automatically while still rejecting requests
+ *   whose Origin/Referer points to a foreign domain.
+ *
+ * Rate limiting (per-IP, applied after this guard) bounds abuse from any
+ * caller that does manage to pass the same-origin check.
  */
 function isAuthorized(req: VercelRequest): boolean {
   const expected = process.env.LYRIA_INTERNAL_TOKEN;
   const rawProvided = req.headers['x-lyria-token'];
   const provided = Array.isArray(rawProvided) ? rawProvided[0] : rawProvided;
 
-  // Production must fail closed if the server-side internal token is missing.
-  if (process.env.VERCEL_ENV === 'production' && !expected) {
-    return false;
-  }
-
-  // Token provided by client → must match (always enforced regardless of env)
+  // Token provided by client → must match exactly. Never silently downgrade
+  // to same-origin: a stale or wrong token is a hard error.
   if (provided !== undefined) {
     return !!expected && provided === expected;
   }
 
-  // No token provided → fall back to same-origin check
-  const deploymentUrl = process.env.VERCEL_URL ?? process.env.VERCEL_BRANCH_URL ?? '';
+  // No token provided → same-origin check against the actual request host.
+  const rawHost = req.headers['host'];
+  const host = (Array.isArray(rawHost) ? rawHost[0] : rawHost) ?? '';
+
+  // Local dev (no Host header at all) → allow.
+  if (!host) return true;
+
   const origin = (req.headers['origin'] ?? '') as string;
   const referer = (req.headers['referer'] ?? '') as string;
 
-  // In local dev (no VERCEL_URL), always allow
-  if (!deploymentUrl) return true;
+  // If neither Origin nor Referer is set (typical for curl / server-to-server
+  // calls without credentials), reject — only browser navigation should reach
+  // this branch unauthenticated.
+  if (!origin && !referer) return false;
 
-  const host = deploymentUrl.replace(/^https?:\/\//, '');
-  const isSameOrigin =
-    origin.includes(host) ||
-    referer.includes(host);
+  // Normalise: strip scheme, port-preserve, compare host-only.
+  const normalize = (raw: string): string => {
+    try {
+      return new URL(raw).host.toLowerCase();
+    } catch {
+      return '';
+    }
+  };
 
-  return isSameOrigin;
+  const expectedHost = host.toLowerCase();
+  const originHost = origin ? normalize(origin) : '';
+  const refererHost = referer ? normalize(referer) : '';
+
+  return (
+    (!!originHost && originHost === expectedHost) ||
+    (!!refererHost && refererHost === expectedHost)
+  );
 }
 
 // ─── Input validation ─────────────────────────────────────────────────────────
