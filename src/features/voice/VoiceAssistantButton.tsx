@@ -1,5 +1,5 @@
 import React from 'react';
-import { PersonVoice } from '../../components/ui/icons';
+import { MicRegular } from '@fluentui/react-icons';
 
 export type VoiceAssistantVisualState = 'idle' | 'listening' | 'processing' | 'speaking';
 
@@ -30,7 +30,7 @@ export function VoiceAssistantButton({ state, disabled = false, onInvoke }: Voic
         backgroundColor: active ? 'color-mix(in srgb, var(--accent-color) 12%, transparent)' : undefined,
       }}
     >
-      <PersonVoice className={`w-4 h-4 ${state === 'listening' ? 'animate-pulse' : ''}`} />
+      <MicRegular className={`w-4 h-4 ${state === 'listening' ? 'animate-pulse' : ''}`} />
     </button>
   );
 }
