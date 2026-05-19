@@ -75,12 +75,6 @@ export function MusicalTab({
           generateMusicalPrompt={generateMusicalPrompt}
         />
 
-        {/*
-          LyriaPreviewPanel consomme les paramètres individuels du SongContext.
-          initialMusicalPrompt n'est PAS passé ici : ce prop court-circuite
-          genre/tempo/instrumentation et fige le style de la 1ère génération.
-          Le MusicalPromptBuilder gère son propre prompt manuel indépendamment.
-        */}
         <LyriaPreviewPanel
           lyrics={lyricsText}
           songTitle={title ?? ''}
@@ -90,6 +84,7 @@ export function MusicalTab({
           initialInstrumentation={instrumentation}
           initialRhythm={rhythm}
           initialNarrative={narrative}
+          onPromptReady={setMusicalPrompt}
           onFullSong={(clip) => setApprovedClip(clip)}
         />
 

@@ -45,8 +45,6 @@ import {
 } from '@fluentui/react-components';
 import {
   MusicNote220Regular,
-  Play20Filled,
-  Pause20Filled,
   SparkleRegular,
   CheckmarkCircle20Filled,
   Info20Regular,
@@ -69,6 +67,8 @@ function styleDescriptorToString(s: LyriaStyleDescriptor): string {
   if (s.era) parts.push(s.era); // reused for rhythm+narrative combined
   return parts.join(', ');
 }
+
+type LyriaPromptField = 'genre' | 'mood' | 'tempo' | 'instrumentation' | 'rhythm' | 'narrative';
 
 interface LyriaPreviewPanelProps {
   lyrics: string;
@@ -103,12 +103,11 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   const { t } = useLanguage();
   const L = t.lyria;
 
-  const audioRef = useRef<HTMLAudioElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [taskStatus, setTaskStatus] = useState<LyriaTaskStatus>({ phase: 'idle' });
   const [kpi, setKpi] = useState(getLyriaKPISnapshot());
+  const [excludedPromptFields, setExcludedPromptFields] = useState<Set<LyriaPromptField>>(() => new Set());
 
   // vocalStyle: Lyria-specific, kept local until relocated to its own section
   const [vocalStyle] = useState('female lead, West African, smooth');
@@ -130,12 +129,54 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     };
   }, []);
 
+  const isPromptFieldIncluded = useCallback(
+    (field: LyriaPromptField) => !excludedPromptFields.has(field),
+    [excludedPromptFields],
+  );
+
+  const removePromptField = useCallback((field: LyriaPromptField) => {
+    setExcludedPromptFields(prev => {
+      const next = new Set(prev);
+      next.add(field);
+      return next;
+    });
+  }, []);
+
+  const { styleValue, styleString } = useMemo(() => {
+    const rhythmNarrativeParts: string[] = [];
+    if (isPromptFieldIncluded('rhythm') && initialRhythm) rhythmNarrativeParts.push(initialRhythm);
+    if (isPromptFieldIncluded('narrative') && initialNarrative) rhythmNarrativeParts.push(initialNarrative);
+    const eraField = rhythmNarrativeParts.join(' | ');
+
+    const descriptor: LyriaStyleDescriptor = {
+      ...(isPromptFieldIncluded('genre') && initialGenre ? { genre: initialGenre } : {}),
+      ...(isPromptFieldIncluded('mood') && initialMood ? { mood: initialMood } : {}),
+      ...(isPromptFieldIncluded('tempo') && initialTempo > 0 ? { tempo: initialTempo } : {}),
+      ...(isPromptFieldIncluded('instrumentation') && initialInstrumentation ? { instruments: initialInstrumentation } : {}),
+      ...(vocalStyle ? { vocalStyle } : {}),
+      ...(eraField ? { era: eraField } : {}),
+    };
+
+    return {
+      styleValue: descriptor,
+      styleString: styleDescriptorToString(descriptor),
+    };
+  }, [
+    isPromptFieldIncluded,
+    initialGenre,
+    initialMood,
+    initialTempo,
+    initialInstrumentation,
+    initialRhythm,
+    initialNarrative,
+    vocalStyle,
+  ]);
+
   useEffect(() => {
-    if (doneClip) {
-      audioRef.current?.pause();
-      setIsPlaying(false);
+    if (hasLyrics && styleString) {
+      onPromptReady?.(styleString);
     }
-  }, [doneClip]);
+  }, [hasLyrics, onPromptReady, styleString]);
 
   const handleGenerate = useCallback(async (): Promise<void> => {
     if (isGenerating || !lyrics.trim()) return;
@@ -145,34 +186,6 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     const { signal } = abortRef.current;
 
     setTaskStatus({ phase: 'generating' });
-
-    // Build era field from rhythm + narrative (both are free-text descriptors)
-    const rhythmNarrativeParts: string[] = [];
-    if (initialRhythm) rhythmNarrativeParts.push(initialRhythm);
-    if (initialNarrative) rhythmNarrativeParts.push(initialNarrative);
-    const eraField = rhythmNarrativeParts.join(' | ');
-
-    // If a full structured musical prompt already exists from MusicalPromptBuilder,
-    // use it directly as the style string (richer, already labelled).
-    // Otherwise fall back to the LyriaStyleDescriptor object.
-    let styleValue: string | LyriaStyleDescriptor;
-    let styleString: string;
-
-    if (initialMusicalPrompt.trim()) {
-      styleValue = initialMusicalPrompt.trim();
-      styleString = styleValue;
-    } else {
-      const descriptor: LyriaStyleDescriptor = {
-        genre: initialGenre,
-        ...(initialMood ? { mood: initialMood } : {}),
-        ...(initialTempo > 0 ? { tempo: initialTempo } : {}),
-        ...(initialInstrumentation ? { instruments: initialInstrumentation } : {}),
-        ...(vocalStyle ? { vocalStyle } : {}),
-        ...(eraField ? { era: eraField } : {}),
-      };
-      styleValue = descriptor;
-      styleString = styleDescriptorToString(descriptor);
-    }
 
     // Push style prompt (no lyrics) to MusicalPromptBuilder container
     onPromptReady?.(styleString);
@@ -205,8 +218,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     }
   }, [
     isGenerating, lyrics, initialGenre, initialMood, initialTempo,
-    initialInstrumentation, initialRhythm, initialNarrative, initialMusicalPrompt,
-    vocalStyle, negativePrompt, songTitle, onPromptReady,
+    styleValue, styleString, negativePrompt, songTitle, onPromptReady,
   ]);
 
   useEffect(() => {
@@ -220,14 +232,49 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [handleGenerate]);
 
-  function togglePlayback(): void {
-    if (!audioRef.current || !doneClip?.audioUrl) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-    } else {
-      void audioRef.current.play().catch(() => setIsPlaying(false));
-    }
-  }
+  const renderPromptBadge = (
+    field: LyriaPromptField,
+    ariaLabel: string,
+    content: React.ReactNode,
+    color: 'brand' | 'informative' | 'subtle',
+  ) => {
+    if (!isPromptFieldIncluded(field)) return null;
+    return (
+      <Badge appearance="tint" color={color} size="small">
+        <span tabIndex={0} aria-label={ariaLabel}>{content}</span>
+        <button
+          type="button"
+          aria-label={`Remove ${field} from Lyria prompt`}
+          onClick={(event) => {
+            event.stopPropagation();
+            removePromptField(field);
+          }}
+          style={{
+            marginLeft: 4,
+            border: 0,
+            padding: 0,
+            background: 'transparent',
+            color: 'inherit',
+            cursor: 'pointer',
+            fontSize: 12,
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+      </Badge>
+    );
+  };
+
+  const hasVisiblePromptParams = Boolean(
+    (initialGenre && isPromptFieldIncluded('genre')) ||
+    (initialMood && isPromptFieldIncluded('mood')) ||
+    (initialTempo > 0 && isPromptFieldIncluded('tempo')) ||
+    (initialInstrumentation && isPromptFieldIncluded('instrumentation')) ||
+    (initialRhythm && isPromptFieldIncluded('rhythm')) ||
+    (initialNarrative && isPromptFieldIncluded('narrative')) ||
+    initialMusicalPrompt,
+  );
 
   return (
     <Card
@@ -315,42 +362,18 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
           </Text>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS }}>
-          {initialGenre && (
-            <Badge appearance="tint" color="brand" size="small">
-              <span tabIndex={0} aria-label={`Genre: ${initialGenre}`}>🎵 {initialGenre}</span>
-            </Badge>
-          )}
-          {initialMood && (
-            <Badge appearance="tint" color="informative" size="small">
-              <span tabIndex={0} aria-label={`Mood: ${initialMood}`}>🌈 {initialMood}</span>
-            </Badge>
-          )}
-          {initialTempo > 0 && (
-            <Badge appearance="tint" color="subtle" size="small">
-              <span tabIndex={0} aria-label={`Tempo: ${initialTempo} BPM`}>♩ {initialTempo} BPM</span>
-            </Badge>
-          )}
-          {initialInstrumentation && (
-            <Badge appearance="tint" color="subtle" size="small">
-              <span tabIndex={0} aria-label={`Instrumentation: ${initialInstrumentation}`}>🎸 {initialInstrumentation}</span>
-            </Badge>
-          )}
-          {initialRhythm && (
-            <Badge appearance="tint" color="subtle" size="small">
-              <span tabIndex={0} aria-label={`Rhythm: ${initialRhythm}`}>🥁 {initialRhythm.slice(0, 60)}{initialRhythm.length > 60 ? '…' : ''}</span>
-            </Badge>
-          )}
-          {initialNarrative && (
-            <Badge appearance="tint" color="subtle" size="small">
-              <span tabIndex={0} aria-label={`Narrative: ${initialNarrative}`}>📖 {initialNarrative.slice(0, 60)}{initialNarrative.length > 60 ? '…' : ''}</span>
-            </Badge>
-          )}
+          {initialGenre && renderPromptBadge('genre', `Genre: ${initialGenre}`, <>🎵 {initialGenre}</>, 'brand')}
+          {initialMood && renderPromptBadge('mood', `Mood: ${initialMood}`, <>🌈 {initialMood}</>, 'informative')}
+          {initialTempo > 0 && renderPromptBadge('tempo', `Tempo: ${initialTempo} BPM`, <>♩ {initialTempo} BPM</>, 'subtle')}
+          {initialInstrumentation && renderPromptBadge('instrumentation', `Instrumentation: ${initialInstrumentation}`, <>🎸 {initialInstrumentation}</>, 'subtle')}
+          {initialRhythm && renderPromptBadge('rhythm', `Rhythm: ${initialRhythm}`, <>🥁 {initialRhythm.slice(0, 60)}{initialRhythm.length > 60 ? '…' : ''}</>, 'subtle')}
+          {initialNarrative && renderPromptBadge('narrative', `Narrative: ${initialNarrative}`, <>📖 {initialNarrative.slice(0, 60)}{initialNarrative.length > 60 ? '…' : ''}</>, 'subtle')}
           {initialMusicalPrompt && (
             <Badge appearance="tint" color="success" size="small">
               <span tabIndex={0} aria-label="Full musical prompt active">✨ Full prompt active</span>
             </Badge>
           )}
-          {!initialGenre && !initialMood && !initialTempo && !initialInstrumentation && !initialRhythm && !initialNarrative && !initialMusicalPrompt && (
+          {!hasVisiblePromptParams && (
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
               {L?.noParams ?? 'No params set — configure them in the musical params panel above.'}
             </Text>
@@ -482,24 +505,12 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
           </div>
 
           {doneClip.audioUrl && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-              <Button
-                appearance="subtle"
-                icon={isPlaying ? <Pause20Filled /> : <Play20Filled />}
-                onClick={togglePlayback}
-                aria-label={isPlaying ? (L?.pause ?? 'Pause') : (L?.play ?? 'Play')}
-              />
-              <audio
-                ref={audioRef}
-                src={doneClip.audioUrl}
-                onPlay={() => setIsPlaying(true)}
-                onPause={() => setIsPlaying(false)}
-                onEnded={() => setIsPlaying(false)}
-                aria-label={`Preview audio — ${doneClip.title}`}
-                style={{ flex: 1 }}
-                controls
-              />
-            </div>
+            <audio
+              src={doneClip.audioUrl}
+              aria-label={`Preview audio — ${doneClip.title}`}
+              style={{ width: '100%' }}
+              controls
+            />
           )}
 
           {onFullSong && (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MusicalTab } from './MusicalTab';
 
@@ -141,7 +141,7 @@ describe('MusicalTab', () => {
     mockComposerContext.isAnalyzingLyrics = false;
   });
 
-  it('reads musical data and actions from the song and composer contexts', () => {
+  it('reads musical data and actions from the song and composer contexts', async () => {
     mockSongContext.song = [{
       id: 'verse-1',
       name: 'Verse',
@@ -174,5 +174,8 @@ describe('MusicalTab', () => {
     expect(screen.getByTestId('musical-prompt-builder').textContent).toContain('"isAnalyzingLyrics":true');
     expect(screen.getByTestId('musical-prompt-builder').textContent).toContain('"canGenerate":true');
     expect(screen.getByTestId('musical-prompt-builder').textContent).toContain('"generateMusicalPrompt":true');
+    await waitFor(() => {
+      expect(mockSongContext.setMusicalPrompt).toHaveBeenCalledWith(expect.stringContaining('instruments: Synth bass'));
+    });
   });
 });
