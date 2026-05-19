@@ -121,17 +121,19 @@ export default async function handler(
   const title = params.title ?? (params.mode === 'full' ? 'Lyria Full Song' : 'Lyria Preview');
 
   try {
+    // Lyria expects a flat string prompt, not the chat-style {role, parts} format.
     const response = await ai.models.generateContent({
       model: modelId,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      contents: prompt,
       ...(params.seed != null ? { generationConfig: { seed: params.seed } } : {}),
     });
 
-    const part = response.candidates?.[0]?.content?.parts?.[0];
+    // Scan ALL parts — Lyria may return a text part before the audio part.
+    const parts: unknown[] = response.candidates?.[0]?.content?.parts ?? [];
 
-    // inlineData → base64 audio (both clip and full-song may return this)
-    if (hasInlineData(part)) {
-      const audioDataUri = `data:${part.inlineData.mimeType ?? 'audio/wav'};base64,${part.inlineData.data}`;
+    const inlinePart = parts.find(hasInlineData);
+    if (inlinePart) {
+      const audioDataUri = `data:${inlinePart.inlineData.mimeType ?? 'audio/wav'};base64,${inlinePart.inlineData.data}`;
       const clip: LyriaClip = {
         id: clipId,
         title,
@@ -148,13 +150,13 @@ export default async function handler(
       return;
     }
 
-    // fileData → hosted URI (treat as complete; client can play it directly)
-    if (hasFileData(part)) {
+    const filePart = parts.find(hasFileData);
+    if (filePart) {
       const clip: LyriaClip = {
         id: clipId,
         title,
         status: 'complete',
-        audioUrl: part.fileData.fileUri,
+        audioUrl: filePart.fileData.fileUri,
         synthIdWatermarked: true,
         durationSeconds: null,
         model: modelId,
