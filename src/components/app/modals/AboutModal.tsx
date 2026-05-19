@@ -7,12 +7,12 @@ import { Button } from '../../ui/Button';
 import { AiAssistantPanel } from '../AiAssistantPanel';
 import bannerImage from '../../../../docs/Lyricist_Splash_Medium.png';
 
-const SPLASH_DELAY_MS = 5000;
+const SPLASH_DELAY_MS = 3000;
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  /** Quand true, ferme automatiquement après 5 secondes. */
+  /** Quand true, ferme automatiquement après 3 secondes. */
   isSplashScreen?: boolean;
 }
 
@@ -25,7 +25,7 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   // Stable ref so the auto-close effect never needs onClose in its dep array,
-  // preventing the 5 s timer from restarting when the parent re-renders.
+  // preventing the 3 s timer from restarting when the parent re-renders.
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 

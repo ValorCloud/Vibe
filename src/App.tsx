@@ -271,7 +271,7 @@ function AppInner() {
 
     const safetyTimer = setTimeout(() => {
       if (!cancelled) setInitialSession(null);
-    }, 5000);
+    }, 3000);
 
     loadSession()
       .then(data => { if (!cancelled) setInitialSession(data); })
