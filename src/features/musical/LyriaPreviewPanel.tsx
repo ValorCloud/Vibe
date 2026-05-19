@@ -25,7 +25,7 @@
  *   vocalStyle is kept in local state for generation until relocated to its own section.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button,
   Card,
@@ -37,6 +37,9 @@ import {
   Badge,
   Divider,
   Input,
+  MessageBar,
+  MessageBarBody,
+  MessageBarTitle,
   Tooltip,
   tokens,
 } from '@fluentui/react-components';
@@ -46,12 +49,12 @@ import {
   Pause20Filled,
   SparkleRegular,
   CheckmarkCircle20Filled,
-  DismissCircle20Regular,
   Info20Regular,
   Keyboard20Regular,
   LockClosed20Regular,
 } from '@fluentui/react-icons';
 import { generateAndPoll, getLyriaKPISnapshot } from '../../services/lyriaService';
+import { parseLyriaError, type ParsedLyriaError } from '../../services/lyriaError';
 import type { LyriaClip, LyriaStyleDescriptor, LyriaTaskStatus } from '../../types/lyria';
 import { useLanguage } from '../../i18n';
 
@@ -113,6 +116,12 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
 
   const isGenerating = taskStatus.phase === 'generating' || taskStatus.phase === 'polling';
   const doneClip = taskStatus.phase === 'done' ? taskStatus.clip : null;
+  const hasLyrics = lyrics.trim().length > 0;
+
+  const parsedError = useMemo<ParsedLyriaError | null>(
+    () => (taskStatus.phase === 'error' ? parseLyriaError(new Error(taskStatus.message)) : null),
+    [taskStatus],
+  );
 
   useEffect(() => {
     return () => {
@@ -350,7 +359,10 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
       </div>
 
       {/* Avoid / Negative prompt — only Lyria-specific editable field */}
-      <Field label={L?.negativePrompt ?? 'Avoid (optional)'}>
+      <Field
+        label={L?.negativePrompt ?? 'Avoid (optional)'}
+        {...(L?.negativePromptHint ? { hint: L.negativePromptHint } : {})}
+      >
         <Input
           value={negativePrompt}
           onChange={(_, d) => setNegativePrompt(d.value)}
@@ -358,31 +370,80 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         />
       </Field>
 
-      {/* Generate button */}
-      <Button
-        appearance="primary"
-        icon={isGenerating ? <Spinner size="tiny" /> : <SparkleRegular />}
-        disabled={isGenerating || !lyrics.trim()}
-        onClick={() => void handleGenerate()}
-        style={{ alignSelf: 'flex-start' }}
+      {/* Generate button — Tooltip surfaces the disabled reason for accessibility */}
+      <Tooltip
+        content={
+          !hasLyrics
+            ? (L?.lyricsRequiredHint ?? 'Lyria needs at least one line of lyrics to generate audio.')
+            : (L?.shortcutTooltip ?? 'Alt+A to generate quickly')
+        }
+        relationship="label"
       >
-        {isGenerating ? (L?.generating ?? 'Generating…') : (L?.generatePreview ?? "Generate preview 30''")}
-      </Button>
-
-      {/* Status / result */}
-      {taskStatus.phase === 'error' && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: tokens.spacingHorizontalS,
-            color: tokens.colorStatusDangerForeground1,
-          }}
+        <Button
+          appearance="primary"
+          icon={isGenerating ? <Spinner size="tiny" /> : <SparkleRegular />}
+          disabled={isGenerating || !hasLyrics}
+          onClick={() => void handleGenerate()}
+          style={{ alignSelf: 'flex-start' }}
         >
-          <DismissCircle20Regular />
-          <Text size={200}>{taskStatus.message}</Text>
-        </div>
+          {isGenerating ? (L?.generating ?? 'Generating…') : (L?.generatePreview ?? "Generate preview 30''")}
+        </Button>
+      </Tooltip>
+
+      {!hasLyrics && !isGenerating && (
+        <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+          {L?.lyricsRequired ?? 'Write some lyrics in the editor first.'}
+        </Text>
       )}
+
+      {/* Status / result — Fluent MessageBar with actionable hint per error class */}
+      {parsedError && (() => {
+        const intent =
+          parsedError.kind === 'rateLimit' ? 'warning' :
+          parsedError.kind === 'timeout' ? 'warning' :
+          'error';
+        const heading =
+          parsedError.kind === 'auth' ? (L?.errorAuth ?? 'Unauthorized request.') :
+          parsedError.kind === 'rateLimit' ? (L?.errorRateLimit ?? 'Rate limited.') :
+          parsedError.kind === 'timeout' ? (L?.errorTimeout ?? 'Lyria took too long to respond.') :
+          parsedError.kind === 'server' ? (L?.errorServer ?? 'Lyria backend error.') :
+          parsedError.kind === 'network' ? (L?.errorNetwork ?? 'Could not reach the Lyria proxy.') :
+          (L?.errorTitle ?? 'Generation failed');
+        const hint =
+          parsedError.kind === 'auth' ? (L?.errorAuthHint ?? '') :
+          parsedError.kind === 'rateLimit' ? (L?.errorRateLimitHint ?? '') :
+          parsedError.kind === 'timeout' ? (L?.errorTimeoutHint ?? '') :
+          parsedError.kind === 'server' ? (L?.errorServerHint ?? '') :
+          parsedError.kind === 'network' ? (L?.errorNetworkHint ?? '') :
+          '';
+        return (
+          <MessageBar intent={intent} layout="multiline" politeness="assertive">
+            <MessageBarBody>
+              <MessageBarTitle>{L?.errorTitle ?? 'Generation failed'}</MessageBarTitle>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXXS }}>
+                <Text size={200}>{heading}</Text>
+                {hint && (
+                  <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
+                    {hint}
+                  </Text>
+                )}
+                <details style={{ marginTop: tokens.spacingVerticalXXS }}>
+                  <summary style={{ cursor: 'pointer', color: tokens.colorNeutralForeground3, fontSize: 12 }}>
+                    Details
+                  </summary>
+                  <Text
+                    size={100}
+                    font="monospace"
+                    style={{ color: tokens.colorNeutralForeground3, wordBreak: 'break-all' }}
+                  >
+                    {parsedError.raw}
+                  </Text>
+                </details>
+              </div>
+            </MessageBarBody>
+          </MessageBar>
+        );
+      })()}
 
       {doneClip && (
         <Card

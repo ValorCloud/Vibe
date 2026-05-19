@@ -237,16 +237,19 @@
     "vibeBoardDescription": "Select your genre to automatically set BPM and instruments",
     "subStyle": "SUB-STYLE"
   },
-  "lyria": {
+    "lyria": {
     "musicalParamsLabel": "MUSICAL PARAMS (FROM MUSICALPARAMSPANEL)",
     "noParams": "No params set — configure them in the musical params panel above.",
     "vocalStyle": "Vocal style",
     "vocalStylePlaceholder": "e.g. female lead, smooth, West African",
     "negativePrompt": "Avoid (optional)",
+    "negativePromptHint": "Genres, instruments or moods Lyria should keep out of the mix.",
     "negativePromptPlaceholder": "e.g. heavy metal, distorted guitar, screaming",
     "injectedLyrics": "Injected lyrics",
     "generating": "Generating…",
     "generatePreview": "Generate preview 30''",
+    "lyricsRequired": "Write some lyrics in the editor first.",
+    "lyricsRequiredHint": "Lyria needs at least one line of lyrics to generate audio.",
     "play": "Play",
     "pause": "Pause",
     "escalate": "Escalate to full song (Lyria 3 Pro)",
@@ -254,7 +257,18 @@
     "infoTooltip": "Generates a ~30s audio clip based on your lyrics and musical style. Engine: Lyria 3 Clip via Gemini API. SynthID watermarked audio.",
     "successCount": "Success: {n}",
     "errorCount": "Errors: {n}",
-    "lastError": "Last error: {msg}"
+    "lastError": "Last error: {msg}",
+    "errorTitle": "Generation failed",
+    "errorAuth": "The Lyria proxy refused this request (401).",
+    "errorAuthHint": "If you are on a custom domain, redeploy after this fix or set LYRIA_INTERNAL_TOKEN on the server and VITE_LYRIA_INTERNAL_TOKEN on the client.",
+    "errorRateLimit": "Too many requests — Lyria temporarily rate-limited this device.",
+    "errorRateLimitHint": "Wait a moment, then try again. Lower frequency or share a single preview across edits.",
+    "errorTimeout": "Lyria took too long to respond.",
+    "errorTimeoutHint": "Retry in a moment. If it persists, the upstream model may be overloaded.",
+    "errorServer": "Lyria backend error.",
+    "errorServerHint": "Check the Vercel function logs for /api/lyria/generate. The upstream model may be unavailable.",
+    "errorNetwork": "Could not reach the Lyria proxy.",
+    "errorNetworkHint": "Check your connection and try again."
   },
   "analysis": {
     "title": "Song analysis report",
