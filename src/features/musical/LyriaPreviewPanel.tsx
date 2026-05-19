@@ -3,19 +3,24 @@
  * Fluent 2 panel: generate a 30-second Lyria 3 Clip preview from current lyrics + style.
  *
  * Props:
- *   lyrics              — verbatim lyrics string from SongContext (passed silently to generation, not displayed)
- *   songTitle           — pre-fills the title field
- *   initialGenre        — genre from SongContext / MusicalParamsPanel
- *   initialMood         — mood from SongContext
- *   initialTempo        — tempo (number, BPM) from SongContext
+ *   lyrics                 — verbatim lyrics string from SongContext (passed silently to generation, not displayed)
+ *   songTitle              — pre-fills the title field
+ *   initialGenre           — genre from SongContext / MusicalParamsPanel
+ *   initialMood            — mood from SongContext
+ *   initialTempo           — tempo (number, BPM) from SongContext
  *   initialInstrumentation — instruments string from SongContext
- *   onFullSong          — callback to escalate to full-song generation (LyriaFullSongPanel)
+ *   initialRhythm          — rhythm & groove description from SongContext
+ *   initialNarrative       — narrative/mood description from SongContext
+ *   initialMusicalPrompt   — full structured musical prompt from MusicalPromptBuilder (used as style override when set)
+ *   onFullSong             — callback to escalate to full-song generation (LyriaFullSongPanel)
+ *   onPromptReady          — called with the Lyria style string (no lyrics) when generation is triggered
+ *                            → parent writes it into MusicalPromptBuilder's container
  *
  * Keyboard shortcuts (global, active when panel is mounted):
  *   Alt+A  — trigger generate (if not already generating)
  *
  * Design contract:
- *   lyrics / genre / mood / tempo / instrumentation all come from SongContext — not displayed here.
+ *   lyrics / genre / mood / tempo / instrumentation / rhythm / narrative all come from SongContext — not displayed here.
  *   negativePrompt ("Avoid") is the only user-editable Lyria-specific field in this panel.
  *   vocalStyle is kept in local state for generation until relocated to its own section.
  */
@@ -48,7 +53,20 @@ import {
 } from '@fluentui/react-icons';
 import { generateAndPoll, getLyriaKPISnapshot } from '../../services/lyriaService';
 import type { LyriaClip, LyriaStyleDescriptor, LyriaTaskStatus } from '../../types/lyria';
+import { buildPrompt, sanitizePromptText } from '../../../api/lyria/generate';
 import { useLanguage } from '../../i18n';
+
+// Re-implement styleDescriptorToString client-side (mirrors api/lyria/generate.ts)
+function styleDescriptorToString(s: LyriaStyleDescriptor): string {
+  const parts: string[] = [];
+  if (s.genre) parts.push(s.genre);
+  if (s.mood) parts.push(s.mood);
+  if (s.tempo) parts.push(`${s.tempo} bpm`);
+  if (s.instruments) parts.push(`instruments: ${s.instruments}`);
+  if (s.vocalStyle) parts.push(`vocals: ${s.vocalStyle}`);
+  if (s.era) parts.push(s.era); // reused for rhythm+narrative combined
+  return parts.join(', ');
+}
 
 interface LyriaPreviewPanelProps {
   lyrics: string;
@@ -58,7 +76,13 @@ interface LyriaPreviewPanelProps {
   initialMood?: string;
   initialTempo?: number;
   initialInstrumentation?: string;
+  initialRhythm?: string;
+  initialNarrative?: string;
+  /** Full structured musical prompt from MusicalPromptBuilder — used as style if set */
+  initialMusicalPrompt?: string;
   onFullSong?: (clip: LyriaClip) => void;
+  /** Called with the Lyria style string (no lyrics) right before generation starts */
+  onPromptReady?: (stylePrompt: string) => void;
 }
 
 export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
@@ -68,7 +92,11 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   initialMood = '',
   initialTempo = 96,
   initialInstrumentation = '',
+  initialRhythm = '',
+  initialNarrative = '',
+  initialMusicalPrompt = '',
   onFullSong,
+  onPromptReady,
 }) => {
   const { t } = useLanguage();
   const L = t.lyria;
@@ -110,17 +138,40 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
 
     setTaskStatus({ phase: 'generating' });
 
-    const style: LyriaStyleDescriptor = {
-      genre: initialGenre,
-      ...(initialMood ? { mood: initialMood } : {}),
-      ...(initialTempo > 0 ? { tempo: initialTempo } : {}),
-      ...(initialInstrumentation ? { instruments: initialInstrumentation } : {}),
-      ...(vocalStyle ? { vocalStyle } : {}),
-    };
+    // Build era field from rhythm + narrative (both are free-text descriptors)
+    const rhythmNarrativeParts: string[] = [];
+    if (initialRhythm) rhythmNarrativeParts.push(initialRhythm);
+    if (initialNarrative) rhythmNarrativeParts.push(initialNarrative);
+    const eraField = rhythmNarrativeParts.join(' | ');
+
+    // If a full structured musical prompt already exists from MusicalPromptBuilder,
+    // use it directly as the style string (richer, already labelled).
+    // Otherwise fall back to the LyriaStyleDescriptor object.
+    let styleValue: string | LyriaStyleDescriptor;
+    let styleString: string;
+
+    if (initialMusicalPrompt.trim()) {
+      styleValue = initialMusicalPrompt.trim();
+      styleString = styleValue;
+    } else {
+      const descriptor: LyriaStyleDescriptor = {
+        genre: initialGenre,
+        ...(initialMood ? { mood: initialMood } : {}),
+        ...(initialTempo > 0 ? { tempo: initialTempo } : {}),
+        ...(initialInstrumentation ? { instruments: initialInstrumentation } : {}),
+        ...(vocalStyle ? { vocalStyle } : {}),
+        ...(eraField ? { era: eraField } : {}),
+      };
+      styleValue = descriptor;
+      styleString = styleDescriptorToString(descriptor);
+    }
+
+    // Push style prompt (no lyrics) to MusicalPromptBuilder container
+    onPromptReady?.(styleString);
 
     const baseParams = {
       lyrics,
-      style,
+      style: styleValue,
       title: songTitle,
       mode: 'clip' as const,
     };
@@ -144,7 +195,11 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         setKpi(getLyriaKPISnapshot());
       }
     }
-  }, [isGenerating, lyrics, initialGenre, initialMood, initialTempo, initialInstrumentation, vocalStyle, negativePrompt, songTitle]);
+  }, [
+    isGenerating, lyrics, initialGenre, initialMood, initialTempo,
+    initialInstrumentation, initialRhythm, initialNarrative, initialMusicalPrompt,
+    vocalStyle, negativePrompt, songTitle, onPromptReady,
+  ]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -192,6 +247,9 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS }}>
             <Badge appearance="tint" color="success" size="small">
               Google DeepMind
+            </Badge>
+            <Badge appearance="tint" color="warning" size="small">
+              AI/A7
             </Badge>
             <Tooltip content={L?.shortcutTooltip ?? 'Alt+A to generate quickly'} relationship="label">
               <Badge
@@ -269,7 +327,22 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
               <span tabIndex={0} aria-label={`Instrumentation: ${initialInstrumentation}`}>🎸 {initialInstrumentation}</span>
             </Badge>
           )}
-          {!initialGenre && !initialMood && !initialTempo && !initialInstrumentation && (
+          {initialRhythm && (
+            <Badge appearance="tint" color="subtle" size="small">
+              <span tabIndex={0} aria-label={`Rhythm: ${initialRhythm}`}>🥁 {initialRhythm.slice(0, 60)}{initialRhythm.length > 60 ? '…' : ''}</span>
+            </Badge>
+          )}
+          {initialNarrative && (
+            <Badge appearance="tint" color="subtle" size="small">
+              <span tabIndex={0} aria-label={`Narrative: ${initialNarrative}`}>📖 {initialNarrative.slice(0, 60)}{initialNarrative.length > 60 ? '…' : ''}</span>
+            </Badge>
+          )}
+          {initialMusicalPrompt && (
+            <Badge appearance="tint" color="success" size="small">
+              <span tabIndex={0} aria-label="Full musical prompt active">✨ Full prompt active</span>
+            </Badge>
+          )}
+          {!initialGenre && !initialMood && !initialTempo && !initialInstrumentation && !initialRhythm && !initialNarrative && !initialMusicalPrompt && (
             <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
               {L?.noParams ?? 'No params set — configure them in the musical params panel above.'}
             </Text>
