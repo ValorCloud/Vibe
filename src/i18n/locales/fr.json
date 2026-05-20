@@ -520,7 +520,7 @@
     "openLeftPanel": "Ouvrir le panneau gauche",
     "closeLeftPanel": "Fermer le panneau gauche",
     "detectLanguage": "Détecter la langue des paroles",
-    "redetectLanguage": "Redétecter la langue des paroles",
+    "redetectLanguage": "Détecté : {langs} — cliquer pour re-détecter",
     "moodPresets": "Choisir une ambiance prédéfinie pour votre chanson",
     "rhymeScheme": "Sélectionner le schéma de rime par défaut pour toutes les sections",
     "targetSyllables": "Définir le nombre cible de syllabes par ligne",
@@ -534,7 +534,11 @@
     "sponsor": "Soutenir le développeur",
     "sendToLyriaConfirm": "Ouverture de Musical…",
     "sendToLyria": "Ouvrir l'onglet Musical pour générer un aperçu avec Lyria",
-    "quantizeLineDone": "Ligne quantifiée"
+    "quantizeLineDone": "Ligne quantifiée",
+    "voiceAssistant": "Assistant vocal",
+    "voiceListening": "Écoute en cours…",
+    "voiceProcessing": "Traitement de votre demande…",
+    "voiceSpeaking": "Synthèse vocale…"
   },
   "sections": {
     "intro": "Intro",
