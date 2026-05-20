@@ -6,7 +6,7 @@
  *  - musicalPrompt (AI, from MusicalPromptBuilder) and Lyria styleString are independent outputs.
  *  - onPromptReady is called ONLY when the user clicks "Generate" (not on every param change).
  *  - styleDescriptorToString deduplicates tokens via Set to prevent e.g. "Afrobeat, …, Afrobeat".
- *  - Removable param tags use Fluent 2 Tag (dismissible) inside TagGroup for reliable × interaction.
+ *  - Removable param tags use Badge + native <button> for reliable dismiss interaction in JSDOM.
  *  - KPI stats are collapsed inside <details> to reduce visual noise.
  */
 
@@ -24,14 +24,13 @@ import {
   MessageBarBody,
   MessageBarTitle,
   Spinner,
-  Tag,
-  TagGroup,
   Text,
   Tooltip,
   tokens,
 } from '@fluentui/react-components';
 import {
   CheckmarkCircle20Filled,
+  Dismiss12Regular,
   Info20Regular,
   Keyboard20Regular,
   LockClosed20Regular,
@@ -189,19 +188,42 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [handleGenerate]);
 
-  /** Fluent 2 Tag (dismissible) — replaces Badge+<button> pattern */
-  const renderTag = (field: LyriaPromptField, label: string) => {
+  /**
+   * Renders a dismissible param badge using Badge + native <button>.
+   * Native <button> is required for reliable getByRole('button', { name }) in tests.
+   */
+  const renderParamBadge = (field: LyriaPromptField, label: string) => {
     if (!included(field)) return null;
     return (
-      <Tag
+      <span
         key={field}
-        value={field}
-        size="small"
-        dismissible
-        dismissIcon={{ 'aria-label': `Remove ${field}` }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}
       >
-        {label}
-      </Tag>
+        <Badge
+          appearance="tint"
+          size="small"
+          aria-label={`${field.charAt(0).toUpperCase() + field.slice(1)}: ${label.replace(/^[^\w]+/, '').trim()}`}
+        >
+          {label}
+        </Badge>
+        <button
+          type="button"
+          aria-label={`Remove ${field}`}
+          onClick={() => removeField(field)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '0 2px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            color: tokens.colorNeutralForeground3,
+            borderRadius: tokens.borderRadiusSmall,
+          }}
+        >
+          <Dismiss12Regular />
+        </button>
+      </span>
     );
   };
 
@@ -251,18 +273,14 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
           </Text>
         </div>
 
-        {/* TagGroup handles onDismiss for all child Tags */}
-        <TagGroup
-          onDismiss={(_e, { value }) => removeField(value as LyriaPromptField)}
-          style={{ flexWrap: 'wrap', gap: tokens.spacingHorizontalXS }}
-        >
-          {initialGenre           && renderTag('genre',           `🎵 ${initialGenre}`)}
-          {initialMood            && renderTag('mood',            `🌈 ${initialMood}`)}
-          {initialTempo > 0       && renderTag('tempo',           `♩ ${initialTempo} BPM`)}
-          {initialInstrumentation && renderTag('instrumentation', `🎸 ${initialInstrumentation}`)}
-          {initialRhythm          && renderTag('rhythm',          `🥁 ${initialRhythm.slice(0, 60)}${initialRhythm.length > 60 ? '…' : ''}`)}
-          {initialNarrative       && renderTag('narrative',       `📖 ${initialNarrative.slice(0, 60)}${initialNarrative.length > 60 ? '…' : ''}`)}
-        </TagGroup>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS, alignItems: 'center' }}>
+          {initialGenre           && renderParamBadge('genre',           `🎵 ${initialGenre}`)}
+          {initialMood            && renderParamBadge('mood',            `🌈 ${initialMood}`)}
+          {initialTempo > 0       && renderParamBadge('tempo',           `♩ ${initialTempo} BPM`)}
+          {initialInstrumentation && renderParamBadge('instrumentation', `🎸 ${initialInstrumentation}`)}
+          {initialRhythm          && renderParamBadge('rhythm',          `🥁 ${initialRhythm.slice(0, 60)}${initialRhythm.length > 60 ? '…' : ''}`)}
+          {initialNarrative       && renderParamBadge('narrative',       `📖 ${initialNarrative.slice(0, 60)}${initialNarrative.length > 60 ? '…' : ''}`)}
+        </div>
 
         {initialMusicalPrompt && (
           <Badge appearance="tint" color="success" size="small" style={{ alignSelf: 'flex-start', marginTop: tokens.spacingVerticalXXS }}>
