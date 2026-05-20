@@ -117,6 +117,60 @@ describe('LyriaPreviewPanel', () => {
     });
   });
 
+  // Chip-rendering contract: locks the `Label: value` chip format for every
+  // structured-prompt field, including the visible label text (so an emoji-only
+  // regression cannot pass with aria-label alone) and the 60-char narrative
+  // truncation rule. Mirrors the structure of renderParamBadge in
+  // LyriaPreviewPanel and the docstring "Style: …, Mood: …, BPM: …,
+  // Instrumentation: …, Vocals: …" prompt format.
+  it('renders structured chips with `Label: value` format and removes them on dismiss', async () => {
+    const user = userEvent.setup();
+    const longNarrative =
+      'A windswept harbour at dusk where neon reflections fracture across the wet pier and the wind hums';
+    // First 60 chars + ellipsis (\u2026 = …).
+    const expectedNarrativeValue = longNarrative.slice(0, 60) + '\u2026';
+
+    const { container } = render(
+      <LanguageProvider>
+        <LyriaPreviewPanel
+          lyrics="Sing it"
+          initialGenre="afrobeats"
+          initialMood="joyful"
+          initialTempo={100}
+          initialInstrumentation="talking drum"
+          initialRhythm="syncopated polyrhythm"
+          initialNarrative={longNarrative}
+        />
+      </LanguageProvider>,
+    );
+
+    // aria-label contract for every structured field.
+    expect(screen.getByLabelText('Style: afrobeats')).toBeTruthy();
+    expect(screen.getByLabelText('Mood: joyful')).toBeTruthy();
+    expect(screen.getByLabelText('BPM: 100')).toBeTruthy();
+    expect(screen.getByLabelText('Instrumentation: talking drum')).toBeTruthy();
+    expect(screen.getByLabelText('Rhythm: syncopated polyrhythm')).toBeTruthy();
+    expect(screen.getByLabelText(`Narrative: ${expectedNarrativeValue}`)).toBeTruthy();
+
+    // Visible-text contract: the `Label:` portion must appear in rendered DOM
+    // text, not only in aria-label. Catches refactors that swap labels for
+    // icons/emoji while leaving aria-label untouched.
+    const text = container.textContent ?? '';
+    for (const label of ['Style:', 'Mood:', 'BPM:', 'Instrumentation:', 'Rhythm:', 'Narrative:']) {
+      expect(text).toContain(label);
+    }
+    expect(text).toContain('afrobeats');
+    expect(text).toContain(expectedNarrativeValue);
+
+    // Removal contract: clicking the per-chip Remove button drops both the
+    // chip and its dismiss button from the DOM.
+    await user.click(screen.getByRole('button', { name: 'Remove rhythm' }));
+    await waitFor(() => {
+      expect(screen.queryByLabelText('Rhythm: syncopated polyrhythm')).toBeNull();
+    });
+    expect(screen.queryByRole('button', { name: 'Remove rhythm' })).toBeNull();
+  });
+
   it('relies on native audio controls without adding a second play button', async () => {
     const user = userEvent.setup();
 
