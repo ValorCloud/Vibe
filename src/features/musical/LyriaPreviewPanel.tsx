@@ -99,12 +99,19 @@ export interface LyriaPreviewPanelProps {
   onParamRemoved?: (field: LyriaPromptField) => void;
   onFullSong?: (clip: LyriaClip) => void;
   onPromptReady?: (stylePrompt: string) => void;
+  /** @deprecated Use genre (live prop) instead. Will be removed in v1.32. */
   initialGenre?: string;
+  /** @deprecated Use mood (live prop) instead. Will be removed in v1.32. */
   initialMood?: string;
+  /** @deprecated Use tempo (live prop) instead. Will be removed in v1.32. */
   initialTempo?: number;
+  /** @deprecated Use instrumentation (live prop) instead. Will be removed in v1.32. */
   initialInstrumentation?: string;
+  /** @deprecated Use rhythm (live prop) instead. Will be removed in v1.32. */
   initialRhythm?: string;
+  /** @deprecated Use narrative (live prop) instead. Will be removed in v1.32. */
   initialNarrative?: string;
+  /** @deprecated Use musicalPrompt (live prop) instead. Will be removed in v1.32. */
   initialMusicalPrompt?: string;
 }
 
@@ -147,7 +154,8 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   const [kpi, setKpi]                       = useState(getLyriaKPISnapshot());
   const [excludedFields, setExcluded]       = useState<Set<LyriaPromptField>>(() => new Set());
   const [excludedGlobal, setExcludedGlobal] = useState<Set<GlobalTag>>(() => new Set());
-  const [vocalStyle]                        = useState('female lead, West African, smooth');
+  // Constant vocal style — no state needed, value never changes at runtime
+  const vocalStyle = 'female lead, West African, smooth';
   const [negativePrompt, setNegative]       = useState('');
 
   const isGenerating = taskStatus.phase === 'generating' || taskStatus.phase === 'polling';
@@ -160,8 +168,10 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   );
 
   useEffect(() => () => {
-    mountedRef.current = false;
+    // Abort any in-flight request before marking component as unmounted,
+    // so the AbortError guard fires before the mountedRef guard.
     abortRef.current?.abort();
+    mountedRef.current = false;
   }, []);
 
   useEffect(() => { setExcluded(prev => { const n = new Set(prev); n.delete('genre'); return n; }); }, [activeGenre]);
@@ -259,6 +269,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         <Badge
           appearance="tint"
           size="small"
+          role="status"
           aria-label={`${label}: ${value}`}
         >
           <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginRight: 2 }}>{label}:</Text>
@@ -409,7 +420,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
           onClick={() => void handleGenerate()}
           style={{ alignSelf: 'flex-start' }}
         >
-          {isGenerating ? (L?.generating ?? 'Generating…') : (L?.generatePreview ?? "Generate preview 30''")}
+          {isGenerating ? (L?.generating ?? 'Generating\u2026') : (L?.generatePreview ?? "Generate preview 30''")}
         </Button>
       </Tooltip>
 
@@ -476,13 +487,13 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
             </Button>
           )}
           <details>
-            <summary style={{ cursor: 'pointer', color: tokens.colorNeutralForeground3, fontSize: 12 }}>Stats</summary>
+            <summary style={{ cursor: 'pointer', color: tokens.colorNeutralForeground3, fontSize: 12 }}>Stats de génération Lyria</summary>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalS, marginTop: tokens.spacingVerticalXXS }}>
               {[
                 { label: 'Requests', value: kpi.totalRequests },
                 { label: 'Success', value: kpi.successCount },
                 { label: 'Errors', value: kpi.errorCount },
-                { label: 'Last gen', value: kpi.lastGenerationMs != null ? `${kpi.lastGenerationMs}ms` : '—' },
+                { label: 'Last gen', value: kpi.lastGenerationMs != null ? `${kpi.lastGenerationMs}ms` : '\u2014' },
               ].map(({ label, value }) => (
                 <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minWidth: 48 }}>
                   <Text size={400} weight="semibold" style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</Text>
