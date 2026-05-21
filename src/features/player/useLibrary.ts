@@ -18,6 +18,7 @@ export interface LibraryState {
   removeTrack: (id: string) => void;
   updateMemo: (id: string, memo: string) => void;
   updateUrl: (id: string, url: string) => void;
+  purgeAll: () => void;
 }
 
 export function useLibrary(): LibraryState {
@@ -42,5 +43,17 @@ export function useLibrary(): LibraryState {
     setTracks(prev => prev.map(t => t.id === id ? { ...t, url, linked: true } : t));
   }, []);
 
-  return { tracks, addTracks, removeTrack, updateMemo, updateUrl };
+  const purgeAll = useCallback(() => {
+    setTracks(prev => {
+      // Revoke blob URLs to free memory
+      prev.forEach(t => {
+        if (t.url && t.url.startsWith('blob:')) {
+          try { URL.revokeObjectURL(t.url); } catch (_) { /* noop */ }
+        }
+      });
+      return [];
+    });
+  }, []);
+
+  return { tracks, addTracks, removeTrack, updateMemo, updateUrl, purgeAll };
 }

@@ -1,101 +1,103 @@
-import {
-  Button,
-  Slider,
-  Tooltip,
-  tokens,
-} from '@fluentui/react-components';
-import {
-  Play24Regular,
-  Pause24Regular,
-  Previous24Regular,
-  Next24Regular,
-  Speaker224Regular,
-  SpeakerMute24Regular,
-} from '@fluentui/react-icons';
 import type { AudioEngineState } from './useAudioEngine';
+import { LCARS } from './lcarsTheme';
 
 interface PlayerControlsProps {
   engine: AudioEngineState;
   onPrev: () => void;
   onNext: () => void;
-  trackTitle?: string;
+  disabled?: boolean;
 }
 
-function formatTime(s: number): string {
-  if (!isFinite(s)) return '0:00';
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, '0')}`;
-}
+/**
+ * LCARS transport: large orange circular play/pause flanked by dark
+ * square previous / next buttons. Matches the canonical Vox Nova mockup.
+ */
+export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerControlsProps) {
+  const { isPlaying, togglePlay } = engine;
 
-export function PlayerControls({ engine, onPrev, onNext, trackTitle }: PlayerControlsProps) {
-  const { isPlaying, currentTime, duration, volume, togglePlay, seek, setVolume } = engine;
+  const squareStyle: React.CSSProperties = {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    background: LCARS.panelDark,
+    border: 'none',
+    color: LCARS.peach,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.4 : 1,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background 120ms ease',
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalS, padding: `${tokens.spacingVerticalM} ${tokens.spacingHorizontalM}` }}>
-      {trackTitle && (
-        <div style={{ color: tokens.colorNeutralForeground1, fontFamily: tokens.fontFamilyBase, fontSize: tokens.fontSizeBase300, fontWeight: tokens.fontWeightSemibold, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {trackTitle}
-        </div>
-      )}
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 24,
+        padding: '8px 0',
+      }}
+    >
+      <button
+        type="button"
+        aria-label="Previous track"
+        onClick={onPrev}
+        disabled={disabled}
+        style={squareStyle}
+      >
+        {/* prev (skip-back) icon */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M6 6h2v12H6zM9.5 12L20 6v12z" />
+        </svg>
+      </button>
 
-      {/* Seek bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
-        <span style={{ color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase100, fontVariantNumeric: 'tabular-nums', minWidth: 36 }}>
-          {formatTime(currentTime)}
-        </span>
-        <Slider
-          style={{ flex: 1 }}
-          min={0}
-          max={duration || 1}
-          value={currentTime}
-          onChange={(_, d) => seek(d.value)}
-          aria-label="Seek"
-        />
-        <span style={{ color: tokens.colorNeutralForeground3, fontSize: tokens.fontSizeBase100, fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'right' }}>
-          {formatTime(duration)}
-        </span>
-      </div>
+      <button
+        type="button"
+        aria-label={isPlaying ? 'Pause' : 'Play'}
+        onClick={togglePlay}
+        disabled={disabled}
+        style={{
+          width: 88,
+          height: 88,
+          borderRadius: '50%',
+          background: LCARS.peach,
+          border: 'none',
+          color: '#000',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          opacity: disabled ? 0.5 : 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: `0 0 32px ${LCARS.peach}55`,
+          transition: 'transform 120ms ease',
+        }}
+      >
+        {isPlaying ? (
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <rect x="6" y="5" width="4" height="14" rx="1" />
+            <rect x="14" y="5" width="4" height="14" rx="1" />
+          </svg>
+        ) : (
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        )}
+      </button>
 
-      {/* Transport */}
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: tokens.spacingHorizontalM }}>
-        <Tooltip content="Previous" relationship="label">
-          <Button appearance="subtle" icon={<Previous24Regular />} onClick={onPrev} aria-label="Previous track" />
-        </Tooltip>
-        <Tooltip content={isPlaying ? 'Pause' : 'Play'} relationship="label">
-          <Button
-            appearance="primary"
-            icon={isPlaying ? <Pause24Regular /> : <Play24Regular />}
-            onClick={togglePlay}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            style={{ borderRadius: '50%', width: 48, height: 48 }}
-          />
-        </Tooltip>
-        <Tooltip content="Next" relationship="label">
-          <Button appearance="subtle" icon={<Next24Regular />} onClick={onNext} aria-label="Next track" />
-        </Tooltip>
-      </div>
-
-      {/* Volume */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS }}>
-        <Tooltip content={volume === 0 ? 'Unmute' : 'Mute'} relationship="label">
-          <Button
-            appearance="subtle"
-            icon={volume === 0 ? <SpeakerMute24Regular /> : <Speaker224Regular />}
-            onClick={() => setVolume(volume === 0 ? 0.8 : 0)}
-            aria-label={volume === 0 ? 'Unmute' : 'Mute'}
-          />
-        </Tooltip>
-        <Slider
-          style={{ flex: 1, maxWidth: 120 }}
-          min={0}
-          max={1}
-          step={0.01}
-          value={volume}
-          onChange={(_, d) => setVolume(d.value)}
-          aria-label="Volume"
-        />
-      </div>
+      <button
+        type="button"
+        aria-label="Next track"
+        onClick={onNext}
+        disabled={disabled}
+        style={squareStyle}
+      >
+        {/* next (skip-forward) icon */}
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M16 6h2v12h-2zM4 6v12l10.5-6z" />
+        </svg>
+      </button>
     </div>
   );
 }
