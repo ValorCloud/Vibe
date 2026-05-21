@@ -11,7 +11,6 @@ import { WarpField } from './WarpField';
 import { FrequencyVisualizer } from './FrequencyVisualizer';
 import { PlayerControls } from './PlayerControls';
 import { TrackList } from './TrackList';
-import { ScanPanel } from './ScanPanel';
 import { UploadPanel } from './UploadPanel';
 import { useAudioEngine } from './useAudioEngine';
 import { useFrequencyAnalyser } from './useFrequencyAnalyser';
@@ -60,19 +59,15 @@ export function VoxNovaPlayer() {
         fontFamily: 'monospace',
       }}
     >
-      {/* Three.js warp background */}
       <WarpField isPlaying={engine.isPlaying} />
 
-      {/* Content layer */}
       <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: tokens.spacingVerticalM }}>
 
-        {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalS, marginBottom: tokens.spacingVerticalS, borderBottom: '1px solid rgba(153,204,255,0.15)', paddingBottom: tokens.spacingVerticalS }}>
           <span style={{ color: '#99ccff', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase', opacity: 0.7 }}>COMMS_ENCRYPTION: ENABLED</span>
           <span style={{ marginLeft: 'auto', color: '#99ccff', fontSize: 10, opacity: 0.4 }}>VOX NOVA v2.0</span>
         </div>
 
-        {/* Visualizer */}
         <div style={{ position: 'relative' }}>
           <FrequencyVisualizer
             isPlaying={engine.isPlaying}
@@ -81,7 +76,6 @@ export function VoxNovaPlayer() {
           />
         </div>
 
-        {/* Player controls */}
         <PlayerControls
           engine={engine}
           onPrev={handlePrev}
@@ -89,7 +83,6 @@ export function VoxNovaPlayer() {
           trackTitle={selectedTrack?.title ?? ''}
         />
 
-        {/* Library tabs */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: `0 ${tokens.spacingHorizontalM} ${tokens.spacingVerticalM}` }}>
           <TabList
             selectedValue={activeTab}
@@ -105,7 +98,7 @@ export function VoxNovaPlayer() {
             {activeTab === 'cloud' && (
               <TrackList
                 tracks={library.tracks.filter(t => t.source === 'cloud')}
-                selectedId={selectedId}
+                selectedId={selectedId ?? undefined}
                 onSelect={handleSelect}
                 onRemove={library.removeTrack}
                 onUpdateUrl={library.updateUrl}
@@ -114,14 +107,14 @@ export function VoxNovaPlayer() {
             {activeTab === 'local' && (
               <TrackList
                 tracks={library.tracks.filter(t => t.source === 'local')}
-                selectedId={selectedId}
+                selectedId={selectedId ?? undefined}
                 onSelect={handleSelect}
                 onRemove={library.removeTrack}
                 onUpdateUrl={library.updateUrl}
               />
             )}
             {activeTab === 'upload' && (
-              <UploadPanel onAdd={library.addTracks} />
+              <UploadPanel onTracksAdded={library.addTracks} />
             )}
           </div>
         </div>

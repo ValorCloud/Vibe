@@ -28,7 +28,6 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
 
-    // Star texture
     const starCanvas = document.createElement('canvas');
     starCanvas.width = 64; starCanvas.height = 64;
     const sc = starCanvas.getContext('2d')!;
@@ -37,7 +36,6 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     sc.fillStyle = sg; sc.fillRect(0,0,64,64);
     const starTex = new THREE.CanvasTexture(starCanvas);
 
-    // Stars
     const starCount = 3000;
     const positions = new Float32Array(starCount * 3);
     const colors = new Float32Array(starCount * 3);
@@ -51,7 +49,7 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
       positions[i * 3] = (Math.random() - 0.5) * 3000;
       positions[i * 3 + 1] = (Math.random() - 0.5) * 3000;
       positions[i * 3 + 2] = Math.random() * 3000;
-      const c = starColors[Math.floor(Math.random() * starColors.length)]!;
+      const c = starColors[i % starColors.length] ?? starColors[0]!;
       colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
       velocities[i] = Math.random() * 1.5 + 0.5;
     }
@@ -60,7 +58,6 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     const starMat = new THREE.PointsMaterial({ size: 4, map: starTex, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false });
     scene.add(new THREE.Points(starGeometry, starMat));
 
-    // Nebulas
     const makeNebula = (count: number, spread: number, color: number) => {
       const g = new THREE.BufferGeometry();
       const p = new Float32Array(count * 3);
@@ -81,7 +78,6 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     const nebula2 = makeNebula(2, 2500, 0xee00aa);
     scene.add(nebula1, nebula2);
 
-    // Galaxy
     const galaxyGroup = new THREE.Group();
     const gGeom = new THREE.BufferGeometry();
     const gPos = new Float32Array(400 * 3);
@@ -94,7 +90,6 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     galaxyGroup.position.set(500, 300, -1500);
     scene.add(galaxyGroup);
 
-    // Grid
     const gridCount = 20; const gridSize = 3000;
     const gridGeom = new THREE.BufferGeometry();
     const gridLines: number[] = [];
@@ -110,7 +105,6 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     grid.position.y = -400;
     scene.add(grid);
 
-    // Black hole
     const bhGroup = new THREE.Group();
     bhGroup.add(new THREE.Mesh(new THREE.SphereGeometry(40,32,32), new THREE.MeshBasicMaterial({ color: 0x000000 })));
     const diskCount = 800;
@@ -149,8 +143,13 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
       if (posAttr) {
         const pos = posAttr.array as Float32Array;
         for (let i = 0; i < starCount; i++) {
-          pos[i*3+2] += velocities[i] * refs.currentSpeed;
-          if (pos[i*3+2] > 1500) { pos[i*3+2] = -1500; pos[i*3] = (Math.random()-0.5)*3000; pos[i*3+1] = (Math.random()-0.5)*3000; }
+          const vel = velocities[i] ?? 1;
+          pos[i*3+2] += vel * refs.currentSpeed;
+          if ((pos[i*3+2] ?? 0) > 1500) {
+            pos[i*3+2] = -1500;
+            pos[i*3] = (Math.random()-0.5)*3000;
+            pos[i*3+1] = (Math.random()-0.5)*3000;
+          }
         }
         posAttr.needsUpdate = true;
       }
