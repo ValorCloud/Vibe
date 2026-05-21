@@ -1,36 +1,25 @@
 /**
- * Player domain types.
- *
- * Track: metadata for a single audio file in the local or cloud library.
- * AudioProtocol: filter by file extension in the Pattern Match sidebar.
- * PlayerStatus: playback machine state.
+ * player/types.ts
+ * Shared types for the LCARS Player feature.
  */
 
-export type AudioProtocol = 'wav' | 'mp3' | 'all';
-
 export interface Track {
-  id: string;
+  id: string;        // GCS UUID (cloud) or blob URL (local)
   title: string;
-  /** Sector label shown in the sidebar (e.g. "CLOUD" | "LOCAL") */
-  sector: 'cloud' | 'local';
-  /** GCS or blob URL resolved at runtime */
-  url: string;
-  /** Optional user-authored mission memo, persisted to localStorage */
-  memo?: string;
-  /** Inferred from file extension */
-  protocol: 'wav' | 'mp3';
-  /** Duration in seconds, filled after first load */
-  duration?: number;
+  source: 'cloud' | 'local';
+  memo: string;
+  fileName?: string; // local only
+  linked: boolean;   // false = blob URL expired
 }
 
-export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'error';
+export type LibraryTab = 'cloud' | 'local';
+export type ScanType   = 'wav' | 'mp3' | 'all';
 
 export interface PlayerState {
-  tracks: Track[];
-  currentIndex: number;
-  status: PlayerStatus;
-  progress: number;   // 0–1
-  volume: number;     // 0–1
-  filter: AudioProtocol;
-  patternMatch: string;
+  library:        Track[];
+  selectedTrack:  Track;
+  isPlaying:      boolean;
+  libraryTab:     LibraryTab;
+  scanType:       ScanType;
+  scanPattern:    string;
 }

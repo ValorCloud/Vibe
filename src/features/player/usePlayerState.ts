@@ -1,268 +1,210 @@
 /**
  * usePlayerState
- *
- * Manages the entire player lifecycle:
- * - Audio playback via HTMLAudioElement + Web Audio API analyser node
- * - Track navigation (prev / next / select)
- * - Progress scrubbing
- * - Volume control
- * - AudioProtocol filter (wav | mp3 | all)
- * - Pattern match filter (filename substring)
- * - Mission memo persistence via localStorage (auto-relink on mount)
- * - Duration metadata fill after canplaythrough
+ * All mutable state + side-effects for the Player panel.
+ * No JSX — pure hook.
  */
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import type { Track, AudioProtocol, PlayerStatus } from './types';
-import { safeGetItem, safeSetItem } from '../../utils/safeStorage';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import type { Track, LibraryTab, ScanType } from './types';
 
-// ──────────────────────────────────────────────────────────────────────────────
-const MEMO_STORAGE_KEY = 'vibe_player_memos';
-const VOLUME_KEY = 'vibe_player_volume';
-const LAST_TRACK_KEY = 'vibe_player_last_track';
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const GCS_BASE = 'https://storage.googleapis.com/producer-app-public/clips/';
+const STORAGE_KEY = 'voxnova_library';
 
-function loadMemos(): Record<string, string> {
+const CLOUD_LIBRARY: Track[] = [
+  { id: 'af979000-81a1-4620-89d7-41adb4ed9279', title: 'Nebula Flight',  source: 'cloud', memo: '', linked: true },
+  { id: 'df02bd7a-908d-4e30-b6d0-ebf38c79c895', title: 'Stellar Voyage', source: 'cloud', memo: '', linked: true },
+];
+
+// ---------------------------------------------------------------------------
+// Beep helper (fire-and-forget, no external dep)
+// ---------------------------------------------------------------------------
+function playBeep(freq = 440, type: OscillatorType = 'sine', duration = 0.1) {
   try {
-    const raw = safeGetItem(MEMO_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    const ctx = new (window.AudioContext ||
+      (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
   } catch {
-    return {};
+    // silent
   }
 }
 
-function saveMemos(memos: Record<string, string>) {
-  try { safeSetItem(MEMO_STORAGE_KEY, JSON.stringify(memos)); } catch { /* noop */ }
+// ---------------------------------------------------------------------------
+// Persistence helpers
+// ---------------------------------------------------------------------------
+function loadLibrary(): Track[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return CLOUD_LIBRARY;
+    const parsed: Track[] = JSON.parse(raw);
+    // Blob URLs expire on reload — mark local tracks as unlinked
+    return parsed.map(t => ({ ...t, linked: t.source === 'cloud' }));
+  } catch {
+    return CLOUD_LIBRARY;
+  }
 }
 
-function inferProtocol(url: string): 'wav' | 'mp3' {
-  return url.toLowerCase().includes('.wav') ? 'wav' : 'mp3';
+function saveLibrary(lib: Track[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(lib)); } catch { /* quota */ }
 }
 
-// Initial seed — tracks re-linked from GCS by the consuming component via `setTracks`.
-const EMPTY_TRACKS: Track[] = [];
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+export function usePlayerState() {
+  const [library,      setLibrary]      = useState<Track[]>(() => loadLibrary());
+  const [selectedTrack, setSelectedTrack] = useState<Track>(() => loadLibrary()[0]);
+  const [isPlaying,    setIsPlaying]    = useState(false);
+  const [libraryTab,   setLibraryTab]   = useState<LibraryTab>('cloud');
+  const [scanType,     setScanType]     = useState<ScanType>('wav');
+  const [scanPattern,  setScanPattern]  = useState('');
 
-// ──────────────────────────────────────────────────────────────────────────────
-export function usePlayerState(initialTracks: Track[] = EMPTY_TRACKS) {
-  const [tracks, setTracksRaw] = useState<Track[]>(() => {
-    const memos = loadMemos();
-    return initialTracks.map(t => ({
-      ...t,
-      protocol: inferProtocol(t.url),
-      memo: memos[t.id] ?? t.memo,
-    }));
-  });
+  const audioRef      = useRef<HTMLAudioElement>(null);
+  const fileInputRef  = useRef<HTMLInputElement>(null);
+  const folderInputRef = useRef<HTMLInputElement>(null);
 
-  const [currentIndex, setCurrentIndex] = useState<number>(() => {
-    const saved = safeGetItem(LAST_TRACK_KEY);
-    if (!saved) return 0;
-    const idx = initialTracks.findIndex(t => t.id === saved);
-    return idx >= 0 ? idx : 0;
-  });
+  // Persist library
+  useEffect(() => { saveLibrary(library); }, [library]);
 
-  const [status, setStatus] = useState<PlayerStatus>('idle');
-  const [progress, setProgress] = useState(0);
-  const [volume, setVolumeState] = useState<number>(() => {
-    const saved = safeGetItem(VOLUME_KEY);
-    return saved ? Math.min(1, Math.max(0, parseFloat(saved))) : 0.8;
-  });
-  const [filter, setFilter] = useState<AudioProtocol>('all');
-  const [patternMatch, setPatternMatch] = useState('');
-
-  // ── Audio engine refs ──────────────────────────────────────────────────
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
-
-  // ── Boot audio element ───────────────────────────────────────────────
+  // Sync audio element
   useEffect(() => {
-    const audio = new Audio();
-    audio.preload = 'metadata';
-    audio.crossOrigin = 'anonymous';
-    audioRef.current = audio;
+    if (!audioRef.current) return;
+    if (isPlaying) audioRef.current.play().catch(console.error);
+    else           audioRef.current.pause();
+  }, [isPlaying, selectedTrack]);
 
-    const onTimeUpdate = () => {
-      if (audio.duration > 0)
-        setProgress(audio.currentTime / audio.duration);
-    };
-    const onEnded = () => {
-      setStatus('idle');
-      setProgress(0);
-    };
-    const onError = () => setStatus('error');
-    const onCanPlay = () => {
-      setTracksRaw(prev =>
-        prev.map((t, i) =>
-          i === currentIndex && audio.duration > 0
-            ? { ...t, duration: audio.duration }
-            : t,
-        ),
-      );
-    };
+  // ---------------------------------------------------------------------------
+  // Derived helpers
+  // ---------------------------------------------------------------------------
+  const filteredTracks = library.filter(t => t.source === libraryTab);
 
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('error', onError);
-    audio.addEventListener('canplaythrough', onCanPlay);
-    audio.volume = volume;
-
-    return () => {
-      audio.pause();
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('error', onError);
-      audio.removeEventListener('canplaythrough', onCanPlay);
-      audioCtxRef.current?.close();
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const getAudioUrl = useCallback((track: Track) => {
+    if (track.source === 'local') return track.id; // blob URL
+    return `${GCS_BASE}${track.id}.m4a`;
   }, []);
 
-  // ── Bootstrap Web Audio analyser (lazy, on first play) ─────────────
-  const ensureAudioContext = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return null;
-    if (analyserRef.current) return analyserRef.current;
-
-    const ctx = new AudioContext();
-    audioCtxRef.current = ctx;
-    const analyser = ctx.createAnalyser();
-    analyser.fftSize = 2048;        // 1024 bins — 80 bands used by visualiser
-    analyser.smoothingTimeConstant = 0.78;
-    const source = ctx.createMediaElementSource(audio);
-    sourceRef.current = source;
-    source.connect(analyser);
-    analyser.connect(ctx.destination);
-    analyserRef.current = analyser;
-    return analyser;
-  }, []);
-
-  // ── Load track into audio element ────────────────────────────────
-  const loadTrack = useCallback((index: number, autoplay = false) => {
-    const audio = audioRef.current;
-    const track = tracks[index];
-    if (!audio || !track) return;
-    audio.pause();
-    audio.src = track.url;
-    audio.load();
-    setCurrentIndex(index);
-    setProgress(0);
-    setStatus('loading');
-    safeSetItem(LAST_TRACK_KEY, track.id);
-    if (autoplay) {
-      const onCanPlay = () => {
-        audio.removeEventListener('canplaythrough', onCanPlay);
-        ensureAudioContext();
-        audioCtxRef.current?.resume();
-        audio.play().then(() => setStatus('playing')).catch(() => setStatus('error'));
-      };
-      audio.addEventListener('canplaythrough', onCanPlay);
-    }
-  }, [tracks, ensureAudioContext]);
-
-  // ── Transport controls ────────────────────────────────────────────
-  const play = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (!audio.src && tracks.length > 0) {
-      loadTrack(currentIndex, true);
-      return;
-    }
-    ensureAudioContext();
-    audioCtxRef.current?.resume();
-    audio.play().then(() => setStatus('playing')).catch(() => setStatus('error'));
-  }, [tracks, currentIndex, loadTrack, ensureAudioContext]);
-
-  const pause = useCallback(() => {
-    audioRef.current?.pause();
-    setStatus('paused');
-  }, []);
-
+  // ---------------------------------------------------------------------------
+  // Controls
+  // ---------------------------------------------------------------------------
   const togglePlay = useCallback(() => {
-    if (status === 'playing') pause(); else play();
-  }, [status, play, pause]);
+    playBeep(isPlaying ? 440 : 660);
+    setIsPlaying(p => !p);
+  }, [isPlaying]);
 
-  const prev = useCallback(() => {
-    const idx = currentIndex > 0 ? currentIndex - 1 : tracks.length - 1;
-    loadTrack(idx, status === 'playing');
-  }, [currentIndex, tracks.length, status, loadTrack]);
+  const handleNext = useCallback(() => {
+    playBeep(600);
+    const idx = filteredTracks.findIndex(t => t.id === selectedTrack.id);
+    if (idx !== -1 && filteredTracks.length > 0) {
+      setSelectedTrack(filteredTracks[(idx + 1) % filteredTracks.length]);
+      setIsPlaying(true);
+    }
+  }, [filteredTracks, selectedTrack]);
 
-  const next = useCallback(() => {
-    const idx = (currentIndex + 1) % tracks.length;
-    loadTrack(idx, status === 'playing');
-  }, [currentIndex, tracks.length, status, loadTrack]);
+  const handlePrevious = useCallback(() => {
+    playBeep(600);
+    const idx = filteredTracks.findIndex(t => t.id === selectedTrack.id);
+    if (idx !== -1 && filteredTracks.length > 0) {
+      setSelectedTrack(filteredTracks[(idx - 1 + filteredTracks.length) % filteredTracks.length]);
+      setIsPlaying(true);
+    }
+  }, [filteredTracks, selectedTrack]);
 
-  const seek = useCallback((ratio: number) => {
-    const audio = audioRef.current;
-    if (!audio || !audio.duration) return;
-    audio.currentTime = ratio * audio.duration;
-    setProgress(ratio);
+  const handleTrackSelect = useCallback((track: Track) => {
+    if (!track.linked) { playBeep(200, 'square', 0.2); return; }
+    playBeep(440 + Math.random() * 200);
+    setSelectedTrack(track);
+    setIsPlaying(true);
   }, []);
 
-  const setVolume = useCallback((v: number) => {
-    const clamped = Math.min(1, Math.max(0, v));
-    if (audioRef.current) audioRef.current.volume = clamped;
-    setVolumeState(clamped);
-    try { safeSetItem(VOLUME_KEY, String(clamped)); } catch { /* noop */ }
+  // ---------------------------------------------------------------------------
+  // Library mutations
+  // ---------------------------------------------------------------------------
+  const purgeCloudMemory = useCallback(() => {
+    playBeep(220, 'sawtooth', 0.3);
+    setLibrary(prev => prev.filter(t => t.source !== 'cloud'));
+    if (selectedTrack.source === 'cloud') {
+      const first = library.find(t => t.source === 'local');
+      if (first) setSelectedTrack(first);
+    }
+  }, [library, selectedTrack]);
+
+  const updateMemo = useCallback((text: string) => {
+    setLibrary(prev => prev.map(t => t.id === selectedTrack.id ? { ...t, memo: text } : t));
+    setSelectedTrack(prev => ({ ...prev, memo: text }));
+  }, [selectedTrack]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    playBeep(880, 'square', 0.05);
+    const url = URL.createObjectURL(file);
+    const newTrack: Track = {
+      id: url, title: file.name.replace(/\.[^.]+$/, ''),
+      source: 'local', memo: '', fileName: file.name, linked: true,
+    };
+    setLibrary(prev => [newTrack, ...prev.filter(t => t.fileName !== file.name)]);
+    setSelectedTrack(newTrack);
+    setIsPlaying(true);
+    setLibraryTab('local');
   }, []);
 
-  // ── Track list mutations ──────────────────────────────────────────
-  const setTracks = useCallback((incoming: Track[]) => {
-    const memos = loadMemos();
-    setTracksRaw(incoming.map(t => ({
-      ...t,
-      protocol: inferProtocol(t.url),
-      memo: memos[t.id] ?? t.memo,
-    })));
-  }, []);
-
-  // ── Mission memo persistence ────────────────────────────────────
-  const updateMemo = useCallback((trackId: string, memo: string) => {
-    setTracksRaw(prev => {
-      const next = prev.map(t => t.id === trackId ? { ...t, memo } : t);
-      const memos: Record<string, string> = {};
-      next.forEach(t => { if (t.memo) memos[t.id] = t.memo; });
-      saveMemos(memos);
-      return next;
+  const handleFolderScan = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    playBeep(900, 'square', 0.1);
+    setLibrary(prev => {
+      const updated = [...prev];
+      let firstScanned: Track | null = null;
+      Array.from(files).forEach(file => {
+        const name = file.name.toLowerCase();
+        const matchType = scanType === 'all' || name.endsWith(`.${scanType}`);
+        const matchPat  = !scanPattern || name.includes(scanPattern.toLowerCase());
+        if (!matchType || !matchPat) return;
+        const parts  = file.webkitRelativePath?.split('/') ?? [];
+        const folder = parts.length > 1 ? parts[parts.length - 2] : 'SectorRoot';
+        const url    = URL.createObjectURL(file);
+        const existIdx = updated.findIndex(t => t.fileName === file.name);
+        if (existIdx !== -1) {
+          updated[existIdx] = { ...updated[existIdx], id: url, linked: true };
+          if (!firstScanned) firstScanned = updated[existIdx];
+        } else {
+          const t: Track = {
+            id: url, title: folder, source: 'local', fileName: file.name,
+            memo: `LCARS_SCAN: ${file.name} [${scanType.toUpperCase()}]`, linked: true,
+          };
+          updated.unshift(t);
+          if (!firstScanned) firstScanned = t;
+        }
+      });
+      if (firstScanned) {
+        playBeep(1200, 'sine', 0.05);
+        setSelectedTrack(firstScanned);
+        setIsPlaying(true);
+        setLibraryTab('local');
+      } else {
+        playBeep(200, 'square', 0.5);
+      }
+      return updated;
     });
-  }, []);
-
-  // ── Filtered track list (for sidebar display) ─────────────────────
-  const visibleTracks = useMemo(() => {
-    const pattern = patternMatch.toLowerCase();
-    return tracks.filter(t => {
-      const protocolOk = filter === 'all' || t.protocol === filter;
-      const matchOk = !pattern || t.title.toLowerCase().includes(pattern);
-      return protocolOk && matchOk;
-    });
-  }, [tracks, filter, patternMatch]);
-
-  const currentTrack = tracks[currentIndex] ?? null;
+  }, [scanType, scanPattern]);
 
   return {
-    // State
-    tracks,
-    visibleTracks,
-    currentTrack,
-    currentIndex,
-    status,
-    progress,
-    volume,
-    filter,
-    patternMatch,
-    // Refs (for visualiser)
-    analyserRef,
-    audioCtxRef,
-    // Actions
-    setTracks,
-    loadTrack,
-    togglePlay,
-    play,
-    pause,
-    prev,
-    next,
-    seek,
-    setVolume,
-    setFilter,
-    setPatternMatch,
-    updateMemo,
+    library, selectedTrack, isPlaying, libraryTab, scanType, scanPattern,
+    filteredTracks,
+    audioRef, fileInputRef, folderInputRef,
+    getAudioUrl, togglePlay, handleNext, handlePrevious,
+    handleTrackSelect, purgeCloudMemory, updateMemo,
+    handleFileChange, handleFolderScan,
+    setLibraryTab, setScanType, setScanPattern, setIsPlaying,
   };
 }
