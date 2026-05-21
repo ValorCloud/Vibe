@@ -341,17 +341,17 @@ export function VoxNovaPlayer() {
                 </button>
               ))}
             </div>
+            <div style={{ marginTop: 8 }}>
+              <SidebarButton
+                label="UPLINK"
+                color={LCARS.peach}
+                textColor="#0a0a10"
+                onClick={() => uploadInputRef.current?.click()}
+                icon={<UploadIcon />}
+                outlined
+              />
+            </div>
           </div>
-
-          {/* UPLINK + SCAN SECTOR action buttons */}
-          <SidebarButton
-            label="UPLINK"
-            color={LCARS.peach}
-            textColor="#0a0a10"
-            onClick={() => uploadInputRef.current?.click()}
-            icon={<UploadIcon />}
-            outlined
-          />
 
           {/* PATTERN MATCH input */}
           <div>
@@ -456,18 +456,6 @@ export function VoxNovaPlayer() {
         <div style={{ display: 'flex', alignItems: 'stretch', gap: 4 }}>
           <div
             style={{
-              width: 60,
-              height: 36,
-              background: LCARS.purple,
-              borderTopLeftRadius: 18,
-              borderBottomLeftRadius: 18,
-              borderTopRightRadius: 4,
-              borderBottomRightRadius: 4,
-            }}
-            aria-hidden="true"
-          />
-          <div
-            style={{
               flex: 1,
               height: 36,
               background: LCARS.peach,
@@ -502,6 +490,18 @@ export function VoxNovaPlayer() {
               <NetworkIcon />
             </span>
           </div>
+          <div
+            style={{
+              width: 60,
+              height: 36,
+              background: LCARS.purple,
+              borderTopLeftRadius: 4,
+              borderBottomLeftRadius: 4,
+              borderTopRightRadius: 18,
+              borderBottomRightRadius: 18,
+            }}
+            aria-hidden="true"
+          />
         </div>
 
         {/* Status bars row */}
@@ -540,7 +540,7 @@ export function VoxNovaPlayer() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
-            gap: 12,
+            gap: 24,
             padding: '12px 24px 16px 24px',
             overflow: 'auto',
           }}
@@ -606,21 +606,17 @@ export function VoxNovaPlayer() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-            <PlayerControls
-              engine={engine}
-              onPrev={handlePrev}
-              onNext={handleNext}
-              disabled={!selectedTrack}
-            />
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+            <PlayerControls engine={engine} onPrev={handlePrev} onNext={handleNext} disabled={!selectedTrack} />
             <SeekBar
               currentTime={engine.currentTime}
               duration={engine.duration}
               onSeek={engine.seek}
               disabled={!selectedTrack}
             />
-            <VolumeControl volume={engine.volume} onChange={engine.setVolume} />
           </div>
+
+          <VolumeControl volume={engine.volume} onChange={engine.setVolume} />
 
           <div>
             <FrequencyVisualizer
