@@ -134,13 +134,20 @@ export function VoxNovaPlayer() {
       scanProtocol,
       scanPattern,
     );
-    const added: Omit<TrackEntry, 'id'>[] = files.map(f => ({
-      title: f.name.replace(/\.[^/.]+$/, ''),
-      source: 'local',
-      url: URL.createObjectURL(f),
-      memo: `[LCARS_SCAN] Identified: ${f.name} | Protocol: ${scanProtocol.toUpperCase()} | Integrity: Nominal`,
-      linked: true,
-    }));
+    const added: Omit<TrackEntry, 'id'>[] = files.map(f => {
+      const relPath = (f as File & { webkitRelativePath?: string }).webkitRelativePath ?? '';
+      const firstSegment = relPath.split('/')[0];
+      const folderName = relPath.includes('/') && firstSegment
+        ? firstSegment
+        : f.name.replace(/\.[^/.]+$/, '');
+      return {
+        title: folderName,
+        source: 'local',
+        url: URL.createObjectURL(f),
+        memo: `[LCARS_SCAN] Identified: ${f.name} | Protocol: ${scanProtocol.toUpperCase()} | Integrity: Nominal`,
+        linked: true,
+      };
+    });
     if (added.length) {
       library.addTracks(added);
       setView('local');
@@ -206,10 +213,10 @@ export function VoxNovaPlayer() {
           style={{
             background: LCARS.peach,
             color: '#000',
-            padding: '16px 14px 28px 14px',
-            borderTopLeftRadius: 12,
+            padding: '28px 14px 16px 14px',
+            borderTopLeftRadius: 64,
             borderTopRightRadius: 4,
-            borderBottomLeftRadius: 64,
+            borderBottomLeftRadius: 12,
             borderBottomRightRadius: 4,
             minHeight: 110,
           }}
@@ -336,6 +343,16 @@ export function VoxNovaPlayer() {
             </div>
           </div>
 
+          {/* UPLINK + SCAN SECTOR action buttons */}
+          <SidebarButton
+            label="UPLINK"
+            color={LCARS.peach}
+            textColor="#0a0a10"
+            onClick={() => uploadInputRef.current?.click()}
+            icon={<UploadIcon />}
+            outlined
+          />
+
           {/* PATTERN MATCH input */}
           <div>
             <div
@@ -369,16 +386,6 @@ export function VoxNovaPlayer() {
               }}
             />
           </div>
-
-          {/* UPLINK + SCAN SECTOR action buttons */}
-          <SidebarButton
-            label="UPLINK"
-            color={LCARS.peach}
-            textColor="#0a0a10"
-            onClick={() => uploadInputRef.current?.click()}
-            icon={<UploadIcon />}
-            outlined
-          />
           <div
             style={{
               background: LCARS.orange,
@@ -533,8 +540,9 @@ export function VoxNovaPlayer() {
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'stretch',
-            justifyContent: 'space-between',
+            gap: 12,
             padding: '12px 24px 16px 24px',
+            overflow: 'auto',
           }}
         >
           <div
@@ -542,8 +550,7 @@ export function VoxNovaPlayer() {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: 14,
-              marginTop: 24,
+              gap: 8,
             }}
           >
             <div
@@ -559,7 +566,7 @@ export function VoxNovaPlayer() {
             <h1
               style={{
                 margin: 0,
-                fontSize: 'clamp(36px, 5vw, 64px)',
+                fontSize: 'clamp(32px, 4.5vw, 56px)',
                 fontWeight: 700,
                 textAlign: 'center',
                 letterSpacing: 1,
@@ -577,7 +584,6 @@ export function VoxNovaPlayer() {
             style={{
               alignSelf: 'center',
               width: 'min(560px, 90%)',
-              marginTop: 18,
               border: `1px solid ${LCARS.peach}55`,
               borderRadius: 4,
               padding: '10px 14px',
@@ -600,7 +606,7 @@ export function VoxNovaPlayer() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, marginTop: 18 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
             <PlayerControls
               engine={engine}
               onPrev={handlePrev}
@@ -613,9 +619,10 @@ export function VoxNovaPlayer() {
               onSeek={engine.seek}
               disabled={!selectedTrack}
             />
+            <VolumeControl volume={engine.volume} onChange={engine.setVolume} />
           </div>
 
-          <div style={{ marginTop: 12 }}>
+          <div>
             <FrequencyVisualizer
               isPlaying={engine.isPlaying}
               analyser={analyser}
@@ -776,6 +783,86 @@ function SeekBar({ currentTime, duration, onSeek, disabled }: SeekBarProps) {
         {formatTime(duration)}
       </span>
     </div>
+  );
+}
+
+interface VolumeControlProps {
+  volume: number;
+  onChange: (v: number) => void;
+}
+
+function VolumeControl({ volume, onChange }: VolumeControlProps) {
+  const pct = Math.round(Math.max(0, Math.min(1, volume)) * 100);
+  const muted = volume <= 0;
+  const lastVolumeRef = useRef(volume > 0 ? volume : 1);
+  useEffect(() => {
+    if (volume > 0) lastVolumeRef.current = volume;
+  }, [volume]);
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: 'min(420px, 80%)',
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => onChange(muted ? (lastVolumeRef.current || 1) : 0)}
+        aria-label={muted ? 'Unmute' : 'Mute'}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: LCARS.peach,
+          cursor: 'pointer',
+          padding: 0,
+          display: 'flex',
+          alignItems: 'center',
+        }}
+      >
+        <VolumeIcon muted={muted} />
+      </button>
+      <input
+        type="range"
+        min={0}
+        max={1}
+        step={0.01}
+        value={volume}
+        onChange={e => onChange(Number(e.target.value))}
+        aria-label="Volume"
+        style={{
+          flex: 1,
+          accentColor: LCARS.peach,
+          cursor: 'pointer',
+        }}
+      />
+      <span
+        style={{
+          color: LCARS.subText,
+          fontFamily: 'monospace',
+          fontSize: 11,
+          minWidth: 36,
+          textAlign: 'right',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {pct}%
+      </span>
+    </div>
+  );
+}
+
+function VolumeIcon({ muted }: { muted: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M3 10v4h4l5 4V6L7 10H3z" fill="currentColor" />
+      {muted ? (
+        <path d="M16 9l6 6M22 9l-6 6" />
+      ) : (
+        <path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14" />
+      )}
+    </svg>
   );
 }
 
