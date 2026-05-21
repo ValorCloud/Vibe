@@ -5,7 +5,7 @@ import { safeGetItem, safeSetItem } from '../../utils/safeStorage';
 const VOICE_ASSISTANT_FIRST_CALL_STORAGE_KEY = 'vibe_voice_assistant_onboarding_seen';
 
 export interface VoiceAssistantStateParams {
-  page: 'lyrics' | 'musical';
+  page: 'lyrics' | 'musical' | 'player';
   mode: EditMode;
 }
 

@@ -1,4 +1,5 @@
 import type { RefObject } from 'react';
+import type { AppTab } from '../hooks/useUIState';
 
 export interface UIStateSlice {
   setIsAboutOpen: (v: boolean) => void;
@@ -33,8 +34,8 @@ export interface UIStateSlice {
   isAnalysisModalOpen: boolean;
   isSearchReplaceOpen: boolean;
   isAnalysisPanelOpen: boolean;
-  activeTab: 'lyrics' | 'musical';
-  setActiveTab: (v: 'lyrics' | 'musical') => void;
+  activeTab: AppTab;
+  setActiveTab: (v: AppTab) => void;
   isStructureOpen: boolean;
   setIsStructureOpen: (v: boolean) => void;
   isLeftPanelOpen: boolean;

@@ -12,9 +12,10 @@ import { useRef } from 'react';
 import { useSongContext } from '../contexts/SongContext';
 import { useSessionAutoSave } from './useSessionAutoSave';
 import type { SessionAutoSaveResult } from './useSessionAutoSave';
+import type { AppTab } from './useUIState';
 
 interface AutoSaveCoordinatorOptions {
-  activeTab: 'lyrics' | 'musical';
+  activeTab: AppTab;
   isStructureOpen: boolean;
   isLeftPanelOpen: boolean;
   /** Called once after the first successful OPFS write. */
