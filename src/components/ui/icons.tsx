@@ -33,6 +33,7 @@ import {
   GlobeRegular,
   GuitarRegular,
   HardDriveRegular,
+  HeadphonesRegular,
   HeartRegular,
   HistoryRegular,
   InfoRegular,
@@ -149,6 +150,7 @@ export const BookOpen = createIcon(BookOpenRegular, 'BookOpen');
 export const Library = createIcon(LibraryRegular, 'Library');
 export const FolderOpen = createIcon(FolderOpenRegular, 'FolderOpen');
 export const HardDrive = createIcon(HardDriveRegular, 'HardDrive');
+export const Headphones = createIcon(HeadphonesRegular, 'Headphones');
 export const AlertTriangle = createIcon(WarningRegular, 'AlertTriangle');
 export const Apple = createIcon(FoodAppleRegular, 'Apple');
 export const Github = createIcon(CodeRegular, 'Github');
