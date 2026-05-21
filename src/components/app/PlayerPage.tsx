@@ -129,17 +129,17 @@ function FrequencyVisualizer({
       ctx.clearRect(0, 0, w, h);
 
       const analyser = analyserRef.current;
-      let data: Uint8Array;
+      let data: Uint8Array<ArrayBuffer>;
       if (analyser && isPlaying) {
-        data = new Uint8Array(analyser.frequencyBinCount);
+        data = new Uint8Array(new ArrayBuffer(analyser.frequencyBinCount));
         analyser.getByteFrequencyData(data);
       } else {
-        data = new Uint8Array(BAR_COUNT).fill(4);
+        data = new Uint8Array(new ArrayBuffer(BAR_COUNT)).fill(4);
       }
 
       const barW = w / BAR_COUNT - 1;
       for (let i = 0; i < BAR_COUNT; i++) {
-        const val = data[Math.floor((i / BAR_COUNT) * data.length)] / 255;
+        const val = (data[Math.floor((i / BAR_COUNT) * data.length)] ?? 0) / 255;
         const barH = Math.max(4, val * h);
         const hue = (i / BAR_COUNT) * 280;
         ctx.fillStyle = `hsl(${hue},80%,55%)`;
@@ -171,7 +171,7 @@ export function PlayerPage() {
 
   const [storage, setStorage] = useState<StorageKind>('cloud');
   const [tracks] = useState<Track[]>(CLOUD_LIBRARY);
-  const [currentTrack, setCurrentTrack] = useState<Track>(CLOUD_LIBRARY[0]);
+  const [currentTrack, setCurrentTrack] = useState<Track>(() => CLOUD_LIBRARY[0]!);
   const [isPlaying, setIsPlaying] = useState(false);
 
   const ensureAudioCtx = useCallback(() => {
@@ -203,7 +203,7 @@ export function PlayerPage() {
   );
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadTrack(CLOUD_LIBRARY[0]); }, []);
+  useEffect(() => { loadTrack(CLOUD_LIBRARY[0]!); }, []);
 
   const togglePlay = () => {
     const audio = audioRef.current;
@@ -220,12 +220,14 @@ export function PlayerPage() {
 
   const skipNext = () => {
     const idx = tracks.findIndex(t => t.id === currentTrack.id);
-    loadTrack(tracks[(idx + 1) % tracks.length]);
+    const next = tracks[(idx + 1) % tracks.length];
+    if (next) loadTrack(next);
   };
 
   const skipPrev = () => {
     const idx = tracks.findIndex(t => t.id === currentTrack.id);
-    loadTrack(tracks[(idx - 1 + tracks.length) % tracks.length]);
+    const prev = tracks[(idx - 1 + tracks.length) % tracks.length];
+    if (prev) loadTrack(prev);
   };
 
   return (

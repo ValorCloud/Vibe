@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import type { Section } from '../types';
 import { useSongContext } from '../contexts/SongContext';
+import type { AppTab } from './useUIState';
 
 interface UseAppHandlersParams {
   t: {
@@ -12,7 +13,7 @@ interface UseAppHandlersParams {
   isMobileOrTablet: boolean;
   setApiErrorModal: (modal: { open: boolean; message: string }) => void;
   setConfirmModal: (modal: { open: boolean; onConfirm: () => void } | null) => void;
-  setActiveTab: (tab: 'lyrics' | 'musical') => void;
+  setActiveTab: (tab: AppTab) => void;
   setIsLeftPanelOpen: (open: boolean) => void;
   setIsStructureOpen: (open: boolean) => void;
   generateSong: () => Promise<void>;

@@ -5,11 +5,12 @@ import { buildResetPayload, buildPartialResetPayload, clearPersistedSession } fr
 import { createEmptySong } from '../utils/songDefaults';
 import { useSongContext } from '../contexts/SongContext';
 import type { SongMeta } from './useSongHistoryState';
+import type { AppTab } from './useUIState';
 
 type StateBag = {
   setHasSavedSession: (v: boolean) => void;
   setMarkupText: (v: string) => void;
-  setActiveTab: (v: 'lyrics' | 'musical') => void;
+  setActiveTab: (v: AppTab) => void;
   setIsLeftPanelOpen: (v: boolean) => void;
   setSimilarityMatches: (v: SimilarityMatch[]) => void;
 };

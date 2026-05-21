@@ -2,7 +2,7 @@ import { generateContentWithRetry } from '../../utils/aiUtils';
 import type { EditMode } from '../../types';
 
 export interface VoiceAssistantContext {
-  page: 'lyrics' | 'musical';
+  page: 'lyrics' | 'musical' | 'player';
   mode: EditMode;
   isFirstCall: boolean;
 }

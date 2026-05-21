@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { saveSession } from '../lib/sessionPersistence';
 import type { SessionSnapshot } from '../lib/sessionPersistence';
 import type { Section } from '../types';
+import type { AppTab } from './useUIState';
 
 export type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error';
 
@@ -32,7 +33,7 @@ interface AutoSavePayload {
   rhythm: string;
   narrative: string;
   musicalPrompt: string;
-  activeTab: 'lyrics' | 'musical';
+  activeTab: AppTab;
   isStructureOpen: boolean;
   isLeftPanelOpen: boolean;
   /** Called once after the first successful OPFS write. */

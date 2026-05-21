@@ -9,6 +9,7 @@
  * Schema version: 1
  */
 import type { Section } from '../types';
+import type { AppTab } from '../hooks/useUIState';
 
 export const SESSION_SCHEMA_VERSION = 1;
 const FILE_NAME = 'vibe-session.json';
@@ -36,7 +37,7 @@ export interface SessionSnapshot {
   narrative: string;
   musicalPrompt: string;
   // UI navigation
-  activeTab: 'lyrics' | 'musical';
+  activeTab: AppTab;
   isStructureOpen: boolean;
   isLeftPanelOpen: boolean;
 }

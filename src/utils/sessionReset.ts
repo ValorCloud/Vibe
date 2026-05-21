@@ -7,6 +7,7 @@ import { createEmptySong, DEFAULT_TOPIC, DEFAULT_MOOD } from './songDefaults';
 import { DEFAULT_STRUCTURE } from '../constants/editor';
 import type { Section } from '../types';
 import { clearSession } from '../lib/sessionPersistence';
+import type { AppTab } from '../hooks/useUIState';
 
 export interface ResetPayload {
   song: Section[];
@@ -24,7 +25,7 @@ export interface ResetPayload {
   narrative: string;
   musicalPrompt: string;
   markupText: string;
-  activeTab: 'lyrics' | 'musical';
+  activeTab: AppTab;
   isLeftPanelOpen: boolean;
   similarityMatches: never[];
   hasSavedSession: boolean;
