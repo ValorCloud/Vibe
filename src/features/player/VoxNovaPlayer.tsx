@@ -71,11 +71,11 @@ function immediateParentName(f: File): string {
   // immediate parent = second-to-last segment (index length-2)
   if (segments.length >= 3) {
     // file is at least one level deep inside the selected root
-    return segments[segments.length - 2];
+    return segments[segments.length - 2] ?? f.name.replace(/\.[^/.]+$/, '');
   }
   if (segments.length === 2 && segments[1]) {
     // file is directly inside the selected root — use root folder name
-    return segments[0];
+    return segments[0] ?? f.name.replace(/\.[^/.]+$/, '');
   }
   // no path info — fall back to filename without extension
   return f.name.replace(/\.[^/.]+$/, '');
