@@ -10,6 +10,7 @@ import { useAppState } from '../hooks/useAppState';
 import { useUIStateForProvider } from '../hooks/useUIStateForProvider';
 import type { UIStateBag } from './ModalContext';
 import type { SessionSnapshot } from '../lib/sessionPersistence';
+import type { AppTab } from '../hooks/useUIState';
 
 type AppStateBag = ReturnType<typeof useAppState>;
 
@@ -19,13 +20,16 @@ interface AppStateContextValue {
 }
 
 export interface AppNavigationValue {
-  activeTab: 'lyrics' | 'musical';
-  setActiveTab: (v: 'lyrics' | 'musical') => void;
+  activeTab: AppTab;
+  setActiveTab: (v: AppTab) => void;
   isStructureOpen: boolean;
   setIsStructureOpen: React.Dispatch<React.SetStateAction<boolean>>;
   isLeftPanelOpen: boolean;
   setIsLeftPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }
+
+// Re-export for convenience
+export type { AppTab };
 
 const AppStateContext = createContext<AppStateContextValue | null>(null);
 const AppNavigationContext = createContext<AppNavigationValue | null>(null);
