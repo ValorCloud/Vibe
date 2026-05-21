@@ -1,7 +1,7 @@
 /**
  * LyriaPreviewPanel — Lyria 3 Clip preview (30s)
  *
- * Sync contract (v1.31.0.8):
+ * Sync contract (v1.31.0.9):
  *  - Props are LIVE (not initial*): genre, mood, tempo, instrumentation, rhythm, narrative.
  *    Any change in MusicalParamsPanel is immediately reflected here.
  *  - Removing a badge calls onParamRemoved(field) → parent clears SongContext → params panel deselects.
@@ -259,21 +259,44 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
     return () => window.removeEventListener('keydown', onKey);
   }, [handleGenerate]);
 
+  // Truncate badge display values to prevent overflow
+  const truncate = (s: string, max = 60) =>
+    s.length > max ? s.slice(0, max) + '\u2026' : s;
+
   const renderParamBadge = (field: LyriaPromptField, label: string, value: string) => {
     if (!included(field)) return null;
     return (
       <span
         key={field}
-        style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 2, minWidth: 0, maxWidth: '100%' }}
       >
         <Badge
           appearance="tint"
           size="small"
           role="status"
           aria-label={`${label}: ${value}`}
+          style={{ minWidth: 0, maxWidth: '100%', overflow: 'hidden' }}
         >
-          <Text size={100} style={{ color: tokens.colorNeutralForeground3, marginRight: 2 }}>{label}:</Text>
-          {value}
+          <Text
+            size={100}
+            style={{
+              color: tokens.colorNeutralForeground3,
+              marginRight: 2,
+              flexShrink: 0,
+            }}
+          >
+            {label}:
+          </Text>
+          <span
+            style={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+            }}
+          >
+            {truncate(value)}
+          </span>
         </Badge>
         <button
           type="button"
@@ -286,6 +309,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
             padding: '0 2px',
             display: 'inline-flex',
             alignItems: 'center',
+            flexShrink: 0,
             color: tokens.colorNeutralForeground3,
             borderRadius: tokens.borderRadiusSmall,
           }}
@@ -368,7 +392,20 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
       <Divider />
 
       {/* ── Params (live — mirrors SongContext) ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: tokens.spacingVerticalXS, padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`, background: tokens.colorNeutralBackground3, borderRadius: tokens.borderRadiusMedium, border: `1px solid ${tokens.colorNeutralStroke2}` }}>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: tokens.spacingVerticalXS,
+          padding: `${tokens.spacingVerticalS} ${tokens.spacingHorizontalM}`,
+          background: tokens.colorNeutralBackground3,
+          borderRadius: tokens.borderRadiusMedium,
+          border: `1px solid ${tokens.colorNeutralStroke2}`,
+          // Prevent container from overflowing its card parent
+          minWidth: 0,
+          overflow: 'hidden',
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: tokens.spacingHorizontalXS, marginBottom: tokens.spacingVerticalXXS }}>
           <LockClosed20Regular style={{ fontSize: 13, color: tokens.colorNeutralForeground3 }} />
           <Text size={100} style={{ color: tokens.colorNeutralForeground3, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -377,13 +414,23 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         </div>
 
         {/* Structured param badges — Label: value */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: tokens.spacingHorizontalXS, alignItems: 'center' }}>
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: tokens.spacingHorizontalXS,
+            alignItems: 'center',
+            // Critical: allow flex children to shrink below their content size
+            minWidth: 0,
+            overflow: 'hidden',
+          }}
+        >
           {activeGenre           && renderParamBadge('genre',           'Style',           activeGenre)}
           {activeMood            && renderParamBadge('mood',            'Mood',            activeMood)}
           {activeTempo > 0       && renderParamBadge('tempo',           'BPM',             String(activeTempo))}
           {activeInstrumentation && renderParamBadge('instrumentation', 'Instrumentation', activeInstrumentation)}
-          {activeRhythm          && renderParamBadge('rhythm',          'Rhythm',          activeRhythm.slice(0, 60) + (activeRhythm.length > 60 ? '\u2026' : ''))}
-          {activeNarrative       && renderParamBadge('narrative',       'Narrative',       activeNarrative.slice(0, 60) + (activeNarrative.length > 60 ? '\u2026' : ''))}
+          {activeRhythm          && renderParamBadge('rhythm',          'Rhythm',          activeRhythm)}
+          {activeNarrative       && renderParamBadge('narrative',       'Narrative',       activeNarrative)}
         </div>
 
         {/* Global production tags — always appended, individually dismissible */}
@@ -405,6 +452,33 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
             ✨ Full prompt active
           </Badge>
         )}
+
+        {/* Lyria compiled prompt preview — readable, no overflow */}
+        {hasVisibleParams && styleString && (
+          <div
+            style={{
+              marginTop: tokens.spacingVerticalXXS,
+              paddingTop: tokens.spacingVerticalXXS,
+              borderTop: `1px solid ${tokens.colorNeutralStroke2}`,
+              minWidth: 0,
+            }}
+          >
+            <Text
+              size={100}
+              font="monospace"
+              style={{
+                color: tokens.colorNeutralForeground3,
+                wordBreak: 'break-word',
+                overflowWrap: 'anywhere',
+                whiteSpace: 'pre-wrap',
+                display: 'block',
+              }}
+            >
+              {styleString}
+            </Text>
+          </div>
+        )}
+
         {!hasVisibleParams && (
           <Text size={200} style={{ color: tokens.colorNeutralForeground3 }}>
             {L?.noParams ?? 'No params set — configure them in the musical params panel above.'}

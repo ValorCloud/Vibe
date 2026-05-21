@@ -96,7 +96,15 @@ export const useMusicalPrompt = ({
   }, []);
 
   const generateMusicalPrompt = async () => {
-    if (!title && !topic) return;
+    // Allow generation when any musical context is available:
+    // title, topic, lyrics, genre, instrumentation, or mood.
+    // The previous guard `if (!title && !topic) return` was too strict —
+    // it silently blocked generation for users who set genre/instrumentation
+    // without filling title or topic first.
+    const hasLyrics = song.some(s => s.lines.some(l => l.text.trim() !== ''));
+    const hasContext = !!(title || topic || mood || genre || instrumentation || hasLyrics);
+    if (!hasContext) return;
+
     setIsGeneratingMusicalPrompt(true);
     // Capture our own signal so we can later check whether *this* invocation
     // is still the latest one in the ref. This replaces the previous mutable
