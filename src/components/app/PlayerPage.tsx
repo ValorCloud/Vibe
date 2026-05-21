@@ -2,10 +2,21 @@
  * PlayerPage — LCARS FUI audio player
  * Three.js WarpField + WebAudio FrequencyVisualizer
  * Adapted from VoxNova reference for Lyricist/Vibe.
- * v1.0.0
+ * v1.1.0
  */
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import * as THREE from 'three';
+import {
+  GlobeRegular,
+  DatabaseRegular,
+  DeleteRegular,
+  ArrowUploadRegular,
+  ScanDashRegular,
+  SkipBackward10Regular,
+  SkipForward10Regular,
+  PlayCircleRegular,
+  PauseCircleRegular,
+} from '@fluentui/react-icons';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +28,7 @@ interface Track {
 }
 
 type StorageKind = 'cloud' | 'local';
+type AudioProtocol = 'WAV' | 'MP3' | 'ALL';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -174,6 +186,11 @@ export function PlayerPage() {
   const [currentTrack, setCurrentTrack] = useState<Track>(() => CLOUD_LIBRARY[0]!);
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // SCAN SECTOR panel state
+  const [scanOpen, setScanOpen] = useState(false);
+  const [audioProtocol, setAudioProtocol] = useState<AudioProtocol>('ALL');
+  const [patternMatch, setPatternMatch] = useState('L3RC');
+
   const ensureAudioCtx = useCallback(() => {
     if (audioCtxRef.current) return;
     const ctx = new AudioContext();
@@ -230,9 +247,34 @@ export function PlayerPage() {
     if (prev) loadTrack(prev);
   };
 
+  // ── Sidebar button style helpers ──────────────────────────────────────────
+  const storageBtn = (kind: StorageKind) => ({
+    display: 'flex' as const,
+    alignItems: 'center' as const,
+    gap: 8,
+    padding: '7px 12px',
+    borderRadius: 4,
+    fontSize: 11,
+    letterSpacing: '0.15em',
+    textTransform: 'uppercase' as const,
+    cursor: 'pointer' as const,
+    border: 'none',
+    width: '100%',
+    transition: 'background 0.15s',
+    background:
+      kind === 'cloud'
+        ? storage === 'cloud' ? 'var(--accent-color, #6699cc)' : 'transparent'
+        : storage === 'local' ? 'var(--lcars-amber, #cc9966)' : 'transparent',
+    color:
+      kind === 'cloud'
+        ? storage === 'cloud' ? '#fff' : '#9ca3af'
+        : storage === 'local' ? '#000' : '#9ca3af',
+    justifyContent: 'flex-end' as const,
+  });
+
   return (
     <div
-      className="relative flex h-full w-full overflow-hidden bg-black text-white font-mono select-none"
+      className="relative flex h-full w-full overflow-hidden bg-black text-white select-none"
       style={{ fontFamily: 'var(--fontFamilyMonospace, monospace)' }}
     >
       {/* WarpField background */}
@@ -269,41 +311,29 @@ export function PlayerPage() {
 
         {/* Storage toggle */}
         <div className="flex flex-col gap-1 p-3">
-          <button
-            onClick={() => setStorage('cloud')}
-            className="flex items-center gap-2 px-3 py-2 rounded uppercase transition-colors"
-            style={{
-              fontSize: 11,
-              letterSpacing: '0.15em',
-              background: storage === 'cloud' ? 'var(--accent-color, #6699cc)' : 'transparent',
-              color: storage === 'cloud' ? '#fff' : '#9ca3af',
-            }}
-          >
-            <span>🌐</span> CLOUD
+          <button onClick={() => setStorage('cloud')} style={storageBtn('cloud')}>
+            <GlobeRegular style={{ fontSize: 14, flexShrink: 0 }} />
+            <span style={{ flex: 1, textAlign: 'right' }}>NEURAL CLOUD</span>
           </button>
           <button
-            onClick={() => setStorage('local')}
-            className="flex items-center gap-2 px-3 py-2 rounded uppercase transition-colors"
-            style={{
-              fontSize: 11,
-              letterSpacing: '0.15em',
-              background:
-                storage === 'local' ? 'var(--lcars-amber, #cc9966)' : 'transparent',
-              color: storage === 'local' ? '#000' : '#9ca3af',
-            }}
-          >
-            <span>🗄</span> LOCAL
-          </button>
-          <button
-            className="mt-1 px-3 py-1.5 rounded uppercase transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded uppercase transition-colors"
             style={{
               fontSize: 11,
               letterSpacing: '0.15em',
               background: 'rgba(127,29,29,0.6)',
               color: '#fca5a5',
+              border: 'none',
+              cursor: 'pointer',
+              width: '100%',
+              justifyContent: 'flex-end',
             }}
           >
-            PURGE
+            <DeleteRegular style={{ fontSize: 14 }} />
+            <span>PURGE CLOUD MEMORY</span>
+          </button>
+          <button onClick={() => setStorage('local')} style={storageBtn('local')}>
+            <DatabaseRegular style={{ fontSize: 14, flexShrink: 0 }} />
+            <span style={{ flex: 1, textAlign: 'right' }}>LOCAL SECTORS</span>
           </button>
         </div>
 
@@ -313,9 +343,11 @@ export function PlayerPage() {
             <button
               key={track.id}
               onClick={() => loadTrack(track)}
-              className="w-full text-left px-3 py-2 rounded uppercase tracking-wide transition-colors mb-1"
+              className="w-full text-right px-3 py-2 rounded uppercase tracking-wide transition-colors mb-1"
               style={{
                 fontSize: 11,
+                border: 'none',
+                cursor: 'pointer',
                 background:
                   currentTrack.id === track.id
                     ? 'rgba(126,179,216,0.15)'
@@ -331,33 +363,140 @@ export function PlayerPage() {
           ))}
         </div>
 
-        {/* UPLINK + SCAN */}
+        {/* UPLINK + SCAN SECTOR ─────────────────────────────────────────── */}
         <div
-          className="p-3 border-t flex flex-col gap-2"
+          className="border-t flex flex-col"
           style={{ borderColor: 'rgba(204,153,102,0.3)' }}
         >
+          {/* UPLINK */}
           <button
-            className="flex items-center gap-2 px-3 py-2 rounded uppercase transition-colors"
+            className="flex items-center gap-2 px-3 py-2 uppercase transition-colors"
             style={{
               fontSize: 11,
               letterSpacing: '0.15em',
               background: 'rgba(204,153,102,0.1)',
               color: 'var(--lcars-amber, #cc9966)',
+              border: 'none',
+              cursor: 'pointer',
+              justifyContent: 'flex-end',
             }}
           >
-            ↑ UPLINK
+            <ArrowUploadRegular style={{ fontSize: 14 }} />
+            <span>UPLINK</span>
           </button>
-          <button
-            className="flex items-center gap-2 px-3 py-2 rounded uppercase transition-colors"
-            style={{
-              fontSize: 11,
-              letterSpacing: '0.15em',
-              background: 'rgba(63,63,70,0.6)',
-              color: '#d1d5db',
-            }}
-          >
-            🗄 SCAN SECTOR
-          </button>
+
+          {/* SCAN SECTOR expandable panel */}
+          <div>
+            <button
+              onClick={() => setScanOpen(o => !o)}
+              className="flex items-center gap-2 px-3 py-2 w-full uppercase transition-colors"
+              style={{
+                fontSize: 11,
+                letterSpacing: '0.15em',
+                background: scanOpen ? 'var(--lcars-amber, #cc9966)' : 'rgba(63,63,70,0.6)',
+                color: scanOpen ? '#000' : '#d1d5db',
+                border: 'none',
+                cursor: 'pointer',
+                justifyContent: 'flex-end',
+              }}
+              aria-expanded={scanOpen}
+            >
+              <DatabaseRegular style={{ fontSize: 14 }} />
+              <span>SCAN SECTOR</span>
+            </button>
+
+            {scanOpen && (
+              <div
+                className="flex flex-col gap-2 px-3 py-3"
+                style={{
+                  background: 'rgba(0,0,0,0.5)',
+                  borderTop: '1px solid rgba(204,153,102,0.2)',
+                }}
+              >
+                {/* AUDIO PROTOCOL */}
+                <div>
+                  <div
+                    className="uppercase tracking-widest mb-1"
+                    style={{ fontSize: 9, color: '#6b7280' }}
+                  >
+                    AUDIO PROTOCOL
+                  </div>
+                  <div className="flex gap-1">
+                    {(['WAV', 'MP3', 'ALL'] as AudioProtocol[]).map(proto => (
+                      <button
+                        key={proto}
+                        onClick={() => setAudioProtocol(proto)}
+                        style={{
+                          flex: 1,
+                          padding: '3px 0',
+                          fontSize: 10,
+                          letterSpacing: '0.1em',
+                          border: 'none',
+                          cursor: 'pointer',
+                          borderRadius: 3,
+                          background:
+                            audioProtocol === proto
+                              ? 'var(--lcars-amber, #cc9966)'
+                              : 'rgba(39,39,42,0.8)',
+                          color: audioProtocol === proto ? '#000' : '#9ca3af',
+                          fontFamily: 'var(--fontFamilyMonospace, monospace)',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        {proto}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* PATTERN MATCH */}
+                <div>
+                  <div
+                    className="uppercase tracking-widest mb-1"
+                    style={{ fontSize: 9, color: '#6b7280' }}
+                  >
+                    PATTERN MATCH
+                  </div>
+                  <input
+                    type="text"
+                    value={patternMatch}
+                    onChange={e => setPatternMatch(e.target.value)}
+                    spellCheck={false}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(39,39,42,0.9)',
+                      border: '1px solid rgba(204,153,102,0.3)',
+                      borderRadius: 3,
+                      padding: '3px 8px',
+                      fontSize: 11,
+                      color: '#d1d5db',
+                      fontFamily: 'var(--fontFamilyMonospace, monospace)',
+                      outline: 'none',
+                      letterSpacing: '0.1em',
+                    }}
+                  />
+                </div>
+
+                {/* Launch scan */}
+                <button
+                  className="flex items-center justify-end gap-2 px-3 py-1.5 uppercase"
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: '0.15em',
+                    background: 'rgba(126,179,216,0.15)',
+                    color: 'var(--lcars-blue, #7eb3d8)',
+                    border: '1px solid rgba(126,179,216,0.3)',
+                    borderRadius: 3,
+                    cursor: 'pointer',
+                    fontFamily: 'var(--fontFamilyMonospace, monospace)',
+                  }}
+                >
+                  <ScanDashRegular style={{ fontSize: 12 }} />
+                  <span>INITIATE SCAN</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </aside>
 
@@ -402,10 +541,7 @@ export function PlayerPage() {
           style={{ borderColor: 'rgba(39,39,42,0.6)' }}
         >
           <div className="flex flex-col gap-1 flex-1">
-            <span
-              className="uppercase tracking-widest text-zinc-500"
-              style={{ fontSize: 9 }}
-            >
+            <span className="uppercase tracking-widest text-zinc-500" style={{ fontSize: 9 }}>
               STRUCTURAL INTEGRITY
             </span>
             <div className="h-1 rounded-full overflow-hidden" style={{ background: '#27272a' }}>
@@ -416,10 +552,7 @@ export function PlayerPage() {
             </div>
           </div>
           <div className="flex flex-col gap-1 flex-1">
-            <span
-              className="uppercase tracking-widest text-zinc-500"
-              style={{ fontSize: 9 }}
-            >
+            <span className="uppercase tracking-widest text-zinc-500" style={{ fontSize: 9 }}>
               NEURAL BUFFER
             </span>
             <div className="h-1 rounded-full overflow-hidden" style={{ background: '#27272a' }}>
@@ -430,10 +563,7 @@ export function PlayerPage() {
             </div>
           </div>
           <div className="text-right">
-            <div
-              className="uppercase tracking-widest text-zinc-500"
-              style={{ fontSize: 9 }}
-            >
+            <div className="uppercase tracking-widest text-zinc-500" style={{ fontSize: 9 }}>
               SECTOR TIME
             </div>
             <div
@@ -484,11 +614,12 @@ export function PlayerPage() {
                 height: 48,
                 background: 'rgba(39,39,42,0.7)',
                 color: '#d1d5db',
-                fontSize: 18,
+                border: 'none',
+                cursor: 'pointer',
               }}
               aria-label="Previous track"
             >
-              ⏮
+              <SkipBackward10Regular style={{ fontSize: 22 }} />
             </button>
             <button
               onClick={togglePlay}
@@ -498,12 +629,16 @@ export function PlayerPage() {
                 height: 64,
                 background: 'var(--lcars-amber, #cc9966)',
                 color: '#000',
-                fontSize: 24,
+                border: 'none',
+                cursor: 'pointer',
                 boxShadow: '0 4px 24px rgba(204,153,102,0.4)',
               }}
               aria-label={isPlaying ? 'Pause' : 'Play'}
             >
-              {isPlaying ? '⏸' : '▶'}
+              {isPlaying
+                ? <PauseCircleRegular style={{ fontSize: 28 }} />
+                : <PlayCircleRegular style={{ fontSize: 28 }} />
+              }
             </button>
             <button
               onClick={skipNext}
@@ -513,11 +648,12 @@ export function PlayerPage() {
                 height: 48,
                 background: 'rgba(39,39,42,0.7)',
                 color: '#d1d5db',
-                fontSize: 18,
+                border: 'none',
+                cursor: 'pointer',
               }}
               aria-label="Next track"
             >
-              ⏭
+              <SkipForward10Regular style={{ fontSize: 22 }} />
             </button>
           </div>
 
