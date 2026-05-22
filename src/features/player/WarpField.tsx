@@ -65,8 +65,7 @@ const lensingFragmentShader = `
       return;
     }
 
-    float rs = r;
-    float deflection = (rs * rs) / (dist * dist + rs * 0.42);
+    float deflection = (r * r) / (dist * dist + r * 0.42);
     deflection = clamp(deflection, 0.0, 0.72);
     vec2 dir = normalize(toCenter);
     vec2 uvDir = vec2(dir.x / uAspect, dir.y);
@@ -86,7 +85,11 @@ const lensingFragmentShader = `
 
     float photonRing = smoothstep(r * 0.055, 0.0, abs(dist - r * 1.01)) * 0.55;
     float horizontalGlow = smoothstep(-r * 2.2, r * 2.2, -toCenter.x);
-    float angularFlicker = 0.85 + sin(atan(toCenter.y, toCenter.x) * 6.0 - uTime * 2.2) * 0.15;
+    const float flickerBands = 6.0;
+    const float flickerSpeed = 2.2;
+    const float flickerBase = 0.85;
+    const float flickerAmplitude = 0.15;
+    float angularFlicker = flickerBase + sin(atan(toCenter.y, toCenter.x) * flickerBands - uTime * flickerSpeed) * flickerAmplitude;
     vec3 warmDisk = mix(vec3(0.95, 0.22, 0.04), vec3(1.0, 0.82, 0.34), horizontalGlow);
     vec3 hotRing = mix(vec3(1.0, 0.54, 0.08), vec3(1.0, 0.96, 0.74), horizontalGlow);
     stars += warmDisk * (accretionDisk + ghostArc) * angularFlicker * 1.65;
@@ -204,6 +207,9 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     sceneRef.current = true;
 
     const state = { rafId: 0, time: 0, rotSpeed: 0.4 };
+    const getAspect = () => (
+      container.clientHeight > 0 ? container.clientWidth / container.clientHeight : 1
+    );
 
     // ── Renderer ──────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -218,7 +224,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     // This gives the characteristic Interstellar view: disk as bright ellipse,
     // ghost arc visible below, photon ring encircling the shadow.
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 20000);
+    const camera = new THREE.PerspectiveCamera(45, getAspect(), 0.1, 20000);
     camera.position.set(0, 42, 760);
     camera.lookAt(0, -28, 0);
 
@@ -232,7 +238,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
         uTime:     { value: 0 },
         uBhScreen: { value: new THREE.Vector2(0.5, 0.48) },
         uBhRadius: { value: 0.072 },
-        uAspect:   { value: container.clientWidth / Math.max(container.clientHeight, 1) },
+        uAspect:   { value: getAspect() },
       },
       depthWrite: false,
       depthTest: false,
@@ -411,10 +417,10 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     // ── Resize ────────────────────────────────────────────────────────────────
     const handleResize = () => {
-      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.aspect = getAspect();
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
-      lensMat.uniforms['uAspect']!.value = container.clientWidth / Math.max(container.clientHeight, 1);
+      lensMat.uniforms['uAspect']!.value = getAspect();
     };
     window.addEventListener('resize', handleResize);
 
