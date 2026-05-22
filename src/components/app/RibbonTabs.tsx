@@ -9,7 +9,7 @@ import { useTranslation } from '../../i18n';
 import { useAppNavigationContext } from '../../contexts/AppStateContext';
 
 export function RibbonTabs() {
-  const { activeTab, setActiveTab } = useAppNavigationContext();
+  const { activeTab, setActiveTab, setIsLeftPanelOpen } = useAppNavigationContext();
   const { t } = useTranslation();
 
   return (
@@ -46,7 +46,10 @@ export function RibbonTabs() {
       </Tooltip>
       <Tooltip title={t.tooltips.playerTab ?? 'Player'}>
         <button
-          onClick={() => setActiveTab('player')}
+          onClick={() => {
+            setActiveTab('player');
+            setIsLeftPanelOpen(false);
+          }}
           className={`text-[10px] uppercase tracking-widest transition-all duration-200 relative py-5 font-semibold ${
             activeTab === 'player'
               ? 'text-[var(--lcars-blue,#7eb3d8)]'
