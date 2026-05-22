@@ -54,6 +54,16 @@ const lensingFragmentShader = `
     return col;
   }
 
+  const float DISK_WIDTH_SCALE = 2.55;
+  const float DISK_HEIGHT_SCALE = 0.34;
+  const float GHOST_WIDTH_SCALE = 1.55;
+  const float GHOST_VERTICAL_OFFSET = 0.48;
+  const float GHOST_HEIGHT_SCALE = 0.16;
+  const float FLICKER_BANDS = 6.0;
+  const float FLICKER_SPEED = 2.2;
+  const float FLICKER_BASE = 0.85;
+  const float FLICKER_AMPLITUDE = 0.15;
+
   void main() {
     vec2 uv = vUv;
     vec2 toCenter = vec2((uv.x - uBhScreen.x) * uAspect, uv.y - uBhScreen.y);
@@ -74,22 +84,18 @@ const lensingFragmentShader = `
     vec3 stars = starField(lensedUv);
 
     float wobble = sin(uTime * 0.9 + toCenter.x * 36.0) * r * 0.035;
-    vec2 diskUv = vec2(toCenter.x / (r * 2.55), (toCenter.y + wobble) / (r * 0.34));
+    vec2 diskUv = vec2(toCenter.x / (r * DISK_WIDTH_SCALE), (toCenter.y + wobble) / (r * DISK_HEIGHT_SCALE));
     float diskEllipse = length(diskUv);
     float accretionDisk = smoothstep(0.23, 0.0, abs(diskEllipse - 1.0));
     accretionDisk *= smoothstep(r * 0.92, r * 1.12, dist);
 
-    vec2 ghostUv = vec2(toCenter.x / (r * 1.55), (toCenter.y + r * 0.48) / (r * 0.16));
+    vec2 ghostUv = vec2(toCenter.x / (r * GHOST_WIDTH_SCALE), (toCenter.y + r * GHOST_VERTICAL_OFFSET) / (r * GHOST_HEIGHT_SCALE));
     float ghostArc = smoothstep(0.24, 0.0, abs(length(ghostUv) - 1.0)) * 0.45;
     ghostArc *= smoothstep(0.0, r * 0.95, abs(toCenter.x));
 
     float photonRing = smoothstep(r * 0.055, 0.0, abs(dist - r * 1.01)) * 0.55;
     float horizontalGlow = smoothstep(-r * 2.2, r * 2.2, -toCenter.x);
-    const float flickerBands = 6.0;
-    const float flickerSpeed = 2.2;
-    const float flickerBase = 0.85;
-    const float flickerAmplitude = 0.15;
-    float angularFlicker = flickerBase + sin(atan(toCenter.y, toCenter.x) * flickerBands - uTime * flickerSpeed) * flickerAmplitude;
+    float angularFlicker = FLICKER_BASE + sin(atan(toCenter.y, toCenter.x) * FLICKER_BANDS - uTime * FLICKER_SPEED) * FLICKER_AMPLITUDE;
     vec3 warmDisk = mix(vec3(0.95, 0.22, 0.04), vec3(1.0, 0.82, 0.34), horizontalGlow);
     vec3 hotRing = mix(vec3(1.0, 0.54, 0.08), vec3(1.0, 0.96, 0.74), horizontalGlow);
     stars += warmDisk * (accretionDisk + ghostArc) * angularFlicker * 1.65;
