@@ -1,0 +1,18 @@
+# Files committed to the repo that must NOT be packaged by Vercel.
+# Vercel auto-deploys every .ts/.py file under /api as a Serverless Function,
+# which would attempt to bundle dev-only deps (vitest, etc.) and Python
+# packages that need unavailable system libs (espeak-ng for phonemize).
+
+# Test files and mocks (covers api/ and src/ trees)
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/__mocks__/
+
+# Python phonemize microservice — requires espeak-ng system dep,
+# not provided by Vercel's Python runtime. Deploy it elsewhere.
+api/phonemize/
+
+# Local-only / repository housekeeping
+sauvegardes/
