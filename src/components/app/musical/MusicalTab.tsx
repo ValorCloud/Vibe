@@ -1,10 +1,14 @@
 import React, { useState, useCallback } from 'react';
+import { Button, tokens } from '@fluentui/react-components';
+import { Play20Regular } from '@fluentui/react-icons';
 import { LyricsMusicAnalysis } from './LyricsMusicAnalysis';
 import { MusicalParamsPanel } from './MusicalParamsPanel';
 import { MusicalPromptBuilder } from './MusicalPromptBuilder';
 import { MusicalSuggestionsPanel } from './MusicalSuggestionsPanel';
 import { useSongContext } from '../../../contexts/SongContext';
 import { useComposerContext } from '../../../contexts/ComposerContext';
+import { useLibraryContext } from '../../../contexts/LibraryContext';
+import { useAppNavigationContext } from '../../../contexts/AppStateContext';
 import { LyriaPreviewPanel } from '../../../features/musical/LyriaPreviewPanel';
 import { LyriaFullSongPanel } from '../../../features/musical/LyriaFullSongPanel';
 import type { LyriaClip } from '../../../types/lyria';
@@ -29,6 +33,10 @@ export function MusicalTab({ hasApiKey }: Props) {
     generateMusicalPrompt,
     analyzeLyricsForMusic,
   } = useComposerContext();
+
+  const { addTracks, tracks } = useLibraryContext();
+  const { setActiveTab } = useAppNavigationContext();
+  const lyriaTrackCount = tracks.filter(t => t.source === 'lyria').length;
 
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [approvedClip, setApprovedClip] = useState<LyriaClip | null>(null);
@@ -56,6 +64,22 @@ export function MusicalTab({ hasApiKey }: Props) {
       // 'mood' is derived from lyrics analysis — not cleared from here
     }
   }, [setGenre, setTempo, setInstrumentation, setRhythm, setNarrative]);
+
+  /**
+   * Bridge Lyria generations (preview clips and full songs) into the Player
+   * library. Each successful generation is appended as a new TrackEntry with
+   * source: 'lyria' so users can replay and compare multiple variants.
+   */
+  const handleAddLyriaToLibrary = useCallback(
+    (entry: Parameters<typeof addTracks>[0][number]) => {
+      addTracks([entry]);
+    },
+    [addTracks],
+  );
+
+  const handleOpenPlayer = useCallback(() => {
+    setActiveTab('player');
+  }, [setActiveTab]);
 
   const hasLyrics  = song.some(s => s.lines.some(l => l.text.trim() !== ''));
   const hasContext = !!(title || topic || mood || hasLyrics);
@@ -107,6 +131,7 @@ export function MusicalTab({ hasApiKey }: Props) {
           musicalPrompt={musicalPrompt}
           onParamRemoved={handleParamRemoved}
           onFullSong={(clip) => setApprovedClip(clip)}
+          onAddToLibrary={handleAddLyriaToLibrary}
         />
 
         {approvedClip && (
@@ -115,8 +140,26 @@ export function MusicalTab({ hasApiKey }: Props) {
             clipTitle={approvedClip.title}
             lyrics={lyricsText}
             songTitle={title ?? ''}
+            onAddToLibrary={handleAddLyriaToLibrary}
           />
         )}
+
+        {/* Quick access from the Lyria container to the Player tab so users
+            can replay and compare all generated tracks under the LYRIA view. */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: tokens.spacingVerticalS }}>
+          <Button
+            appearance="secondary"
+            icon={<Play20Regular />}
+            onClick={handleOpenPlayer}
+            aria-label={lyriaTrackCount > 0
+              ? `Ouvrir le Player (${lyriaTrackCount} génération${lyriaTrackCount > 1 ? 's' : ''} Lyria)`
+              : 'Ouvrir le Player'}
+          >
+            {lyriaTrackCount > 0
+              ? `Ouvrir le Player (${lyriaTrackCount})`
+              : 'Ouvrir le Player'}
+          </Button>
+        </div>
       </div>
     </div>
   );

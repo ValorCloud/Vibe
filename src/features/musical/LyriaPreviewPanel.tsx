@@ -48,6 +48,7 @@ import {
 import { generateAndPoll, getLyriaKPISnapshot } from '../../services/lyriaService';
 import { parseLyriaError, type ParsedLyriaError } from '../../services/lyriaError';
 import type { LyriaClip, LyriaStyleDescriptor, LyriaTaskStatus } from '../../types/lyria';
+import type { TrackEntry } from '../player/types';
 import { useLanguage } from '../../i18n';
 
 /** Global production tags appended to every Lyria prompt — removable by user. */
@@ -112,6 +113,8 @@ export interface LyriaPreviewPanelProps {
   onParamRemoved?: (field: LyriaPromptField) => void;
   onFullSong?: (clip: LyriaClip) => void;
   onPromptReady?: (stylePrompt: string) => void;
+  /** Called with a ready-to-play TrackEntry after a successful preview generation. */
+  onAddToLibrary?: (entry: Omit<TrackEntry, 'id'>) => void;
   /** @deprecated Use genre (live prop) instead. Will be removed in v1.32. */
   initialGenre?: string;
   /** @deprecated Use mood (live prop) instead. Will be removed in v1.32. */
@@ -141,6 +144,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
   onParamRemoved,
   onFullSong,
   onPromptReady,
+  onAddToLibrary,
   initialGenre,
   initialMood,
   initialTempo,
@@ -264,6 +268,17 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
       if (!signal.aborted) {
         setTaskStatus({ phase: 'done', clip });
         setKpi(getLyriaKPISnapshot());
+
+        // Bridge to Player library — keep every preview so users can compare generations
+        if (clip.audioUrl && onAddToLibrary) {
+          onAddToLibrary({
+            title: clip.title || songTitle || 'Lyria Preview',
+            source: 'lyria',
+            url: clip.audioUrl,
+            linked: true,
+            memo: `[LYRIA preview] ${clip.model ?? ''} | SynthID: ${clip.synthIdWatermarked ? 'YES' : 'NO'} | ${clip.durationSeconds != null ? `${Math.round(clip.durationSeconds)}s` : '?'} | Prompt: ${effectiveStyle.slice(0, 80)}`,
+          });
+        }
       }
     } catch (err) {
       if (signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) return;
@@ -272,7 +287,7 @@ export const LyriaPreviewPanel: React.FC<LyriaPreviewPanelProps> = ({
         setKpi(getLyriaKPISnapshot());
       }
     }
-  }, [isGenerating, lyrics, effectiveStyle, negativePrompt, songTitle, onPromptReady]);
+  }, [isGenerating, lyrics, effectiveStyle, negativePrompt, songTitle, onPromptReady, onAddToLibrary]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

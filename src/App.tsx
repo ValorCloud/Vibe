@@ -18,6 +18,7 @@ import { EditorProvider } from './contexts/EditorContext';
 import { AnalysisProvider } from './contexts/AnalysisContext';
 import { RhymeProxyProvider } from './contexts/RhymeProxyContext';
 import { AppStateProvider, useAppStateContext } from './contexts/AppStateContext';
+import { LibraryProvider } from './contexts/LibraryContext';
 import { TranslationAdaptationProvider } from './contexts/TranslationAdaptationContext';
 import { VersionProvider, useVersionContext } from './contexts/VersionContext';
 import { useLanguage, useTranslation } from './i18n';
@@ -292,19 +293,21 @@ function AppInner() {
 
   return (
     <AppStateProvider initialSession={initialSession}>
-      <DragProvider>
-        <SongProvider initialSession={initialSession}>
-          <SongMutationProvider>
-            <ComposerProvider>
-              <VersionProvider>
-                <SimilarityProvider>
-                  <AppProviders initialSession={initialSession} />
-                </SimilarityProvider>
-              </VersionProvider>
-            </ComposerProvider>
-          </SongMutationProvider>
-        </SongProvider>
-      </DragProvider>
+      <LibraryProvider>
+        <DragProvider>
+          <SongProvider initialSession={initialSession}>
+            <SongMutationProvider>
+              <ComposerProvider>
+                <VersionProvider>
+                  <SimilarityProvider>
+                    <AppProviders initialSession={initialSession} />
+                  </SimilarityProvider>
+                </VersionProvider>
+              </ComposerProvider>
+            </SongMutationProvider>
+          </SongProvider>
+        </DragProvider>
+      </LibraryProvider>
     </AppStateProvider>
   );
 }

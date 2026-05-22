@@ -30,12 +30,33 @@ const mockComposerContext = vi.hoisted(() => ({
   analyzeLyricsForMusic: vi.fn(),
 }));
 
+const mockLibraryContext = vi.hoisted(() => ({
+  tracks: [] as Array<{ id: string; title: string; source: 'cloud' | 'local' | 'lyria'; memo: string; linked: boolean }>,
+  addTracks: vi.fn(),
+  removeTrack: vi.fn(),
+  updateMemo: vi.fn(),
+  updateUrl: vi.fn(),
+  purgeAll: vi.fn(),
+}));
+
+const mockAppNavigationContext = vi.hoisted(() => ({
+  setActiveTab: vi.fn(),
+}));
+
 vi.mock('../../../contexts/SongContext', () => ({
   useSongContext: () => mockSongContext,
 }));
 
 vi.mock('../../../contexts/ComposerContext', () => ({
   useComposerContext: () => mockComposerContext,
+}));
+
+vi.mock('../../../contexts/LibraryContext', () => ({
+  useLibraryContext: () => mockLibraryContext,
+}));
+
+vi.mock('../../../contexts/AppStateContext', () => ({
+  useAppNavigationContext: () => mockAppNavigationContext,
 }));
 
 vi.mock('./LyricsMusicAnalysis', () => ({
