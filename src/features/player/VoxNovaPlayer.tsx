@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { WarpField } from './WarpField';
 import { FrequencyVisualizer } from './FrequencyVisualizer';
 import { PlayerControls } from './PlayerControls';
 import { PlayerSidebar } from './PlayerSidebar';
@@ -209,14 +208,12 @@ export function VoxNovaPlayer() {
         width: '100%',
         height: '100%',
         display: 'flex',
-        background: LCARS.void,
+        background: 'var(--bg-app)',
         color: LCARS.text,
         fontFamily: '"Antonio", "Eurostile", "Helvetica Neue", Arial, sans-serif',
         overflow: 'hidden',
       }}
     >
-      <WarpField isPlaying={engine.isPlaying} />
-
       {sidebarVisible && (
         <PlayerSidebar
           view={view}
@@ -409,7 +406,7 @@ export function VoxNovaPlayer() {
 
           <div style={{ flex: 1, minHeight: 0 }} aria-hidden="true" />
 
-          {/* SINGULARITY STATUS — black hole */}
+          {/* SINGULARITY STATUS */}
           <div
             style={{
               alignSelf: 'center',
@@ -433,7 +430,7 @@ export function VoxNovaPlayer() {
             <BlackHoleBadge active={engine.isPlaying} />
           </div>
 
-          {/* SUBSPACE FREQUENCY SCAN — equalizer, now directly under black hole */}
+          {/* SUBSPACE FREQUENCY SCAN — equalizer */}
           <div
             style={{
               alignSelf: 'center',
