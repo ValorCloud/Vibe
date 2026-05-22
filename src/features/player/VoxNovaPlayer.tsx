@@ -13,6 +13,8 @@ type LibraryView = 'cloud' | 'local' | 'lyria';
 
 const LIBRARY_CAPACITY = 50;
 
+const VIDEO_EXT = /\.(mp4|webm|mov|mkv)$/i;
+
 const LCARS_BOX_COLORS = [
   'rgba(255,153,0,0.08)',
   'rgba(153,102,204,0.08)',
@@ -50,7 +52,7 @@ function buildAccept(protocol: ScanConfig['accept']): string {
   if (protocol === 'mp3') return '.mp3,audio/mpeg';
   if (protocol === 'm4a') return '.m4a,audio/mp4,audio/x-m4a';
   if (protocol === 'mp4') return '.mp4,video/mp4,audio/mp4';
-  return '.wav,.mp3,.m4a,.mp4,.ogg,.flac,.aac,audio/*';
+  return '.wav,.mp3,.m4a,.mp4,.webm,.mov,.ogg,.flac,.aac,audio/*,video/*';
 }
 
 function filterFiles(
@@ -79,6 +81,161 @@ function immediateParentName(f: File): string {
     return segments[0] ?? f.name.replace(/\.[^/.]+$/, '');
   }
   return f.name.replace(/\.[^/.]+$/, '');
+}
+
+// ── LCARS background layer (shared with Lyrics/Musical modes) ─────────────────
+function LCARSBackground() {
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 0,
+        pointerEvents: 'none',
+        background:
+          'radial-gradient(ellipse at 20% 40%, rgba(255,153,0,0.04) 0%, transparent 55%), ' +
+          'radial-gradient(ellipse at 80% 60%, rgba(153,102,204,0.05) 0%, transparent 55%), ' +
+          'radial-gradient(ellipse at 50% 0%, rgba(100,180,255,0.03) 0%, transparent 60%)',
+      }}
+    >
+      {/* Horizontal scanlines */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage:
+            'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.012) 2px, rgba(255,255,255,0.012) 4px)',
+          backgroundSize: '100% 4px',
+        }}
+      />
+      {/* LCARS grid overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage:
+            'linear-gradient(rgba(255,153,0,0.025) 1px, transparent 1px), ' +
+            'linear-gradient(90deg, rgba(255,153,0,0.025) 1px, transparent 1px)',
+          backgroundSize: '48px 48px',
+          maskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 80%)',
+          WebkitMaskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 80%)',
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Inline video player ───────────────────────────────────────────────────────
+interface VideoPlayerProps {
+  src: string;
+  isPlaying: boolean;
+  onRef: (el: HTMLVideoElement | null) => void;
+}
+
+function VideoPlayer({ src, isPlaying, onRef }: VideoPlayerProps) {
+  const [showControls, setShowControls] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMouseMove = () => {
+    setShowControls(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setShowControls(false), 2800);
+  };
+
+  return (
+    <div
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setShowControls(false)}
+      style={{
+        alignSelf: 'center',
+        width: 'min(900px, 98%)',
+        border: `1px solid ${LCARS.purple}55`,
+        borderRadius: 6,
+        overflow: 'hidden',
+        background: '#000',
+        position: 'relative',
+        boxShadow: `0 0 28px ${LCARS.purple}22, 0 4px 16px rgba(0,0,0,0.6)`,
+      }}
+    >
+      {/* LCARS label strip */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '5px 12px 4px',
+          background: 'rgba(0,0,0,0.6)',
+          borderBottom: `1px solid ${LCARS.purple}33`,
+        }}
+      >
+        <span style={{ color: LCARS.purple, fontSize: 9, letterSpacing: 3, fontWeight: 700 }}>
+          VIDEO STREAM
+        </span>
+        <span
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            color: isPlaying ? LCARS.alertRed : LCARS.subText,
+            fontSize: 9,
+            letterSpacing: 2,
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: isPlaying ? LCARS.alertRed : LCARS.subText,
+              boxShadow: isPlaying ? `0 0 6px ${LCARS.alertRed}` : 'none',
+            }}
+            aria-hidden="true"
+          />
+          {isPlaying ? 'ACTIVE' : 'STANDBY'}
+        </span>
+      </div>
+
+      {/* Video element */}
+      <video
+        ref={onRef}
+        src={src}
+        style={{ width: '100%', display: 'block', maxHeight: 380, background: '#000' }}
+        playsInline
+        controls={showControls}
+        preload="metadata"
+        aria-label="Video player"
+      />
+
+      {/* Subtle LCARS corner accents */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: 28,
+          left: 0,
+          width: 3,
+          height: 40,
+          background: LCARS.purple,
+          borderRadius: '0 2px 2px 0',
+          opacity: 0.6,
+        }}
+      />
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          top: 28,
+          right: 0,
+          width: 3,
+          height: 40,
+          background: LCARS.orange,
+          borderRadius: '2px 0 0 2px',
+          opacity: 0.6,
+        }}
+      />
+    </div>
+  );
 }
 
 export function VoxNovaPlayer() {
@@ -151,16 +308,22 @@ export function VoxNovaPlayer() {
   useEffect(() => {
     engine.setOnTrackEnded(() => {
       if (repeatRef.current !== 'none') {
-        // repeat-all or shuffle: always advance
         handleNext();
       } else if (autoplayRef.current) {
-        // autoplay ON, repeat OFF: advance to next track
         handleNext();
       }
-      // repeat=none + autoplay=OFF: stop (engine already set isPlaying=false)
     });
     return () => engine.setOnTrackEnded(undefined);
   }, [engine, handleNext]);
+
+  // ── Video element ref callback ──────────────────────────────────────────────
+  const handleVideoRef = useCallback((el: HTMLVideoElement | null) => {
+    engine.attachVideoElement(el);
+    if (el && selectedTrack?.url) {
+      el.src = selectedTrack.url;
+      el.load();
+    }
+  }, [engine, selectedTrack]);
 
   const handleSelect = useCallback((track: TrackEntry) => {
     setSelectedId(track.id);
@@ -172,7 +335,7 @@ export function VoxNovaPlayer() {
   const handleUplinkFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = filterFiles(
       Array.from(e.target.files ?? []).filter(f =>
-        f.type.startsWith('audio/') || f.type === 'video/mp4'
+        f.type.startsWith('audio/') || f.type.startsWith('video/')
       ),
       scanProtocol,
       scanPattern,
@@ -183,6 +346,7 @@ export function VoxNovaPlayer() {
       url: URL.createObjectURL(f),
       memo: `[UPLINK] ${f.name} | Integrity: Nominal`,
       linked: true,
+      isVideo: VIDEO_EXT.test(f.name),
     }));
     if (added.length) {
       library.addTracks(added);
@@ -194,7 +358,7 @@ export function VoxNovaPlayer() {
   const handleScanFolder = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = filterFiles(
       Array.from(e.target.files ?? []).filter(f =>
-        f.type.startsWith('audio/') || f.type === 'video/mp4'
+        f.type.startsWith('audio/') || f.type.startsWith('video/')
       ),
       scanProtocol,
       scanPattern,
@@ -205,6 +369,7 @@ export function VoxNovaPlayer() {
       url: URL.createObjectURL(f),
       memo: `[LCARS_SCAN] Identified: ${f.name} | Protocol: ${scanProtocol.toUpperCase()} | Integrity: Nominal`,
       linked: true,
+      isVideo: VIDEO_EXT.test(f.name),
     }));
     if (added.length) {
       library.addTracks(added);
@@ -253,6 +418,9 @@ export function VoxNovaPlayer() {
         overflow: 'hidden',
       }}
     >
+      {/* ── LCARS background (scanlines + grid nebula) ── */}
+      <LCARSBackground />
+
       {/* Sidebar — always visible */}
       <PlayerSidebar
         view={view}
@@ -449,7 +617,7 @@ export function VoxNovaPlayer() {
             style={{
               alignSelf: 'center',
               width: WIDE_WIDTH,
-              border: `1px solid rgba(100,100,200,0.25)`,
+              border: '1px solid rgba(100,100,200,0.25)',
               borderRadius: 4,
               padding: '10px 14px',
               background: 'rgba(0,0,20,0.35)',
@@ -468,22 +636,30 @@ export function VoxNovaPlayer() {
             <BlackHoleBadge active={engine.isPlaying} />
           </div>
 
-          {/* SUBSPACE FREQUENCY SCAN */}
-          <div
-            style={{
-              alignSelf: 'center',
-              width: WIDE_WIDTH,
-              border: `1px solid ${LCARS.red ?? '#cc3333'}33`,
-              borderRadius: 4,
-              padding: '8px',
-              background: LCARS_BOX_COLORS[3],
-            }}
-          >
-            <div style={{ color: LCARS.subText, fontSize: 9, letterSpacing: 3, marginBottom: 6, paddingLeft: 4 }}>
-              SUBSPACE FREQUENCY SCAN
+          {/* VIDEO STREAM or SUBSPACE FREQUENCY SCAN */}
+          {selectedTrack?.isVideo ? (
+            <VideoPlayer
+              src={selectedTrack.url}
+              isPlaying={engine.isPlaying}
+              onRef={handleVideoRef}
+            />
+          ) : (
+            <div
+              style={{
+                alignSelf: 'center',
+                width: WIDE_WIDTH,
+                border: `1px solid ${LCARS.red ?? '#cc3333'}33`,
+                borderRadius: 4,
+                padding: '8px',
+                background: LCARS_BOX_COLORS[3],
+              }}
+            >
+              <div style={{ color: LCARS.subText, fontSize: 9, letterSpacing: 3, marginBottom: 6, paddingLeft: 4 }}>
+                SUBSPACE FREQUENCY SCAN
+              </div>
+              <FrequencyVisualizer isPlaying={engine.isPlaying} analyser={analyser} audioRef={engine.audioRef} />
             </div>
-            <FrequencyVisualizer isPlaying={engine.isPlaying} analyser={analyser} audioRef={engine.audioRef} />
-          </div>
+          )}
         </div>
       </main>
     </div>
