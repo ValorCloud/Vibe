@@ -1,6 +1,6 @@
 {
   "name": "vibe",
-  "version": "1.31.0.28",
+  "version": "1.31.0.29",
   "private": true,
   "type": "module",
   "scripts": {

@@ -249,9 +249,10 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
       const inner = Math.random() < 0.35;
       const rMin = inner ? 58 : 90;
       const rMax = inner ? 100 : 240;
-      dRadius[i] = rMin + Math.pow(Math.random(), 0.6) * (rMax - rMin);
+      const r = rMin + Math.pow(Math.random(), 0.6) * (rMax - rMin);
+      dRadius[i] = r;
       dAngle[i]  = Math.random() * Math.PI * 2;
-      dSpeed[i]  = 0.016 * Math.sqrt(80 / Math.max(dRadius[i], 60));
+      dSpeed[i]  = 0.016 * Math.sqrt(80 / Math.max(r, 60));
       dTilt[i]   = (Math.random() - 0.5) * (inner ? 4 : 14);
     }
 
