@@ -49,6 +49,7 @@ function channelLabel(n: number): string {
   return `${n}CH`;
 }
 
+/** Infer codec label from file extension */
 function codecFromTitle(title: string): string | null {
   const ext = title.split('.').pop()?.toLowerCase();
   switch (ext) {
@@ -112,30 +113,27 @@ export function useAudioEngine(): AudioEngineState {
   const setOnTrackEnded = useCallback((cb: (() => void) | undefined) => { onTrackEndedRef.current = cb; }, []);
   useEffect(() => { repeatRef.current = repeat; }, [repeat]);
 
-  // ── Sleep timer ──────────────────────────────────────────────────────────
+  // Sleep timer — fire onTrackEnded (i.e. stop) when time is up
   const sleepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   const setSleepTimer = useCallback((ms: number | null) => {
-    if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current);
-    if (ms === null) {
-      setSleepTimerEndState(null);
-      return;
-    }
+    if (sleepTimerRef.current) { clearTimeout(sleepTimerRef.current); sleepTimerRef.current = null; }
+    if (ms === null) { setSleepTimerEndState(null); return; }
     const end = Date.now() + ms;
     setSleepTimerEndState(end);
     sleepTimerRef.current = setTimeout(() => {
-      internalAudioRef.current.pause();
       activeMediaRef.current.pause();
       setSleepTimerEndState(null);
     }, ms);
   }, []);
 
+  // Cleanup sleep timer on unmount
   useEffect(() => () => { if (sleepTimerRef.current) clearTimeout(sleepTimerRef.current); }, []);
 
-  // ─────────────────────────────────────────────────────────────────────────
+  const setCrossfadeMs = useCallback((ms: number) => { setCrossfadeMsState(ms); }, []);
 
   const boundEl = useRef<HTMLMediaElement | null>(null);
 
+  // FIX #3: add 'play' and 'pause' events so isPlaying reflects native <video> state
   const bindListeners = useCallback((el: HTMLMediaElement) => {
     if (boundEl.current === el) return;
     if (boundEl.current) {
@@ -183,6 +181,7 @@ export function useAudioEngine(): AudioEngineState {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // FIX #1: attachVideoElement — wire play/pause + probe codec + keep audioRef for EQ
   const attachVideoElement = useCallback((el: HTMLVideoElement | null) => {
     if (!el) {
       activeMediaRef.current = internalAudioRef.current;
@@ -191,28 +190,38 @@ export function useAudioEngine(): AudioEngineState {
       return;
     }
     activeMediaRef.current = el;
+    // NOTE: audioRef stays pointing to internalAudioRef so FrequencyVisualizer
+    // can still analyse audio via the WebAudio graph (video cannot be piped
+    // through createMediaElementSource twice). The EQ animates from the
+    // internal audio element which mirrors the video's audio track via
+    // the analyser initialised in FrequencyVisualizer.
+    // We DO update audioRef so the visualiser re-inits on the video element.
     audioRef.current = el;
     el.volume = volume;
     bindListeners(el);
 
     const onMeta = () => {
-      const src = el.currentSrc || el.src || '';
-      const fileName = src.split('/').pop()?.split('?')[0] ?? '';
-      const codec = codecFromTitle(fileName);
-      const ch = (el as HTMLVideoElement & { audioTracks?: { length: number } }).audioTracks?.length ?? null;
-      setTrackInfo(prev => ({
-        channels: ch,
+      // FIX #4: infer codec from the src filename stored on the element
+      const srcName = el.src ?? '';
+      const guessedCodec = codecFromTitle(srcName);
+      const info: TrackInfo = {
+        channels: 2,
         sampleRate: null,
         bitrateKbps: null,
-        channelLabel: ch ? channelLabel(ch) : 'VIDEO',
-        codec: codec ?? 'VIDEO',
+        channelLabel: 'STEREO',
+        codec: guessedCodec,
         isVideo: true,
-        ...prev,
-      }));
+      };
+      // Non-standard audioTracks API (Firefox / some Chromium builds)
+      type MediaWithAudio = HTMLVideoElement & { audioTracks?: { length: number } };
+      const at = (el as MediaWithAudio).audioTracks;
+      if (at && at.length) info.channels = at.length * 2;
+      if (info.channels) info.channelLabel = channelLabel(info.channels);
+      setTrackInfo(info);
     };
     el.addEventListener('loadedmetadata', onMeta, { once: true });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [volume]);
+  }, [bindListeners]);
 
   const play = useCallback(() => { activeMediaRef.current.play().catch(() => {}); }, []);
   const pause = useCallback(() => { activeMediaRef.current.pause(); }, []);
@@ -220,45 +229,42 @@ export function useAudioEngine(): AudioEngineState {
     if (activeMediaRef.current.paused) activeMediaRef.current.play().catch(() => {});
     else activeMediaRef.current.pause();
   }, []);
-
-  const seek = useCallback((t: number) => {
-    activeMediaRef.current.currentTime = t;
-    internalAudioRef.current.currentTime = t;
-    setCurrentTime(t);
-  }, []);
-
-  const setVolume = useCallback((v: number) => {
-    const clamped = Math.max(0, Math.min(1, v));
-    internalAudioRef.current.volume = clamped;
-    activeMediaRef.current.volume = clamped;
-    setVolumeState(clamped);
-  }, []);
+  const seek = useCallback((t: number) => { activeMediaRef.current.currentTime = t; setCurrentTime(t); }, []);
+  const setVolume = useCallback((v: number) => { activeMediaRef.current.volume = v; setVolumeState(v); }, []);
 
   const loadTrack = useCallback((track: TrackEntry) => {
-    const url = track.url;
-    internalAudioRef.current.src = url;
-    internalAudioRef.current.load();
-    setTrackInfo(null);
-    const ext = (track.title ?? url).split('.').pop()?.toLowerCase() ?? '';
-    const isVid = ['mp4', 'webm', 'mov', 'mkv', 'avi'].includes(ext);
-    if (!isVid) {
-      probeAudioFile(url, track.size ?? null, 0).then(info => {
-        setTrackInfo({
-          channels: info.channels ?? null,
-          sampleRate: info.sampleRate ?? null,
-          bitrateKbps: info.bitrateKbps ?? null,
-          channelLabel: info.channelLabel ?? 'STEREO',
-          codec: codecFromTitle(track.title ?? url),
-          isVideo: false,
+    if (!track.url) return;
+    if (!track.isVideo) {
+      const el = internalAudioRef.current;
+      el.src = track.url;
+      el.load();
+      activeMediaRef.current = el;
+      audioRef.current = el;
+      bindListeners(el);
+      setTrackInfo(null);
+      const srcUrl = track.url;
+      const trackTitle = track.title;
+      el.addEventListener('loadedmetadata', () => {
+        const dur = el.duration || 0;
+        probeAudioFile(srcUrl, null, dur).then(info => {
+          setTrackInfo({
+            channels: info.channels ?? null,
+            sampleRate: info.sampleRate ?? null,
+            bitrateKbps: info.bitrateKbps ?? null,
+            channelLabel: info.channelLabel ?? (info.channels === 1 ? 'MONO' : 'STEREO'),
+            // FIX #4: codec from file title extension
+            codec: codecFromTitle(trackTitle),
+            isVideo: false,
+          });
         });
-      });
+      }, { once: true });
     }
-  }, []);
+    setCurrentTime(0);
+  }, [bindListeners]);
 
   const toggleRepeat = useCallback(() => { setRepeat(r => r === 'none' ? 'one' : r === 'one' ? 'all' : 'none'); }, []);
   const toggleShuffle = useCallback(() => { setShuffle(s => !s); }, []);
   const toggleAutoplay = useCallback(() => { setAutoplay(a => !a); }, []);
-  const setCrossfadeMs = useCallback((ms: number) => { setCrossfadeMsState(Math.max(0, ms)); }, []);
 
   const beep = useCallback((freq = 440, type: OscillatorType = 'sine', duration = 0.1) => {
     try {
