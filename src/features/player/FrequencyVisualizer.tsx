@@ -4,23 +4,25 @@ import type { FrequencyAnalyserState } from './useFrequencyAnalyser';
 interface FrequencyVisualizerProps {
   isPlaying: boolean;
   analyser: FrequencyAnalyserState;
-  audioRef: React.RefObject<HTMLAudioElement>;
+  // FIX #1: ref is HTMLMediaElement, not just HTMLAudioElement
+  audioRef: React.RefObject<HTMLMediaElement>;
 }
 
 export function FrequencyVisualizer({ isPlaying, analyser, audioRef }: FrequencyVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Init Web Audio graph on first play
+  // Init Web Audio graph — re-runs when the media element changes (audio ↔ video swap)
   useEffect(() => {
-    if (!audioRef.current) return;
     const el = audioRef.current;
+    if (!el) return;
     const onPlay = () => analyser.initAnalyser(el);
     el.addEventListener('play', onPlay);
     if (isPlaying) analyser.initAnalyser(el);
     return () => el.removeEventListener('play', onPlay);
-  }, [audioRef, analyser.initAnalyser, isPlaying]);
+  // audioRef.current identity change is detected via isPlaying flip after swap
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioRef.current, analyser.initAnalyser, isPlaying]);
 
-  // RAF loop — deps use stable refs, not the analyser object
   const { analyserRef, dataArrayRef } = analyser;
   useEffect(() => {
     const canvas = canvasRef.current;

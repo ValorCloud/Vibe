@@ -3,19 +3,19 @@ import { useRef, useEffect, useCallback } from 'react';
 export interface FrequencyAnalyserState {
   analyserRef: React.RefObject<AnalyserNode | null>;
   dataArrayRef: React.RefObject<Uint8Array | null>;
-  initAnalyser: (audioEl: HTMLAudioElement) => void;
+  // FIX #1: accept HTMLMediaElement (covers both <audio> and <video>)
+  initAnalyser: (mediaEl: HTMLMediaElement) => void;
 }
 
-/** Manages a single Web Audio graph per audio element lifetime.
- *  Safe to call initAnalyser multiple times — idempotent. */
 export function useFrequencyAnalyser(): FrequencyAnalyserState {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  // Track which element is currently sourced to avoid double-connect
+  const sourceElRef = useRef<HTMLMediaElement | null>(null);
 
-  // Stable reference — never changes between renders
-  const initAnalyser = useCallback((audioEl: HTMLAudioElement) => {
+  const initAnalyser = useCallback((mediaEl: HTMLMediaElement) => {
     try {
       const AudioCtx = window.AudioContext ||
         (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -25,7 +25,6 @@ export function useFrequencyAnalyser(): FrequencyAnalyserState {
         audioCtxRef.current = new AudioCtx();
       }
       const ctx = audioCtxRef.current;
-
       if (ctx.state === 'suspended') ctx.resume();
 
       if (!analyserRef.current) {
@@ -36,19 +35,20 @@ export function useFrequencyAnalyser(): FrequencyAnalyserState {
         dataArrayRef.current = new Uint8Array(analyser.frequencyBinCount);
       }
 
-      if (!sourceRef.current) {
-        sourceRef.current = ctx.createMediaElementSource(audioEl);
+      // Only create a new source if the element changed
+      if (sourceElRef.current !== mediaEl) {
+        if (sourceRef.current) {
+          try { sourceRef.current.disconnect(); } catch (_) {}
+        }
+        sourceRef.current = ctx.createMediaElementSource(mediaEl);
         sourceRef.current.connect(analyserRef.current);
         analyserRef.current.connect(ctx.destination);
+        sourceElRef.current = mediaEl;
       }
     } catch (_) {}
   }, []);
 
-  useEffect(() => {
-    return () => {
-      audioCtxRef.current?.close();
-    };
-  }, []);
+  useEffect(() => () => { audioCtxRef.current?.close(); }, []);
 
   return { analyserRef, dataArrayRef, initAnalyser };
 }
