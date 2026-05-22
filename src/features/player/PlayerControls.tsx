@@ -187,7 +187,7 @@ function IconNext() {
 // ── LCARS Mode Button ──────────────────────────────────────────────
 interface LCARSModeButtonProps {
   label: string;
-  badge?: string;          // floating corner badge (e.g. "1", "ALL", "◉")
+  badge?: string;
   badgeColor?: string;
   active: boolean;
   disabled?: boolean;
@@ -256,8 +256,8 @@ function LCARSModeButton({
         aria-hidden="true"
       />
 
-      {/* Badge (e.g. repeat mode, xfade duration) */}
-      {badge && (
+      {/* Badge */}
+      {badge !== undefined && (
         <span style={{
           position: 'absolute', top: 4, left: 6,
           fontSize: 7, letterSpacing: 0.8, fontWeight: 800,
@@ -565,7 +565,7 @@ export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerContr
 
         <LCARSModeButton
           label="REPEAT"
-          badge={repeatBadge}
+          {...(repeatBadge !== undefined ? { badge: repeatBadge } : {})}
           active={repeat !== 'none'}
           color={LCARS.orange}
           title={REPEAT_TITLE[repeat]}
@@ -584,7 +584,7 @@ export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerContr
         <div style={{ position: 'relative', display: 'flex' }}>
           <LCARSModeButton
             label="XFADE"
-            badge={xfadeBadge}
+            {...(xfadeBadge !== undefined ? { badge: xfadeBadge } : {})}
             active={crossfadeMs > 0}
             color={LCARS.amber}
             title="Configure crossfade duration"
@@ -604,7 +604,7 @@ export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerContr
         <div style={{ position: 'relative', display: 'flex' }}>
           <LCARSModeButton
             label="SLEEP"
-            badge={sleepBadge}
+            {...(sleepBadge !== undefined ? { badge: sleepBadge } : {})}
             active={sleepTimerEnd !== null}
             color={LCARS.purple}
             title="Set sleep timer"
