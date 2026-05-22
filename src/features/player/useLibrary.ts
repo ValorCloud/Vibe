@@ -7,22 +7,19 @@ const newId = () =>
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
 
-const SEED_TRACKS: TrackEntry[] = [
-  { id: newId(), title: 'Nebula Flight', source: 'cloud' as TrackSource, url: '', memo: '', linked: false },
-  { id: newId(), title: 'Stellar Voyage', source: 'cloud' as TrackSource, url: '', memo: '', linked: false },
-];
-
 export interface LibraryState {
   tracks: TrackEntry[];
   addTracks: (entries: Omit<TrackEntry, 'id'>[]) => void;
   removeTrack: (id: string) => void;
   updateMemo: (id: string, memo: string) => void;
   updateUrl: (id: string, url: string) => void;
+  /** Replace all cloud-source tracks with fresh OneDrive items */
+  replaceCloudTracks: (items: Omit<TrackEntry, 'id'>[]) => void;
   purgeAll: () => void;
 }
 
 export function useLibrary(): LibraryState {
-  const [tracks, setTracks] = useState<TrackEntry[]>(SEED_TRACKS);
+  const [tracks, setTracks] = useState<TrackEntry[]>([]);
 
   const addTracks = useCallback((entries: Omit<TrackEntry, 'id'>[]) => {
     setTracks(prev => [
@@ -43,6 +40,15 @@ export function useLibrary(): LibraryState {
     setTracks(prev => prev.map(t => t.id === id ? { ...t, url, linked: true } : t));
   }, []);
 
+  const replaceCloudTracks = useCallback((items: Omit<TrackEntry, 'id'>[]) => {
+    setTracks(prev => [
+      // keep local + lyria tracks
+      ...prev.filter(t => t.source !== ('cloud' as TrackSource)),
+      // fresh OneDrive items
+      ...items.map(e => ({ ...e, id: newId() })),
+    ]);
+  }, []);
+
   const purgeAll = useCallback(() => {
     setTracks(prev => {
       // Revoke blob URLs to free memory
@@ -55,5 +61,5 @@ export function useLibrary(): LibraryState {
     });
   }, []);
 
-  return { tracks, addTracks, removeTrack, updateMemo, updateUrl, purgeAll };
+  return { tracks, addTracks, removeTrack, updateMemo, updateUrl, replaceCloudTracks, purgeAll };
 }
