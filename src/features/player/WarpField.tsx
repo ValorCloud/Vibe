@@ -18,6 +18,7 @@ const lensingFragmentShader = `
   uniform float uTime;
   uniform vec2 uBhScreen;
   uniform float uBhRadius;
+  uniform float uAspect;
   varying vec2 vUv;
 
   float hash(vec2 p) {
@@ -53,37 +54,70 @@ const lensingFragmentShader = `
     return col;
   }
 
+  const float DISK_WIDTH_SCALE = 2.55;        // horizontal stretch of the main accretion ellipse
+  const float DISK_HEIGHT_SCALE = 0.34;       // vertical compression that keeps the disk edge-on
+  const float GHOST_WIDTH_SCALE = 1.55;       // horizontal stretch of the lower lensed ghost arc
+  const float GHOST_VERTICAL_OFFSET = 0.48;   // lowers the ghost arc beneath the event horizon
+  const float GHOST_HEIGHT_SCALE = 0.16;      // vertical compression of the ghost arc
+  const float FLICKER_BANDS = 6.0;            // angular bands around the disk glow
+  const float FLICKER_SPEED = 2.2;            // rotation speed of those glow bands
+  const float FLICKER_BASE = 0.85;            // minimum disk brightness during flicker
+  const float FLICKER_AMPLITUDE = 0.15;       // brightness variation around the base value
+  const float WOBBLE_SPEED = 0.9;             // slow heat shimmer speed across the disk
+  const float WOBBLE_FREQUENCY = 36.0;        // number of shimmer ripples across the disk
+  const float WOBBLE_AMPLITUDE = 0.035;       // shimmer height relative to the event horizon
+  const float GLOW_RANGE_SCALE = 2.2;         // width of the left-to-right warm color gradient
+  const float PHOTON_RING_WIDTH = 0.055;      // thickness of the bright lensing ring
+  const float PHOTON_RING_DISTANCE = 1.01;    // ring placement just outside the event horizon
+  const float PHOTON_RING_INTENSITY = 0.55;   // ring brightness contribution
+  const float EVENT_HORIZON_CUTOFF = 0.88;    // black core size inside the lensing ring
+  const float HALO_OUTER_RANGE = 3.7;         // furthest radius reached by the purple glow
+  const float HALO_INNER_RANGE = 1.15;        // radius where the glow is strongest
+  const float HALO_INTENSITY = 0.09;          // subtle background halo brightness
+  const float VIGNETTE_INNER_RANGE = 1.2;     // inner edge of the shadow falloff
+  const float VIGNETTE_OUTER_RANGE = 3.4;     // outer edge where stars regain full brightness
+
   void main() {
     vec2 uv = vUv;
-    vec2 toCenter = uv - uBhScreen;
+    vec2 toCenter = vec2((uv.x - uBhScreen.x) * uAspect, uv.y - uBhScreen.y);
     float dist = length(toCenter);
     float r = uBhRadius;
 
-    if (dist < r * 0.90) {
+    if (dist < r * EVENT_HORIZON_CUTOFF) {
       gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
       return;
     }
 
-    float rs = r;
-    float deflection = (rs * rs) / (dist * dist + rs * 0.3);
-    deflection = clamp(deflection, 0.0, 0.95);
+    float deflection = (r * r) / (dist * dist + r * 0.42);
+    deflection = clamp(deflection, 0.0, 0.72);
     vec2 dir = normalize(toCenter);
-    vec2 lensedUv = uv + dir * deflection * 0.6;
-
-    float ringWidth = r * 0.16;
-    float ringDist  = abs(dist - r * 1.06);
-    float ring = smoothstep(ringWidth, 0.0, ringDist);
-    float topBottom = 0.5 - toCenter.y / (r * 2.0);
-    ring *= (0.5 + topBottom * 0.9);
+    vec2 uvDir = vec2(dir.x / uAspect, dir.y);
+    vec2 lensedUv = uv + uvDir * deflection * 0.48;
 
     vec3 stars = starField(lensedUv);
-    vec3 ringColor = mix(vec3(1.0, 0.55, 0.1), vec3(1.0, 0.92, 0.65), topBottom);
-    stars += ringColor * ring * 3.0;
 
-    float halo = smoothstep(r * 4.0, r * 1.2, dist) * 0.07;
-    stars += vec3(0.2, 0.15, 0.4) * halo;
+    float shimmerOffset = sin(uTime * WOBBLE_SPEED + toCenter.x * WOBBLE_FREQUENCY) * r * WOBBLE_AMPLITUDE;
+    vec2 diskUv = vec2(toCenter.x / (r * DISK_WIDTH_SCALE), (toCenter.y + shimmerOffset) / (r * DISK_HEIGHT_SCALE));
+    float diskEllipse = length(diskUv);
+    float accretionDisk = smoothstep(0.23, 0.0, abs(diskEllipse - 1.0));
+    accretionDisk *= smoothstep(r * 0.92, r * 1.12, dist);
 
-    float vignette = smoothstep(r * 1.5, r * 3.5, dist);
+    vec2 ghostUv = vec2(toCenter.x / (r * GHOST_WIDTH_SCALE), (toCenter.y + r * GHOST_VERTICAL_OFFSET) / (r * GHOST_HEIGHT_SCALE));
+    float ghostArc = smoothstep(0.24, 0.0, abs(length(ghostUv) - 1.0)) * 0.45;
+    ghostArc *= smoothstep(0.0, r * 0.95, abs(toCenter.x));
+
+    float photonRing = smoothstep(r * PHOTON_RING_WIDTH, 0.0, abs(dist - r * PHOTON_RING_DISTANCE)) * PHOTON_RING_INTENSITY;
+    float horizontalGlow = smoothstep(-r * GLOW_RANGE_SCALE, r * GLOW_RANGE_SCALE, -toCenter.x);
+    float angularFlicker = FLICKER_BASE + sin(atan(toCenter.y, toCenter.x) * FLICKER_BANDS - uTime * FLICKER_SPEED) * FLICKER_AMPLITUDE;
+    vec3 warmDisk = mix(vec3(0.95, 0.22, 0.04), vec3(1.0, 0.82, 0.34), horizontalGlow);
+    vec3 hotRing = mix(vec3(1.0, 0.54, 0.08), vec3(1.0, 0.96, 0.74), horizontalGlow);
+    stars += warmDisk * (accretionDisk + ghostArc) * angularFlicker * 1.65;
+    stars += hotRing * photonRing * 0.85;
+
+    float halo = smoothstep(r * HALO_OUTER_RANGE, r * HALO_INNER_RANGE, dist) * HALO_INTENSITY;
+    stars += vec3(0.24, 0.16, 0.42) * halo;
+
+    float vignette = smoothstep(r * VIGNETTE_INNER_RANGE, r * VIGNETTE_OUTER_RANGE, dist);
     stars *= (0.3 + vignette * 0.7);
 
     gl_FragColor = vec4(stars, 1.0);
@@ -192,6 +226,11 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     sceneRef.current = true;
 
     const state = { rafId: 0, time: 0, rotSpeed: 0.4 };
+    const getAspect = () => (
+      container.clientWidth > 0 && container.clientHeight > 0
+        ? container.clientWidth / container.clientHeight
+        : 1
+    );
 
     // ── Renderer ──────────────────────────────────────────────────────────────
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
@@ -206,9 +245,9 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     // This gives the characteristic Interstellar view: disk as bright ellipse,
     // ghost arc visible below, photon ring encircling the shadow.
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(52, container.clientWidth / container.clientHeight, 0.1, 20000);
-    camera.position.set(0, 35, 480);
-    camera.lookAt(0, -10, 0);
+    const camera = new THREE.PerspectiveCamera(45, getAspect(), 0.1, 20000);
+    camera.position.set(0, 42, 760);
+    camera.lookAt(0, -28, 0);
 
     // ── Full-screen lensing background quad ───────────────────────────────────
     const bgScene = new THREE.Scene();
@@ -219,7 +258,8 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
       uniforms: {
         uTime:     { value: 0 },
         uBhScreen: { value: new THREE.Vector2(0.5, 0.48) },
-        uBhRadius: { value: 0.115 },
+        uBhRadius: { value: 0.072 },
+        uAspect:   { value: getAspect() },
       },
       depthWrite: false,
       depthTest: false,
@@ -228,10 +268,10 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     // ── Black hole group ──────────────────────────────────────────────────────
     const bhGroup = new THREE.Group();
-    bhGroup.position.set(0, -10, 0);
+    bhGroup.position.set(0, -28, 0);
     scene.add(bhGroup);
 
-    const EH_RADIUS = 65;
+    const EH_RADIUS = 44;
 
     // Event horizon
     bhGroup.add(new THREE.Mesh(
@@ -248,12 +288,12 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     for (let i = 0; i < DISK_COUNT; i++) {
       const inner = Math.random() < 0.35;
-      const rMin = inner ? 68 : 100;
-      const rMax = inner ? 115 : 280;
+      const rMin = inner ? 48 : 74;
+      const rMax = inner ? 90 : 210;
       const r = rMin + Math.pow(Math.random(), 0.6) * (rMax - rMin);
       dRadius[i] = r;
       dAngle[i]  = Math.random() * Math.PI * 2;
-      dSpeed[i]  = 0.016 * Math.sqrt(80 / Math.max(r, 68));
+      dSpeed[i]  = 0.018 * Math.sqrt(62 / Math.max(r, 48));
       dTilt[i]   = (Math.random() - 0.5) * (inner ? 4 : 14);
     }
 
@@ -284,7 +324,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     const gRadius = new Float32Array(GHOST_COUNT);
     const gAngle  = new Float32Array(GHOST_COUNT);
     for (let i = 0; i < GHOST_COUNT; i++) {
-      gRadius[i] = 70 + Math.pow(Math.random(), 0.5) * 140;
+      gRadius[i] = 52 + Math.pow(Math.random(), 0.5) * 120;
       gAngle[i]  = Math.random() * Math.PI * 2;
     }
     const ghostGeom = new THREE.BufferGeometry();
@@ -308,11 +348,11 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     // Using a torus instead of a flat plane so it wraps correctly around the
     // event horizon from any camera angle, especially equatorial view.
     const photonRingMesh = new THREE.Mesh(
-      new THREE.TorusGeometry(EH_RADIUS + 7, 3.5, 24, 128),
+      new THREE.TorusGeometry(EH_RADIUS + 4, 1.8, 20, 128),
       new THREE.MeshBasicMaterial({
-        color: new THREE.Color(1.0, 0.75, 0.3),
+        color: new THREE.Color(1.0, 0.48, 0.08),
         transparent: true,
-        opacity: 0.9,
+        opacity: 0.42,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
@@ -324,11 +364,11 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     // Inner thin photon ring (brighter, tighter)
     const innerRingMesh = new THREE.Mesh(
-      new THREE.TorusGeometry(EH_RADIUS + 2, 1.5, 16, 128),
+      new THREE.TorusGeometry(EH_RADIUS + 1.4, 0.9, 16, 128),
       new THREE.MeshBasicMaterial({
-        color: new THREE.Color(1.0, 0.95, 0.8),
+        color: new THREE.Color(1.0, 0.82, 0.42),
         transparent: true,
-        opacity: 1.0,
+        opacity: 0.48,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
@@ -339,7 +379,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     // Shadow disk — occludes geometry behind event horizon
     const shadowDisk = new THREE.Mesh(
-      new THREE.CircleGeometry(EH_RADIUS - 1, 64),
+      new THREE.CircleGeometry(EH_RADIUS * 0.88, 64),
       new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, depthWrite: true }),
     );
     bhGroup.add(shadowDisk);
@@ -353,7 +393,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
         const t = Math.pow(Math.random(), 0.6);
         const sp = t * 22;
         pos[i*3]   = (Math.random() - 0.5) * sp;
-        pos[i*3+1] = dir * (EH_RADIUS + t * 500);
+        pos[i*3+1] = dir * (EH_RADIUS + t * 360);
         pos[i*3+2] = (Math.random() - 0.5) * sp;
         const b = (1 - t * 0.8) * (0.5 + Math.random() * 0.5);
         col[i*3] = 0.2*b; col[i*3+1] = 0.5*b; col[i*3+2] = 1.0*b;
@@ -383,7 +423,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     dCtx.fillStyle = dg;
     dCtx.fillRect(0, 0, 256, 64);
     const dustLane = new THREE.Mesh(
-      new THREE.PlaneGeometry(600, 80),
+      new THREE.PlaneGeometry(440, 54),
       new THREE.MeshBasicMaterial({
         map: new THREE.CanvasTexture(dc),
         transparent: true, opacity: 0.75,
@@ -398,9 +438,10 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     // ── Resize ────────────────────────────────────────────────────────────────
     const handleResize = () => {
-      camera.aspect = container.clientWidth / container.clientHeight;
+      camera.aspect = getAspect();
       camera.updateProjectionMatrix();
       renderer.setSize(container.clientWidth, container.clientHeight);
+      lensMat.uniforms['uAspect']!.value = getAspect();
     };
     window.addEventListener('resize', handleResize);
 
@@ -437,8 +478,8 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
       // Slow equatorial drift — camera stays near the plane
       camera.position.x = Math.sin(state.time * 0.04) * 14;
-      camera.position.y = 35 + Math.cos(state.time * 0.03) * 6;
-      camera.lookAt(0, -10, 0);
+      camera.position.y = 42 + Math.cos(state.time * 0.03) * 6;
+      camera.lookAt(0, -28, 0);
 
       renderer.autoClear = true;
       renderer.render(bgScene, bgCamera);
