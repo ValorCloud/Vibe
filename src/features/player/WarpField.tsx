@@ -54,28 +54,28 @@ const lensingFragmentShader = `
     return col;
   }
 
-  const float DISK_WIDTH_SCALE = 2.55;        // horizontal stretch of the main accretion ellipse
-  const float DISK_HEIGHT_SCALE = 0.34;       // vertical compression that keeps the disk edge-on
-  const float GHOST_WIDTH_SCALE = 1.55;       // horizontal stretch of the lower lensed ghost arc
-  const float GHOST_VERTICAL_OFFSET = 0.48;   // lowers the ghost arc beneath the event horizon
-  const float GHOST_HEIGHT_SCALE = 0.16;      // vertical compression of the ghost arc
-  const float FLICKER_BANDS = 6.0;            // angular bands around the disk glow
-  const float FLICKER_SPEED = 2.2;            // rotation speed of those glow bands
-  const float FLICKER_BASE = 0.85;            // minimum disk brightness during flicker
-  const float FLICKER_AMPLITUDE = 0.15;       // brightness variation around the base value
-  const float WOBBLE_SPEED = 0.9;             // slow heat shimmer speed across the disk
-  const float WOBBLE_FREQUENCY = 36.0;        // number of shimmer ripples across the disk
-  const float WOBBLE_AMPLITUDE = 0.035;       // shimmer height relative to the event horizon
-  const float GLOW_RANGE_SCALE = 2.2;         // width of the left-to-right warm color gradient
-  const float PHOTON_RING_WIDTH = 0.055;      // thickness of the bright lensing ring
-  const float PHOTON_RING_DISTANCE = 1.01;    // ring placement just outside the event horizon
-  const float PHOTON_RING_INTENSITY = 0.55;   // ring brightness contribution
-  const float EVENT_HORIZON_CUTOFF = 0.88;    // black core size inside the lensing ring
-  const float HALO_OUTER_RANGE = 3.7;         // furthest radius reached by the purple glow
-  const float HALO_INNER_RANGE = 1.15;        // radius where the glow is strongest
-  const float HALO_INTENSITY = 0.09;          // subtle background halo brightness
-  const float VIGNETTE_INNER_RANGE = 1.2;     // inner edge of the shadow falloff
-  const float VIGNETTE_OUTER_RANGE = 3.4;     // outer edge where stars regain full brightness
+  const float DISK_WIDTH_SCALE       = 2.55;
+  const float DISK_HEIGHT_SCALE      = 0.34;
+  const float GHOST_WIDTH_SCALE      = 1.55;
+  const float GHOST_VERTICAL_OFFSET  = 0.48;
+  const float GHOST_HEIGHT_SCALE     = 0.16;
+  const float FLICKER_BANDS          = 6.0;
+  const float FLICKER_SPEED          = 2.2;
+  const float FLICKER_BASE           = 0.85;
+  const float FLICKER_AMPLITUDE      = 0.15;
+  const float WOBBLE_SPEED           = 0.9;
+  const float WOBBLE_FREQUENCY       = 36.0;
+  const float WOBBLE_AMPLITUDE       = 0.035;
+  const float GLOW_RANGE_SCALE       = 2.2;
+  const float PHOTON_RING_WIDTH      = 0.055;
+  const float PHOTON_RING_DISTANCE   = 1.01;
+  const float PHOTON_RING_INTENSITY  = 0.55;
+  const float EVENT_HORIZON_CUTOFF   = 0.88;
+  const float HALO_OUTER_RANGE       = 3.7;
+  const float HALO_INNER_RANGE       = 1.15;
+  const float HALO_INTENSITY         = 0.09;
+  const float VIGNETTE_INNER_RANGE   = 1.2;
+  const float VIGNETTE_OUTER_RANGE   = 3.4;
 
   void main() {
     vec2 uv = vUv;
@@ -110,9 +110,9 @@ const lensingFragmentShader = `
     float horizontalGlow = smoothstep(-r * GLOW_RANGE_SCALE, r * GLOW_RANGE_SCALE, -toCenter.x);
     float angularFlicker = FLICKER_BASE + sin(atan(toCenter.y, toCenter.x) * FLICKER_BANDS - uTime * FLICKER_SPEED) * FLICKER_AMPLITUDE;
     vec3 warmDisk = mix(vec3(0.95, 0.22, 0.04), vec3(1.0, 0.82, 0.34), horizontalGlow);
-    vec3 hotRing = mix(vec3(1.0, 0.54, 0.08), vec3(1.0, 0.96, 0.74), horizontalGlow);
+    vec3 hotRing  = mix(vec3(1.0, 0.54, 0.08), vec3(1.0, 0.96, 0.74), horizontalGlow);
     stars += warmDisk * (accretionDisk + ghostArc) * angularFlicker * 1.65;
-    stars += hotRing * photonRing * 0.85;
+    stars += hotRing  * photonRing * 0.85;
 
     float halo = smoothstep(r * HALO_OUTER_RANGE, r * HALO_INNER_RANGE, dist) * HALO_INTENSITY;
     stars += vec3(0.24, 0.16, 0.42) * halo;
@@ -124,7 +124,7 @@ const lensingFragmentShader = `
   }
 `;
 
-// ─── Accretion disk shader — Doppler + inclined ───────────────────────────────
+// ─── Accretion disk shader — Doppler + inclined ────────────────────────────────
 const diskVertexShader = `
   attribute float aRadius;
   attribute float aAngle;
@@ -139,12 +139,12 @@ const diskVertexShader = `
     float angle = aAngle + uTime * aSpeed * uRotSpeed;
     float x = cos(angle) * aRadius;
     float z = sin(angle) * aRadius;
-    float y = aLayerTilt * sin(angle * 2.0 + uTime * 0.3) * 0.04;
+    float y = aLayerTilt * sin(angle * 2.0 + uTime * 0.3) * 0.07;
 
     float vLos = sin(angle);
     float doppler = vLos * 0.6;
 
-    float rNorm = clamp((aRadius - 65.0) / 215.0, 0.0, 1.0);
+    float rNorm = clamp((aRadius - 50.0) / 160.0, 0.0, 1.0);
 
     vec3 innerColor = vec3(0.78, 0.90, 1.0);
     vec3 midColor   = vec3(1.0,  0.58, 0.1);
@@ -184,7 +184,7 @@ const diskFragmentShader = `
   }
 `;
 
-// ─── Ghost arc — lensed lower image of disk ───────────────────────────────────
+// ─── Ghost arc — lensed lower image of disk ────────────────────────────────────
 const ghostVertexShader = `
   attribute float aRadius;
   attribute float aAngle;
@@ -199,7 +199,7 @@ const ghostVertexShader = `
     float z = -14.0 - abs(sin(angle)) * 8.0;
     float y = sin(angle) * aRadius * 0.10;
 
-    float rNorm = clamp((aRadius - 65.0) / 160.0, 0.0, 1.0);
+    float rNorm = clamp((aRadius - 50.0) / 120.0, 0.0, 1.0);
     float vLos = -sin(angle);
     float doppler = vLos * 0.5;
     float brightness = clamp(1.0 + doppler * 0.8, 0.2, 2.2);
@@ -240,14 +240,11 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     renderer.toneMappingExposure = 1.2;
     container.appendChild(renderer.domElement);
 
-    // ── Scene & Camera — equatorial low-angle view ────────────────────────────
-    // Camera placed near equatorial plane, slightly above, looking toward BH center.
-    // This gives the characteristic Interstellar view: disk as bright ellipse,
-    // ghost arc visible below, photon ring encircling the shadow.
+    // ── Scene & Camera — rasant équatorial ────────────────────────────────────
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, getAspect(), 0.1, 20000);
-    camera.position.set(0, 42, 760);
-    camera.lookAt(0, -28, 0);
+    const camera = new THREE.PerspectiveCamera(48, getAspect(), 0.1, 20000);
+    camera.position.set(0, 18, 760);
+    camera.lookAt(0, -20, 0);
 
     // ── Full-screen lensing background quad ───────────────────────────────────
     const bgScene = new THREE.Scene();
@@ -257,7 +254,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
       fragmentShader: lensingFragmentShader,
       uniforms: {
         uTime:     { value: 0 },
-        uBhScreen: { value: new THREE.Vector2(0.5, 0.48) },
+        uBhScreen: { value: new THREE.Vector2(0.5, 0.46) },
         uBhRadius: { value: 0.072 },
         uAspect:   { value: getAspect() },
       },
@@ -268,12 +265,11 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     // ── Black hole group ──────────────────────────────────────────────────────
     const bhGroup = new THREE.Group();
-    bhGroup.position.set(0, -28, 0);
+    bhGroup.position.set(0, -20, 0);
     scene.add(bhGroup);
 
-    const EH_RADIUS = 44;
+    const EH_RADIUS = 38;
 
-    // Event horizon
     bhGroup.add(new THREE.Mesh(
       new THREE.SphereGeometry(EH_RADIUS, 64, 64),
       new THREE.MeshBasicMaterial({ color: 0x000000 }),
@@ -288,21 +284,21 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     for (let i = 0; i < DISK_COUNT; i++) {
       const inner = Math.random() < 0.35;
-      const rMin = inner ? 48 : 74;
-      const rMax = inner ? 90 : 210;
+      const rMin = inner ? 50 : 70;
+      const rMax = inner ? 88 : 210;
       const r = rMin + Math.pow(Math.random(), 0.6) * (rMax - rMin);
       dRadius[i] = r;
       dAngle[i]  = Math.random() * Math.PI * 2;
-      dSpeed[i]  = 0.018 * Math.sqrt(62 / Math.max(r, 48));
-      dTilt[i]   = (Math.random() - 0.5) * (inner ? 4 : 14);
+      dSpeed[i]  = 0.018 * Math.sqrt(55 / Math.max(r, 50));
+      dTilt[i]   = (Math.random() - 0.5) * (inner ? 7 : 14);
     }
 
     const diskGeom = new THREE.BufferGeometry();
-    diskGeom.setAttribute('aRadius',     new THREE.BufferAttribute(dRadius, 1));
-    diskGeom.setAttribute('aAngle',      new THREE.BufferAttribute(dAngle, 1));
-    diskGeom.setAttribute('aSpeed',      new THREE.BufferAttribute(dSpeed, 1));
-    diskGeom.setAttribute('aLayerTilt',  new THREE.BufferAttribute(dTilt, 1));
-    diskGeom.setAttribute('position',    new THREE.BufferAttribute(new Float32Array(DISK_COUNT * 3), 3));
+    diskGeom.setAttribute('aRadius',    new THREE.BufferAttribute(dRadius, 1));
+    diskGeom.setAttribute('aAngle',     new THREE.BufferAttribute(dAngle, 1));
+    diskGeom.setAttribute('aSpeed',     new THREE.BufferAttribute(dSpeed, 1));
+    diskGeom.setAttribute('aLayerTilt', new THREE.BufferAttribute(dTilt, 1));
+    diskGeom.setAttribute('position',   new THREE.BufferAttribute(new Float32Array(DISK_COUNT * 3), 3));
 
     const diskMat = new THREE.ShaderMaterial({
       vertexShader: diskVertexShader,
@@ -319,12 +315,12 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     diskMesh.rotation.x = THREE.MathUtils.degToRad(12);
     bhGroup.add(diskMesh);
 
-    // ── Ghost arc — lensed lower image ────────────────────────────────────────
+    // ── Ghost arc ─────────────────────────────────────────────────────────────
     const GHOST_COUNT = 2000;
     const gRadius = new Float32Array(GHOST_COUNT);
     const gAngle  = new Float32Array(GHOST_COUNT);
     for (let i = 0; i < GHOST_COUNT; i++) {
-      gRadius[i] = 52 + Math.pow(Math.random(), 0.5) * 120;
+      gRadius[i] = 50 + Math.pow(Math.random(), 0.5) * 110;
       gAngle[i]  = Math.random() * Math.PI * 2;
     }
     const ghostGeom = new THREE.BufferGeometry();
@@ -344,31 +340,27 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     });
     bhGroup.add(new THREE.Points(ghostGeom, ghostMat));
 
-    // ── Photon ring — TorusGeometry, billboard-aligned, additive glow ─────────
-    // Using a torus instead of a flat plane so it wraps correctly around the
-    // event horizon from any camera angle, especially equatorial view.
+    // ── Photon ring — orange-doré, discret ────────────────────────────────────
     const photonRingMesh = new THREE.Mesh(
-      new THREE.TorusGeometry(EH_RADIUS + 4, 1.8, 20, 128),
+      new THREE.TorusGeometry(EH_RADIUS + 3, 1.4, 20, 128),
       new THREE.MeshBasicMaterial({
-        color: new THREE.Color(1.0, 0.48, 0.08),
+        color: new THREE.Color(1.0, 0.52, 0.06),
         transparent: true,
-        opacity: 0.42,
+        opacity: 0.28,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
       }),
     );
-    // Tilt matches disk inclination
     photonRingMesh.rotation.x = THREE.MathUtils.degToRad(12);
     bhGroup.add(photonRingMesh);
 
-    // Inner thin photon ring (brighter, tighter)
     const innerRingMesh = new THREE.Mesh(
-      new THREE.TorusGeometry(EH_RADIUS + 1.4, 0.9, 16, 128),
+      new THREE.TorusGeometry(EH_RADIUS + 0.8, 0.7, 16, 128),
       new THREE.MeshBasicMaterial({
-        color: new THREE.Color(1.0, 0.82, 0.42),
+        color: new THREE.Color(1.0, 0.88, 0.55),
         transparent: true,
-        opacity: 0.48,
+        opacity: 0.38,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
         side: THREE.DoubleSide,
@@ -377,33 +369,32 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     innerRingMesh.rotation.x = THREE.MathUtils.degToRad(12);
     bhGroup.add(innerRingMesh);
 
-    // Shadow disk — occludes geometry behind event horizon
-    const shadowDisk = new THREE.Mesh(
-      new THREE.CircleGeometry(EH_RADIUS * 0.88, 64),
+    // Shadow disk
+    bhGroup.add(new THREE.Mesh(
+      new THREE.CircleGeometry(EH_RADIUS * 0.92, 64),
       new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, depthWrite: true }),
-    );
-    bhGroup.add(shadowDisk);
+    ));
 
-    // ── Relativistic jets ─────────────────────────────────────────────────────
+    // ── Relativistic jets — très subtils ──────────────────────────────────────
     const makeJet = (dir: 1 | -1) => {
-      const N = 400;
+      const N = 300;
       const pos = new Float32Array(N * 3);
       const col = new Float32Array(N * 3);
       for (let i = 0; i < N; i++) {
-        const t = Math.pow(Math.random(), 0.6);
-        const sp = t * 22;
+        const t = Math.pow(Math.random(), 0.7);
+        const sp = t * 14;
         pos[i*3]   = (Math.random() - 0.5) * sp;
-        pos[i*3+1] = dir * (EH_RADIUS + t * 360);
+        pos[i*3+1] = dir * (EH_RADIUS + t * 220);
         pos[i*3+2] = (Math.random() - 0.5) * sp;
-        const b = (1 - t * 0.8) * (0.5 + Math.random() * 0.5);
-        col[i*3] = 0.2*b; col[i*3+1] = 0.5*b; col[i*3+2] = 1.0*b;
+        const b = (1 - t * 0.85) * (0.4 + Math.random() * 0.4);
+        col[i*3] = 0.15*b; col[i*3+1] = 0.38*b; col[i*3+2] = 0.9*b;
       }
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
       g.setAttribute('color',    new THREE.BufferAttribute(col, 3));
       return new THREE.Points(g, new THREE.PointsMaterial({
-        size: 4, vertexColors: true,
-        transparent: true, opacity: 0.45,
+        size: 3, vertexColors: true,
+        transparent: true, opacity: 0.12,
         blending: THREE.AdditiveBlending, depthWrite: false,
       }));
     };
@@ -423,7 +414,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     dCtx.fillStyle = dg;
     dCtx.fillRect(0, 0, 256, 64);
     const dustLane = new THREE.Mesh(
-      new THREE.PlaneGeometry(440, 54),
+      new THREE.PlaneGeometry(420, 50),
       new THREE.MeshBasicMaterial({
         map: new THREE.CanvasTexture(dc),
         transparent: true, opacity: 0.75,
@@ -433,7 +424,6 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     dustLane.rotation.x = THREE.MathUtils.degToRad(12);
     bhGroup.add(dustLane);
 
-    // ── Helper: project BH world position → background shader UV ─────────────
     const bhWorldPos = new THREE.Vector3();
 
     // ── Resize ────────────────────────────────────────────────────────────────
@@ -453,33 +443,29 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
       const targetSpeed = isPlayingRef.current ? 3.5 : 0.4;
       state.rotSpeed = THREE.MathUtils.lerp(state.rotSpeed, targetSpeed, 0.02);
 
-      // Compute BH screen-space UV dynamically so lensing always centers correctly
       bhGroup.getWorldPosition(bhWorldPos);
       const projected = bhWorldPos.clone().project(camera);
-      // projected is in NDC [-1,1]; convert to UV [0,1]
       lensMat.uniforms['uBhScreen']!.value.set(
         (projected.x + 1) * 0.5,
         (projected.y + 1) * 0.5,
       );
 
-      lensMat.uniforms['uTime']!.value     = state.time;
-      diskMat.uniforms['uTime']!.value     = state.time;
-      diskMat.uniforms['uRotSpeed']!.value = state.rotSpeed;
-      ghostMat.uniforms['uTime']!.value    = state.time;
+      lensMat.uniforms['uTime']!.value      = state.time;
+      diskMat.uniforms['uTime']!.value      = state.time;
+      diskMat.uniforms['uRotSpeed']!.value  = state.rotSpeed;
+      ghostMat.uniforms['uTime']!.value     = state.time;
       ghostMat.uniforms['uRotSpeed']!.value = state.rotSpeed;
 
-      // Photon ring pulse
-      const pulse = 0.85 + Math.sin(state.time * 3.2) * 0.15;
-      (photonRingMesh.material as THREE.MeshBasicMaterial).opacity = pulse * 0.9;
-      (innerRingMesh.material as THREE.MeshBasicMaterial).opacity  = 0.7 + Math.sin(state.time * 4.1 + 1.2) * 0.3;
+      const pulse = 0.75 + Math.sin(state.time * 3.2) * 0.12;
+      (photonRingMesh.material as THREE.MeshBasicMaterial).opacity = pulse * 0.28;
+      (innerRingMesh.material as THREE.MeshBasicMaterial).opacity  = 0.30 + Math.sin(state.time * 4.1 + 1.2) * 0.10;
 
       bhGroup.rotation.y = Math.sin(state.time * 0.08) * 0.02;
       bhGroup.rotation.z = Math.cos(state.time * 0.06) * 0.015;
 
-      // Slow equatorial drift — camera stays near the plane
-      camera.position.x = Math.sin(state.time * 0.04) * 14;
-      camera.position.y = 42 + Math.cos(state.time * 0.03) * 6;
-      camera.lookAt(0, -28, 0);
+      camera.position.x = Math.sin(state.time * 0.04) * 12;
+      camera.position.y = 18 + Math.cos(state.time * 0.03) * 4;
+      camera.lookAt(0, -20, 0);
 
       renderer.autoClear = true;
       renderer.render(bgScene, bgCamera);
