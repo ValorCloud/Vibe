@@ -67,6 +67,14 @@ const lensingFragmentShader = `
   const float WOBBLE_FREQUENCY = 36.0;        // number of shimmer ripples across the disk
   const float WOBBLE_AMPLITUDE = 0.035;       // shimmer height relative to the event horizon
   const float GLOW_RANGE_SCALE = 2.2;         // width of the left-to-right warm color gradient
+  const float PHOTON_RING_WIDTH = 0.055;      // thickness of the bright lensing ring
+  const float PHOTON_RING_DISTANCE = 1.01;    // ring placement just outside the event horizon
+  const float PHOTON_RING_INTENSITY = 0.55;   // ring brightness contribution
+  const float HALO_OUTER_RANGE = 3.7;         // furthest radius reached by the purple glow
+  const float HALO_INNER_RANGE = 1.15;        // radius where the glow is strongest
+  const float HALO_INTENSITY = 0.09;          // subtle background halo brightness
+  const float VIGNETTE_INNER_RANGE = 1.2;     // inner edge of the shadow falloff
+  const float VIGNETTE_OUTER_RANGE = 3.4;     // outer edge where stars regain full brightness
 
   void main() {
     vec2 uv = vUv;
@@ -87,8 +95,8 @@ const lensingFragmentShader = `
 
     vec3 stars = starField(lensedUv);
 
-    float wobble = sin(uTime * WOBBLE_SPEED + toCenter.x * WOBBLE_FREQUENCY) * r * WOBBLE_AMPLITUDE;
-    vec2 diskUv = vec2(toCenter.x / (r * DISK_WIDTH_SCALE), (toCenter.y + wobble) / (r * DISK_HEIGHT_SCALE));
+    float shimmerOffset = sin(uTime * WOBBLE_SPEED + toCenter.x * WOBBLE_FREQUENCY) * r * WOBBLE_AMPLITUDE;
+    vec2 diskUv = vec2(toCenter.x / (r * DISK_WIDTH_SCALE), (toCenter.y + shimmerOffset) / (r * DISK_HEIGHT_SCALE));
     float diskEllipse = length(diskUv);
     float accretionDisk = smoothstep(0.23, 0.0, abs(diskEllipse - 1.0));
     accretionDisk *= smoothstep(r * 0.92, r * 1.12, dist);
@@ -97,7 +105,7 @@ const lensingFragmentShader = `
     float ghostArc = smoothstep(0.24, 0.0, abs(length(ghostUv) - 1.0)) * 0.45;
     ghostArc *= smoothstep(0.0, r * 0.95, abs(toCenter.x));
 
-    float photonRing = smoothstep(r * 0.055, 0.0, abs(dist - r * 1.01)) * 0.55;
+    float photonRing = smoothstep(r * PHOTON_RING_WIDTH, 0.0, abs(dist - r * PHOTON_RING_DISTANCE)) * PHOTON_RING_INTENSITY;
     float horizontalGlow = smoothstep(-r * GLOW_RANGE_SCALE, r * GLOW_RANGE_SCALE, -toCenter.x);
     float angularFlicker = FLICKER_BASE + sin(atan(toCenter.y, toCenter.x) * FLICKER_BANDS - uTime * FLICKER_SPEED) * FLICKER_AMPLITUDE;
     vec3 warmDisk = mix(vec3(0.95, 0.22, 0.04), vec3(1.0, 0.82, 0.34), horizontalGlow);
@@ -105,10 +113,10 @@ const lensingFragmentShader = `
     stars += warmDisk * (accretionDisk + ghostArc) * angularFlicker * 1.65;
     stars += hotRing * photonRing * 0.85;
 
-    float halo = smoothstep(r * 3.7, r * 1.15, dist) * 0.09;
+    float halo = smoothstep(r * HALO_OUTER_RANGE, r * HALO_INNER_RANGE, dist) * HALO_INTENSITY;
     stars += vec3(0.24, 0.16, 0.42) * halo;
 
-    float vignette = smoothstep(r * 1.2, r * 3.4, dist);
+    float vignette = smoothstep(r * VIGNETTE_INNER_RANGE, r * VIGNETTE_OUTER_RANGE, dist);
     stars *= (0.3 + vignette * 0.7);
 
     gl_FragColor = vec4(stars, 1.0);
