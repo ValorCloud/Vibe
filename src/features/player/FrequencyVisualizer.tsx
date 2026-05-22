@@ -18,8 +18,10 @@ export function FrequencyVisualizer({ isPlaying, analyser, audioRef }: Frequency
     el.addEventListener('play', onPlay);
     if (isPlaying) analyser.initAnalyser(el);
     return () => el.removeEventListener('play', onPlay);
-  }, [audioRef, analyser, isPlaying]);
+  }, [audioRef, analyser.initAnalyser, isPlaying]);
 
+  // RAF loop — deps use stable refs, not the analyser object
+  const { analyserRef, dataArrayRef } = analyser;
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -40,7 +42,6 @@ export function FrequencyVisualizer({ isPlaying, analyser, audioRef }: Frequency
       const h = canvas.offsetHeight;
       ctx.clearRect(0, 0, w, h);
 
-      const { analyserRef, dataArrayRef } = analyser;
       if (analyserRef.current && dataArrayRef.current && isPlaying) {
         analyserRef.current.getByteFrequencyData(dataArrayRef.current as Uint8Array<ArrayBuffer>);
       }
@@ -88,7 +89,7 @@ export function FrequencyVisualizer({ isPlaying, analyser, audioRef }: Frequency
       window.removeEventListener('resize', resize);
       cancelAnimationFrame(rafId);
     };
-  }, [isPlaying, analyser]);
+  }, [isPlaying, analyserRef, dataArrayRef]);
 
   return (
     <div

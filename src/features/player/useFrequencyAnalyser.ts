@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 
 export interface FrequencyAnalyserState {
   analyserRef: React.RefObject<AnalyserNode | null>;
@@ -14,7 +14,8 @@ export function useFrequencyAnalyser(): FrequencyAnalyserState {
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
-  const initAnalyser = (audioEl: HTMLAudioElement) => {
+  // Stable reference — never changes between renders
+  const initAnalyser = useCallback((audioEl: HTMLAudioElement) => {
     try {
       const AudioCtx = window.AudioContext ||
         (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -41,7 +42,7 @@ export function useFrequencyAnalyser(): FrequencyAnalyserState {
         analyserRef.current.connect(ctx.destination);
       }
     } catch (_) {}
-  };
+  }, []);
 
   useEffect(() => {
     return () => {

@@ -1,11 +1,11 @@
-import { useRef, useEffect } from 'react';
+import { memo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 
 interface WarpFieldProps {
   isPlaying: boolean;
 }
 
-export function WarpField({ isPlaying }: WarpFieldProps) {
+export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<boolean>(false);
   const isPlayingRef = useRef<boolean>(isPlaying);
@@ -225,7 +225,6 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     const diskCol = new Float32Array(diskCount * 3);
     const diskVel = new Float32Array(diskCount);
     for (let i = 0; i < diskCount; i++) {
-      // Two-layer structure: inner hot zone + outer cooler disk
       const layer = Math.random() < 0.4 ? 'inner' : 'outer';
       const minR = layer === 'inner' ? 62 : 85;
       const maxR = layer === 'inner' ? 100 : 220;
@@ -236,21 +235,16 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
       diskPos[i*3+1] = tilt;
       diskPos[i*3+2] = Math.sin(theta) * r;
 
-      // Color: inner = blue-white (10k K), mid = yellow-orange (5k K), outer = deep red/purple
-      const t = (r - 60) / 165; // 0 = inner, 1 = outer
+      const t = (r - 60) / 165;
       if (t < 0.15) {
-        // innermost — blue-white blazar jet color
         diskCol[i*3] = 0.7 + Math.random()*0.3;
         diskCol[i*3+1] = 0.8 + Math.random()*0.2;
         diskCol[i*3+2] = 1.0;
       } else if (t < 0.35) {
-        // hot inner disk — white-yellow
         diskCol[i*3] = 1.0; diskCol[i*3+1] = 0.9; diskCol[i*3+2] = 0.6;
       } else if (t < 0.6) {
-        // mid disk — orange
         diskCol[i*3] = 1.0; diskCol[i*3+1] = 0.55 - t*0.3; diskCol[i*3+2] = 0.1;
       } else {
-        // outer disk — deep orange-red fading to near-purple
         diskCol[i*3] = 0.6 + Math.random()*0.2;
         diskCol[i*3+1] = 0.1 + Math.random()*0.1;
         diskCol[i*3+2] = 0.2 + Math.random()*0.3;
@@ -266,7 +260,7 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     const accretionDisk = new THREE.Points(diskGeom, diskMat);
     bhGroup.add(accretionDisk);
 
-    // 4. Gravitational lensing glow — large soft halo
+    // 4. Gravitational lensing glow
     const lensCanvas = document.createElement('canvas');
     lensCanvas.width = 256; lensCanvas.height = 256;
     const lc = lensCanvas.getContext('2d')!;
@@ -310,7 +304,7 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     };
     bhGroup.add(makeJet(1), makeJet(-1));
 
-    // 6. Shadow vignette — opaque dark disk occluding background behind horizon
+    // 6. Shadow vignette
     const shadowMesh = new THREE.Mesh(
       new THREE.CircleGeometry(54, 64),
       new THREE.MeshBasicMaterial({ color: 0x000000, transparent: false }),
@@ -320,7 +314,7 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
 
     scene.add(bhGroup);
 
-    // ─── Neon grid (warp tunnel floor — very subtle) ───────────────
+    // ─── Neon grid ────────────────────────────────────────────────
     const gridSize = 3000;
     const gridDivisions = 40;
     const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x001133, 0x000d22);
@@ -344,7 +338,6 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
       const targetSpeed = playing ? 7 : 0.25;
       refs.currentSpeed = THREE.MathUtils.lerp(refs.currentSpeed, targetSpeed, 0.025);
 
-      // Star warp
       const posAttr = starGeom.attributes['position'];
       if (posAttr) {
         const pos = posAttr.array as Float32Array;
@@ -361,13 +354,9 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
         posAttr.needsUpdate = true;
       }
 
-      // Nebula drift
       nebula1.rotation.y += 0.0003; nebula2.rotation.z += 0.0002; nebula3.rotation.x += 0.0001;
-
-      // Milky Way slow rotation
       milkyWay.rotation.y += 0.00015;
 
-      // Accretion disk differential rotation (inner faster than outer)
       const dPosAttr = diskGeom.attributes['position'];
       if (dPosAttr) {
         const dp = dPosAttr.array as Float32Array;
@@ -379,21 +368,17 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
           const angle = angVel * (1 + refs.currentSpeed * 0.04);
           dp[i*3]   = x * Math.cos(angle) - z * Math.sin(angle);
           dp[i*3+2] = x * Math.sin(angle) + z * Math.cos(angle);
-          // Subtle vertical shimmer (thermal turbulence)
           dp[i*3+1] = (dp[i*3+1] ?? 0) + Math.sin(refs.time * 3 + r * 0.1) * 0.015;
         }
         dPosAttr.needsUpdate = true;
       }
 
-      // Photon ring pulse
       const pulse = 0.92 + Math.sin(refs.time * 4) * 0.08;
       photonPlane.material.opacity = pulse;
 
-      // BH tilt — slight precession
       bhGroup.rotation.x = Math.sin(refs.time * 0.1) * 0.04;
       bhGroup.rotation.z = Math.cos(refs.time * 0.07) * 0.03;
 
-      // Grid scroll
       gridHelper.position.z += refs.currentSpeed * 0.2;
       if (gridHelper.position.z > 75) gridHelper.position.z -= 75;
 
@@ -410,5 +395,5 @@ export function WarpField({ isPlaying }: WarpFieldProps) {
     };
   }, []);
 
-  return <div ref={mountRef} style={{ position: 'absolute', inset: 0, zIndex: 0 }} />;
-}
+  return <div ref={mountRef} style={{ position: 'absolute', inset: 0, zIndex: 0 }} aria-hidden="true" />;
+});
