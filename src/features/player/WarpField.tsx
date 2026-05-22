@@ -54,15 +54,19 @@ const lensingFragmentShader = `
     return col;
   }
 
-  const float DISK_WIDTH_SCALE = 2.55;
-  const float DISK_HEIGHT_SCALE = 0.34;
-  const float GHOST_WIDTH_SCALE = 1.55;
-  const float GHOST_VERTICAL_OFFSET = 0.48;
-  const float GHOST_HEIGHT_SCALE = 0.16;
-  const float FLICKER_BANDS = 6.0;
-  const float FLICKER_SPEED = 2.2;
-  const float FLICKER_BASE = 0.85;
-  const float FLICKER_AMPLITUDE = 0.15;
+  const float DISK_WIDTH_SCALE = 2.55;        // horizontal stretch of the main accretion ellipse
+  const float DISK_HEIGHT_SCALE = 0.34;       // vertical compression that keeps the disk edge-on
+  const float GHOST_WIDTH_SCALE = 1.55;       // horizontal stretch of the lower lensed ghost arc
+  const float GHOST_VERTICAL_OFFSET = 0.48;   // lowers the ghost arc beneath the event horizon
+  const float GHOST_HEIGHT_SCALE = 0.16;      // vertical compression of the ghost arc
+  const float FLICKER_BANDS = 6.0;            // angular bands around the disk glow
+  const float FLICKER_SPEED = 2.2;            // rotation speed of those glow bands
+  const float FLICKER_BASE = 0.85;            // minimum disk brightness during flicker
+  const float FLICKER_AMPLITUDE = 0.15;       // brightness variation around the base value
+  const float WOBBLE_SPEED = 0.9;             // slow heat shimmer speed across the disk
+  const float WOBBLE_FREQUENCY = 36.0;        // number of shimmer ripples across the disk
+  const float WOBBLE_AMPLITUDE = 0.035;       // shimmer height relative to the event horizon
+  const float GLOW_RANGE_SCALE = 2.2;         // width of the left-to-right warm color gradient
 
   void main() {
     vec2 uv = vUv;
@@ -83,7 +87,7 @@ const lensingFragmentShader = `
 
     vec3 stars = starField(lensedUv);
 
-    float wobble = sin(uTime * 0.9 + toCenter.x * 36.0) * r * 0.035;
+    float wobble = sin(uTime * WOBBLE_SPEED + toCenter.x * WOBBLE_FREQUENCY) * r * WOBBLE_AMPLITUDE;
     vec2 diskUv = vec2(toCenter.x / (r * DISK_WIDTH_SCALE), (toCenter.y + wobble) / (r * DISK_HEIGHT_SCALE));
     float diskEllipse = length(diskUv);
     float accretionDisk = smoothstep(0.23, 0.0, abs(diskEllipse - 1.0));
@@ -94,7 +98,7 @@ const lensingFragmentShader = `
     ghostArc *= smoothstep(0.0, r * 0.95, abs(toCenter.x));
 
     float photonRing = smoothstep(r * 0.055, 0.0, abs(dist - r * 1.01)) * 0.55;
-    float horizontalGlow = smoothstep(-r * 2.2, r * 2.2, -toCenter.x);
+    float horizontalGlow = smoothstep(-r * GLOW_RANGE_SCALE, r * GLOW_RANGE_SCALE, -toCenter.x);
     float angularFlicker = FLICKER_BASE + sin(atan(toCenter.y, toCenter.x) * FLICKER_BANDS - uTime * FLICKER_SPEED) * FLICKER_AMPLITUDE;
     vec3 warmDisk = mix(vec3(0.95, 0.22, 0.04), vec3(1.0, 0.82, 0.34), horizontalGlow);
     vec3 hotRing = mix(vec3(1.0, 0.54, 0.08), vec3(1.0, 0.96, 0.74), horizontalGlow);
