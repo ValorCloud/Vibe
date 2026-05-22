@@ -9,7 +9,6 @@ interface PlayerControlsProps {
   disabled?: boolean;
 }
 
-// ── Inject keyframes once ───────────────────────────────────────────────────
 const CONTROLS_CSS = `
   @keyframes lcarsLedPulse {
     0%, 100% { opacity: 1; box-shadow: 0 0 6px currentColor; }
@@ -45,8 +44,6 @@ function injectControlsCSS() {
   el.textContent = CONTROLS_CSS;
   document.head.appendChild(el);
 }
-
-// ── SVG Icons ────────────────────────────────────────────────────────────────
 
 function IconShuffle() {
   return (
@@ -127,8 +124,6 @@ function IconNext() {
   );
 }
 
-// ── LCARSModeButton ─────────────────────────────────────────────────────────
-
 interface LCARSModeButtonProps {
   label: string;
   sublabel?: string;
@@ -201,8 +196,6 @@ function LCARSModeButton({
   );
 }
 
-// ── Divider ──────────────────────────────────────────────────────────────────
-
 function VertDivider() {
   return (
     <div aria-hidden="true" style={{
@@ -212,8 +205,6 @@ function VertDivider() {
     }} />
   );
 }
-
-// ── Crossfade Popover ────────────────────────────────────────────────────────
 
 const XFADE_PRESETS = [0, 500, 1000, 2000, 3000, 5000];
 
@@ -270,8 +261,6 @@ function CrossfadePopover({ crossfadeMs, setCrossfadeMs, onClose }: CrossfadePop
     </div>
   );
 }
-
-// ── Sleep Timer Popover ──────────────────────────────────────────────────────
 
 const SLEEP_PRESETS: Array<{ label: string; ms: number }> = [
   { label: '5 MIN',  ms: 5 * 60 * 1000 },
@@ -354,8 +343,6 @@ function SleepPopover({ sleepTimerEnd, setSleepTimer, onClose }: SleepPopoverPro
   );
 }
 
-// ── Repeat sublabels ─────────────────────────────────────────────────────────
-
 const REPEAT_SUBLABEL: Record<RepeatMode, string | undefined> = {
   none: undefined,
   one: 'TRACK',
@@ -368,8 +355,6 @@ const REPEAT_TITLE: Record<RepeatMode, string> = {
   all: 'Repeat ALL — click to disable',
 };
 
-// ── Main component ───────────────────────────────────────────────────────────
-
 export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerControlsProps) {
   injectControlsCSS();
 
@@ -378,6 +363,17 @@ export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerContr
 
   const [xfadeOpen, setXfadeOpen] = useState(false);
   const [sleepOpen, setSleepOpen] = useState(false);
+
+  // exactOptionalPropertyTypes-safe: only spread sublabel when it is a string
+  const repeatButtonProps = REPEAT_SUBLABEL[repeat]
+    ? { sublabel: REPEAT_SUBLABEL[repeat] as string }
+    : {};
+  const xfadeButtonProps = crossfadeMs > 0
+    ? { sublabel: `${(crossfadeMs / 1000).toFixed(1)}s` }
+    : {};
+  const sleepButtonProps = sleepTimerEnd !== null
+    ? { sublabel: '◉' }
+    : {};
 
   const transportSquare: React.CSSProperties = {
     width: 52, height: 52, borderRadius: 8,
@@ -405,8 +401,14 @@ export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerContr
 
         <VertDivider />
 
-        <LCARSModeButton label="REPEAT" sublabel={REPEAT_SUBLABEL[repeat]} active={repeat !== 'none'}
-          color={LCARS.orange} title={REPEAT_TITLE[repeat]} onClick={toggleRepeat}>
+        <LCARSModeButton
+          label="REPEAT"
+          active={repeat !== 'none'}
+          color={LCARS.orange}
+          title={REPEAT_TITLE[repeat]}
+          onClick={toggleRepeat}
+          {...repeatButtonProps}
+        >
           <IconRepeat mode={repeat} />
         </LCARSModeButton>
 
@@ -422,11 +424,11 @@ export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerContr
         <div style={{ position: 'relative' }}>
           <LCARSModeButton
             label="XFADE"
-            sublabel={crossfadeMs > 0 ? `${(crossfadeMs / 1000).toFixed(1)}s` : undefined}
             active={crossfadeMs > 0}
             color={LCARS.amber}
             title="Configure crossfade duration"
             onClick={() => { setXfadeOpen(o => !o); setSleepOpen(false); }}
+            {...xfadeButtonProps}
           >
             <IconCrossfade />
           </LCARSModeButton>
@@ -444,11 +446,11 @@ export function PlayerControls({ engine, onPrev, onNext, disabled }: PlayerContr
         <div style={{ position: 'relative' }}>
           <LCARSModeButton
             label="SLEEP"
-            sublabel={sleepTimerEnd !== null ? '◉' : undefined}
             active={sleepTimerEnd !== null}
             color={LCARS.purple}
             title="Set sleep timer"
             onClick={() => { setSleepOpen(o => !o); setXfadeOpen(false); }}
+            {...sleepButtonProps}
           >
             <IconSleep />
           </LCARSModeButton>
