@@ -197,6 +197,9 @@ export function VoxNovaPlayer() {
     { label: 'ALL', value: 'all' },
   ];
 
+  // Shared content width — memo log, player controls, volume, singularity, EQ
+  const CONTENT_WIDTH = 'min(680px, 95%)';
+
   // Hide left sidebar when player is actively playing
   const sidebarVisible = !engine.isPlaying;
 
@@ -569,7 +572,7 @@ export function VoxNovaPlayer() {
           </div>
         </div>
 
-        {/* Stage — title → memo → controls → volume → black hole → EQ (pinned to bottom) */}
+        {/* Stage — scrollable content area */}
         <div
           style={{
             flex: 1,
@@ -608,7 +611,7 @@ export function VoxNovaPlayer() {
           <div
             style={{
               alignSelf: 'center',
-              width: 'min(560px, 90%)',
+              width: CONTENT_WIDTH,
               border: `1px solid ${LCARS.purple}55`,
               borderRadius: 4,
               padding: '10px 14px',
@@ -635,7 +638,7 @@ export function VoxNovaPlayer() {
           <div
             style={{
               alignSelf: 'center',
-              width: 'min(560px, 92%)',
+              width: CONTENT_WIDTH,
               border: `1px solid ${LCARS.peach}33`,
               borderRadius: 4,
               padding: '12px 16px',
@@ -659,7 +662,7 @@ export function VoxNovaPlayer() {
           <div
             style={{
               alignSelf: 'center',
-              width: 'min(560px, 92%)',
+              width: CONTENT_WIDTH,
               border: `1px solid ${LCARS.amber}33`,
               borderRadius: 4,
               padding: '10px 16px',
@@ -673,7 +676,7 @@ export function VoxNovaPlayer() {
           <div
             style={{
               alignSelf: 'center',
-              width: 'min(480px, 90%)',
+              width: CONTENT_WIDTH,
               border: `1px solid rgba(100,100,200,0.25)`,
               borderRadius: 4,
               padding: '10px 14px',
@@ -695,10 +698,11 @@ export function VoxNovaPlayer() {
             <BlackHoleBadge active={engine.isPlaying} />
           </div>
 
-          {/* SUBSPACE FREQUENCY SCAN — pushed to bottom to align with UPLINK in sidebar */}
+          {/* SUBSPACE FREQUENCY SCAN — below black hole, same width as content */}
           <div
             style={{
-              marginTop: 'auto',
+              alignSelf: 'center',
+              width: CONTENT_WIDTH,
               border: `1px solid ${LCARS.red ?? '#cc3333'}33`,
               borderRadius: 4,
               padding: '8px',
