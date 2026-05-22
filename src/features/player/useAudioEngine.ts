@@ -1,12 +1,16 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { TrackEntry } from './types';
 
+export type RepeatMode = 'none' | 'one' | 'all';
+
 export interface AudioEngineState {
   audioRef: React.RefObject<HTMLAudioElement>;
   isPlaying: boolean;
   currentTime: number;
   duration: number;
   volume: number;
+  repeat: RepeatMode;
+  shuffle: boolean;
   play: () => void;
   pause: () => void;
   togglePlay: () => void;
@@ -14,6 +18,11 @@ export interface AudioEngineState {
   setVolume: (v: number) => void;
   loadTrack: (track: TrackEntry) => void;
   beep: (freq?: number, type?: OscillatorType, duration?: number) => void;
+  toggleRepeat: () => void;
+  toggleShuffle: () => void;
+  /** Called by the player when a track ends (for repeat-all / shuffle handling) */
+  onTrackEnded?: () => void;
+  setOnTrackEnded: (cb: (() => void) | undefined) => void;
 }
 
 export function useAudioEngine(): AudioEngineState {
@@ -22,12 +31,32 @@ export function useAudioEngine(): AudioEngineState {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
+  const [repeat, setRepeat] = useState<RepeatMode>('none');
+  const [shuffle, setShuffle] = useState(false);
+
+  // Mutable ref so onEnded closure always reads latest values without re-registering
+  const repeatRef = useRef<RepeatMode>('none');
+  const onTrackEndedRef = useRef<(() => void) | undefined>(undefined);
+
+  const setOnTrackEnded = useCallback((cb: (() => void) | undefined) => {
+    onTrackEndedRef.current = cb;
+  }, []);
+
+  useEffect(() => { repeatRef.current = repeat; }, [repeat]);
 
   useEffect(() => {
     const el = audioRef.current;
     const onTime = () => setCurrentTime(el.currentTime);
     const onDuration = () => setDuration(el.duration || 0);
-    const onEnded = () => setIsPlaying(false);
+    const onEnded = () => {
+      if (repeatRef.current === 'one') {
+        el.currentTime = 0;
+        el.play().then(() => setIsPlaying(true)).catch(() => {});
+      } else {
+        setIsPlaying(false);
+        onTrackEndedRef.current?.();
+      }
+    };
     el.addEventListener('timeupdate', onTime);
     el.addEventListener('loadedmetadata', onDuration);
     el.addEventListener('ended', onEnded);
@@ -75,6 +104,14 @@ export function useAudioEngine(): AudioEngineState {
     setIsPlaying(false);
   }, []);
 
+  const toggleRepeat = useCallback(() => {
+    setRepeat(r => r === 'none' ? 'one' : r === 'one' ? 'all' : 'none');
+  }, []);
+
+  const toggleShuffle = useCallback(() => {
+    setShuffle(s => !s);
+  }, []);
+
   const beep = useCallback((
     freq = 440,
     type: OscillatorType = 'sine',
@@ -98,5 +135,11 @@ export function useAudioEngine(): AudioEngineState {
     } catch (_) {}
   }, []);
 
-  return { audioRef, isPlaying, currentTime, duration, volume, play, pause, togglePlay, seek, setVolume, loadTrack, beep };
+  return {
+    audioRef, isPlaying, currentTime, duration, volume,
+    repeat, shuffle,
+    play, pause, togglePlay, seek, setVolume, loadTrack, beep,
+    toggleRepeat, toggleShuffle,
+    setOnTrackEnded,
+  };
 }

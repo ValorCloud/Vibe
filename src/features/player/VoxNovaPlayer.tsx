@@ -100,16 +100,40 @@ export function VoxNovaPlayer() {
   const selectedTrack = library.tracks.find(t => t.id === selectedId);
   const visibleTracks = library.tracks.filter(t => t.source === view);
 
-  const handleSelect = (track: TrackEntry) => {
-    setSelectedId(track.id);
-    engine.loadTrack(track);
-    engine.play();
-    engine.beep(880, 'sine', 0.05);
-  };
+  // Keep shuffle/repeat refs current for the onEnded callback
+  const shuffleRef = useRef(engine.shuffle);
+  const repeatRef = useRef(engine.repeat);
+  useEffect(() => { shuffleRef.current = engine.shuffle; }, [engine.shuffle]);
+  useEffect(() => { repeatRef.current = engine.repeat; }, [engine.repeat]);
 
-  const handlePrev = () => {
+  const selectedIdRef = useRef(selectedId);
+  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
+
+  const handleNext = useCallback(() => {
     if (!visibleTracks.length) return;
-    const idx = visibleTracks.findIndex(t => t.id === selectedId);
+    const idx = visibleTracks.findIndex(t => t.id === selectedIdRef.current);
+    let next: TrackEntry | undefined;
+    if (shuffleRef.current) {
+      const others = visibleTracks.filter(t => t.id !== selectedIdRef.current);
+      next = others.length
+        ? others[Math.floor(Math.random() * others.length)]
+        : visibleTracks[0];
+    } else {
+      next = idx < 0
+        ? visibleTracks[0]
+        : visibleTracks[idx >= visibleTracks.length - 1 ? 0 : idx + 1];
+    }
+    if (next) {
+      setSelectedId(next.id);
+      engine.loadTrack(next);
+      engine.play();
+      engine.beep(1100, 'sine', 0.04);
+    }
+  }, [visibleTracks, engine]);
+
+  const handlePrev = useCallback(() => {
+    if (!visibleTracks.length) return;
+    const idx = visibleTracks.findIndex(t => t.id === selectedIdRef.current);
     const prev = idx < 0
       ? visibleTracks[0]
       : visibleTracks[idx === 0 ? visibleTracks.length - 1 : idx - 1];
@@ -119,21 +143,26 @@ export function VoxNovaPlayer() {
       engine.play();
       engine.beep(660, 'sine', 0.04);
     }
-  };
+  }, [visibleTracks, engine]);
 
-  const handleNext = () => {
-    if (!visibleTracks.length) return;
-    const idx = visibleTracks.findIndex(t => t.id === selectedId);
-    const next = idx < 0
-      ? visibleTracks[0]
-      : visibleTracks[idx >= visibleTracks.length - 1 ? 0 : idx + 1];
-    if (next) {
-      setSelectedId(next.id);
-      engine.loadTrack(next);
-      engine.play();
-      engine.beep(1100, 'sine', 0.04);
-    }
-  };
+  // Wire onTrackEnded: auto-advance on track end if repeat !== 'none' or just play next
+  useEffect(() => {
+    engine.setOnTrackEnded(() => {
+      if (repeatRef.current !== 'none') {
+        // repeat-all or shuffle: advance
+        handleNext();
+      }
+      // repeat-none: stop (engine already set isPlaying=false)
+    });
+    return () => engine.setOnTrackEnded(undefined);
+  }, [engine, handleNext]);
+
+  const handleSelect = useCallback((track: TrackEntry) => {
+    setSelectedId(track.id);
+    engine.loadTrack(track);
+    engine.play();
+    engine.beep(880, 'sine', 0.05);
+  }, [engine]);
 
   const handleUplinkFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = filterFiles(
