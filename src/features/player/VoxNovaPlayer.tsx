@@ -12,13 +12,12 @@ type LibraryView = 'cloud' | 'local';
 
 const LIBRARY_CAPACITY = 50;
 
-// LCARS accent colors for transparent panel backgrounds
 const LCARS_BOX_COLORS = [
-  'rgba(255,153,0,0.08)',    // peach/orange
-  'rgba(153,102,204,0.08)', // purple
-  'rgba(204,153,102,0.08)', // tan
-  'rgba(255,102,102,0.08)', // red
-  'rgba(102,204,255,0.08)', // light blue
+  'rgba(255,153,0,0.08)',
+  'rgba(153,102,204,0.08)',
+  'rgba(204,153,102,0.08)',
+  'rgba(255,102,102,0.08)',
+  'rgba(102,204,255,0.08)',
 ];
 
 function genRegistry(): string {
@@ -96,7 +95,6 @@ export function VoxNovaPlayer() {
   const selectedTrack = library.tracks.find(t => t.id === selectedId);
   const visibleTracks = library.tracks.filter(t => t.source === view);
 
-  // Select + autoplay immediately
   const handleSelect = (track: TrackEntry) => {
     setSelectedId(track.id);
     engine.loadTrack(track);
@@ -104,7 +102,6 @@ export function VoxNovaPlayer() {
     engine.beep(880, 'sine', 0.05);
   };
 
-  // PREV: go to previous track and autoplay
   const handlePrev = () => {
     if (!visibleTracks.length) return;
     const idx = visibleTracks.findIndex(t => t.id === selectedId);
@@ -119,7 +116,6 @@ export function VoxNovaPlayer() {
     }
   };
 
-  // NEXT: go to next track and autoplay
   const handleNext = () => {
     if (!visibleTracks.length) return;
     const idx = visibleTracks.findIndex(t => t.id === selectedId);
@@ -197,10 +193,7 @@ export function VoxNovaPlayer() {
     { label: 'ALL', value: 'all' },
   ];
 
-  // Shared content width — memo log, player controls, volume, singularity, EQ
   const CONTENT_WIDTH = 'min(680px, 95%)';
-
-  // Hide left sidebar when player is actively playing
   const sidebarVisible = !engine.isPlaying;
 
   return (
@@ -218,7 +211,7 @@ export function VoxNovaPlayer() {
     >
       <WarpField isPlaying={engine.isPlaying} />
 
-      {/* ═══════════════════ LEFT LCARS SIDEBAR ═══════════════════ */}
+      {/* LEFT LCARS SIDEBAR */}
       <aside
         style={{
           position: 'relative',
@@ -256,39 +249,12 @@ export function VoxNovaPlayer() {
           <div style={{ fontSize: 10, letterSpacing: 2, marginTop: 4, opacity: 0.85 }}>NV-42 CORE</div>
         </div>
 
-        <SidebarButton
-          label="CLOUD"
-          color={LCARS.purple}
-          textColor="#0a0a10"
-          active={view === 'cloud'}
-          onClick={() => setView('cloud')}
-          icon={<GlobeIcon />}
-        />
-        <SidebarButton
-          label="LOCAL"
-          color={LCARS.orange}
-          textColor="#0a0a10"
-          active={view === 'local'}
-          onClick={() => setView('local')}
-          icon={<DatabaseIcon />}
-        />
-        <SidebarButton
-          label="PURGE"
-          color={LCARS.red}
-          textColor="#0a0a10"
-          onClick={handlePurge}
-        />
+        <SidebarButton label="CLOUD" color={LCARS.purple} textColor="#0a0a10" active={view === 'cloud'} onClick={() => setView('cloud')} icon={<GlobeIcon />} />
+        <SidebarButton label="LOCAL" color={LCARS.orange} textColor="#0a0a10" active={view === 'local'} onClick={() => setView('local')} icon={<DatabaseIcon />} />
+        <SidebarButton label="PURGE" color={LCARS.red} textColor="#0a0a10" onClick={handlePurge} />
 
         {/* Track list */}
-        <div
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflow: 'auto',
-            marginTop: 12,
-            paddingRight: 2,
-          }}
-        >
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', marginTop: 12, paddingRight: 2 }}>
           {visibleTracks.length === 0 ? (
             <div style={{ color: LCARS.mutedText, fontSize: 10, letterSpacing: 1, padding: '8px 4px' }}>
               NO {view.toUpperCase()} SIGNALS
@@ -323,7 +289,7 @@ export function VoxNovaPlayer() {
           ))}
         </div>
 
-        {/* UPLINK button — textured background */}
+        {/* UPLINK button */}
         <button
           type="button"
           onClick={() => uploadInputRef.current?.click()}
@@ -357,7 +323,7 @@ export function VoxNovaPlayer() {
           <span>UPLINK</span>
         </button>
 
-        {/* SCAN SECTOR — protocol + pattern filter */}
+        {/* SCAN SECTOR — filter block */}
         <div
           style={{
             border: `1px solid ${LCARS.orange}55`,
@@ -370,9 +336,7 @@ export function VoxNovaPlayer() {
           }}
         >
           <div>
-            <div style={{ color: LCARS.orange, fontSize: 9, letterSpacing: 3, marginBottom: 6 }}>
-              AUDIO PROTOCOL
-            </div>
+            <div style={{ color: LCARS.orange, fontSize: 9, letterSpacing: 3, marginBottom: 6 }}>AUDIO PROTOCOL</div>
             <div style={{ display: 'flex', gap: 4 }}>
               {PROTOCOLS.map(p => (
                 <button
@@ -401,9 +365,7 @@ export function VoxNovaPlayer() {
             </div>
           </div>
           <div>
-            <div style={{ color: LCARS.orange, fontSize: 9, letterSpacing: 3, marginBottom: 6 }}>
-              PATTERN MATCH
-            </div>
+            <div style={{ color: LCARS.orange, fontSize: 9, letterSpacing: 3, marginBottom: 6 }}>PATTERN MATCH</div>
             <input
               type="text"
               value={scanPattern}
@@ -427,7 +389,7 @@ export function VoxNovaPlayer() {
           </div>
         </div>
 
-        {/* SCAN SECTOR — extracted below the filter block */}
+        {/* SCAN SECTOR button */}
         <div
           style={{
             background: LCARS.orange,
@@ -457,15 +419,7 @@ export function VoxNovaPlayer() {
           <span style={{ fontSize: 11, letterSpacing: 2, fontWeight: 600 }}>SCAN SECTOR</span>
         </div>
 
-        <input
-          ref={uploadInputRef}
-          type="file"
-          multiple
-          accept={buildAccept(scanProtocol)}
-          style={{ display: 'none' }}
-          onChange={handleUplinkFiles}
-          aria-hidden="true"
-        />
+        <input ref={uploadInputRef} type="file" multiple accept={buildAccept(scanProtocol)} style={{ display: 'none' }} onChange={handleUplinkFiles} aria-hidden="true" />
         <input
           ref={folderInputRef}
           type="file"
@@ -479,7 +433,7 @@ export function VoxNovaPlayer() {
         />
       </aside>
 
-      {/* ═══════════════════ MAIN PANEL ═══════════════════ */}
+      {/* MAIN PANEL */}
       <main
         style={{
           position: 'relative',
@@ -551,28 +505,20 @@ export function VoxNovaPlayer() {
             gridTemplateColumns: '1fr 1fr auto',
             gap: 32,
             alignItems: 'start',
-            padding: '4px 8px 4px 8px',
+            padding: '4px 8px',
           }}
         >
           <StatusBar label="STRUCTURAL INTEGRITY" value={structuralIntegrity} color={LCARS.amber} />
           <StatusBar label="NEURAL BUFFER" value={neuralBuffer} color={LCARS.purple} />
           <div style={{ textAlign: 'right' }}>
             <div style={{ color: LCARS.subText, fontSize: 10, letterSpacing: 2 }}>SECTOR TIME</div>
-            <div
-              style={{
-                color: LCARS.alertRed,
-                fontSize: 20,
-                fontFamily: 'monospace',
-                letterSpacing: 2,
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
+            <div style={{ color: LCARS.alertRed, fontSize: 20, fontFamily: 'monospace', letterSpacing: 2, fontVariantNumeric: 'tabular-nums' }}>
               {sectorTime}
             </div>
           </div>
         </div>
 
-        {/* Stage — scrollable content area */}
+        {/* Stage */}
         <div
           style={{
             flex: 1,
@@ -607,7 +553,7 @@ export function VoxNovaPlayer() {
             <div style={{ width: 120, height: 3, background: LCARS.peach, borderRadius: 2 }} aria-hidden="true" />
           </div>
 
-          {/* Memo log box — LCARS purple tint */}
+          {/* LOCAL MEMO LOG */}
           <div
             style={{
               alignSelf: 'center',
@@ -618,23 +564,13 @@ export function VoxNovaPlayer() {
               background: LCARS_BOX_COLORS[1],
             }}
           >
-            <div style={{ color: LCARS.purple, fontSize: 10, letterSpacing: 3, marginBottom: 6 }}>
-              LOCAL MEMO LOG
-            </div>
-            <div
-              style={{
-                color: LCARS.text,
-                fontFamily: 'monospace',
-                fontSize: 12,
-                lineHeight: 1.5,
-                wordBreak: 'break-word',
-              }}
-            >
+            <div style={{ color: LCARS.purple, fontSize: 10, letterSpacing: 3, marginBottom: 6 }}>LOCAL MEMO LOG</div>
+            <div style={{ color: LCARS.text, fontFamily: 'monospace', fontSize: 12, lineHeight: 1.5, wordBreak: 'break-word' }}>
               {memo}
             </div>
           </div>
 
-          {/* Transport controls + seekbar — LCARS tan tint */}
+          {/* Transport controls + seekbar */}
           <div
             style={{
               alignSelf: 'center',
@@ -650,15 +586,10 @@ export function VoxNovaPlayer() {
             }}
           >
             <PlayerControls engine={engine} onPrev={handlePrev} onNext={handleNext} disabled={!selectedTrack} />
-            <SeekBar
-              currentTime={engine.currentTime}
-              duration={engine.duration}
-              onSeek={engine.seek}
-              disabled={!selectedTrack}
-            />
+            <SeekBar currentTime={engine.currentTime} duration={engine.duration} onSeek={engine.seek} disabled={!selectedTrack} />
           </div>
 
-          {/* Volume — LCARS light blue tint */}
+          {/* Volume */}
           <div
             style={{
               alignSelf: 'center',
@@ -672,9 +603,10 @@ export function VoxNovaPlayer() {
             <VolumeControl volume={engine.volume} onChange={engine.setVolume} />
           </div>
 
-          {/* Black Hole visual indicator */}
+          {/* SINGULARITY STATUS — pushed to bottom with marginTop:auto */}
           <div
             style={{
+              marginTop: 'auto',
               alignSelf: 'center',
               width: CONTENT_WIDTH,
               border: `1px solid rgba(100,100,200,0.25)`,
@@ -688,9 +620,7 @@ export function VoxNovaPlayer() {
             }}
           >
             <div>
-              <div style={{ color: 'rgba(100,150,255,0.7)', fontSize: 9, letterSpacing: 3, marginBottom: 4 }}>
-                SINGULARITY STATUS
-              </div>
+              <div style={{ color: 'rgba(100,150,255,0.7)', fontSize: 9, letterSpacing: 3, marginBottom: 4 }}>SINGULARITY STATUS</div>
               <div style={{ color: LCARS.subText, fontSize: 11, letterSpacing: 1 }}>
                 {engine.isPlaying ? 'ACCRETION ACTIVE' : 'EVENT HORIZON STABLE'}
               </div>
@@ -698,7 +628,7 @@ export function VoxNovaPlayer() {
             <BlackHoleBadge active={engine.isPlaying} />
           </div>
 
-          {/* SUBSPACE FREQUENCY SCAN — below black hole, same width as content */}
+          {/* SUBSPACE FREQUENCY SCAN */}
           <div
             style={{
               alignSelf: 'center',
@@ -712,11 +642,7 @@ export function VoxNovaPlayer() {
             <div style={{ color: LCARS.subText, fontSize: 9, letterSpacing: 3, marginBottom: 6, paddingLeft: 4 }}>
               SUBSPACE FREQUENCY SCAN
             </div>
-            <FrequencyVisualizer
-              isPlaying={engine.isPlaying}
-              analyser={analyser}
-              audioRef={engine.audioRef}
-            />
+            <FrequencyVisualizer isPlaying={engine.isPlaying} analyser={analyser} audioRef={engine.audioRef} />
           </div>
 
         </div>
@@ -725,32 +651,18 @@ export function VoxNovaPlayer() {
   );
 }
 
-// ───────────────────────── BlackHoleBadge ─────────────────────────
-
 function BlackHoleBadge({ active }: { active: boolean }) {
   return (
-    <svg
-      width="56"
-      height="56"
-      viewBox="-28 -28 56 56"
-      aria-label="Black hole"
+    <svg width="56" height="56" viewBox="-28 -28 56 56" aria-label="Black hole"
       style={{ flexShrink: 0, filter: active ? 'drop-shadow(0 0 8px #4466ff)' : 'none', transition: 'filter 600ms ease' }}
     >
-      {/* Lensing glow */}
       <circle cx="0" cy="0" r="26" fill="none" stroke="rgba(80,100,200,0.2)" strokeWidth="10" />
-      {/* Photon ring */}
       <circle cx="0" cy="0" r="15" fill="none" stroke={active ? 'rgba(255,190,60,0.8)' : 'rgba(180,120,40,0.4)'} strokeWidth="2.5" />
-      {/* Event horizon */}
       <circle cx="0" cy="0" r="11" fill="#000" />
-      {/* Disk shimmer top */}
-      {active && (
-        <ellipse cx="0" cy="0" rx="20" ry="5" fill="none" stroke="rgba(255,160,40,0.35)" strokeWidth="3" />
-      )}
+      {active && <ellipse cx="0" cy="0" rx="20" ry="5" fill="none" stroke="rgba(255,160,40,0.35)" strokeWidth="3" />}
     </svg>
   );
 }
-
-// ───────────────────────── Subcomponents ─────────────────────────
 
 interface SidebarButtonProps {
   label: string;
@@ -787,19 +699,13 @@ function SidebarButton({ label, color, textColor, onClick, icon, active, outline
       }}
       aria-pressed={active}
     >
-      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 16 }}>
-        {icon ?? null}
-      </span>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: 16 }}>{icon ?? null}</span>
       <span>{label}</span>
     </button>
   );
 }
 
-interface StatusBarProps {
-  label: string;
-  value: number;
-  color: string;
-}
+interface StatusBarProps { label: string; value: number; color: string; }
 
 function StatusBar({ label, value, color }: StatusBarProps) {
   const pct = Math.max(0, Math.min(1, value)) * 100;
@@ -807,39 +713,16 @@ function StatusBar({ label, value, color }: StatusBarProps) {
     <div>
       <div style={{ color, fontSize: 10, letterSpacing: 2, marginBottom: 4 }}>{label}</div>
       <div
-        style={{
-          width: '100%',
-          height: 4,
-          background: 'rgba(255,255,255,0.08)',
-          borderRadius: 2,
-          overflow: 'hidden',
-        }}
-        role="progressbar"
-        aria-label={label}
-        aria-valuenow={Math.round(pct)}
-        aria-valuemin={0}
-        aria-valuemax={100}
+        style={{ width: '100%', height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}
+        role="progressbar" aria-label={label} aria-valuenow={Math.round(pct)} aria-valuemin={0} aria-valuemax={100}
       >
-        <div
-          style={{
-            width: `${pct}%`,
-            height: '100%',
-            background: color,
-            boxShadow: `0 0 6px ${color}`,
-            transition: 'width 200ms linear',
-          }}
-        />
+        <div style={{ width: `${pct}%`, height: '100%', background: color, boxShadow: `0 0 6px ${color}`, transition: 'width 200ms linear' }} />
       </div>
     </div>
   );
 }
 
-interface SeekBarProps {
-  currentTime: number;
-  duration: number;
-  onSeek: (t: number) => void;
-  disabled?: boolean;
-}
+interface SeekBarProps { currentTime: number; duration: number; onSeek: (t: number) => void; disabled?: boolean; }
 
 function formatTime(s: number): string {
   if (!isFinite(s) || s < 0) return '0:00';
@@ -850,71 +733,30 @@ function formatTime(s: number): string {
 
 function SeekBar({ currentTime, duration, onSeek, disabled }: SeekBarProps) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 10,
-        width: '100%',
-        opacity: disabled ? 0.5 : 1,
-      }}
-    >
-      <span style={{ color: LCARS.subText, fontFamily: 'monospace', fontSize: 11, minWidth: 36, fontVariantNumeric: 'tabular-nums' }}>
-        {formatTime(currentTime)}
-      </span>
-      <input
-        type="range"
-        min={0}
-        max={duration || 1}
-        step={0.1}
-        value={currentTime}
-        onChange={e => onSeek(Number(e.target.value))}
-        disabled={disabled}
-        aria-label="Seek"
-        style={{ flex: 1, accentColor: LCARS.peach, cursor: disabled ? 'not-allowed' : 'pointer' }}
-      />
-      <span style={{ color: LCARS.subText, fontFamily: 'monospace', fontSize: 11, minWidth: 36, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-        {formatTime(duration)}
-      </span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', opacity: disabled ? 0.5 : 1 }}>
+      <span style={{ color: LCARS.subText, fontFamily: 'monospace', fontSize: 11, minWidth: 36, fontVariantNumeric: 'tabular-nums' }}>{formatTime(currentTime)}</span>
+      <input type="range" min={0} max={duration || 1} step={0.1} value={currentTime} onChange={e => onSeek(Number(e.target.value))} disabled={disabled} aria-label="Seek" style={{ flex: 1, accentColor: LCARS.peach, cursor: disabled ? 'not-allowed' : 'pointer' }} />
+      <span style={{ color: LCARS.subText, fontFamily: 'monospace', fontSize: 11, minWidth: 36, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatTime(duration)}</span>
     </div>
   );
 }
 
-interface VolumeControlProps {
-  volume: number;
-  onChange: (v: number) => void;
-}
+interface VolumeControlProps { volume: number; onChange: (v: number) => void; }
 
 function VolumeControl({ volume, onChange }: VolumeControlProps) {
   const pct = Math.round(Math.max(0, Math.min(1, volume)) * 100);
   const muted = volume <= 0;
   const lastVolumeRef = useRef(volume > 0 ? volume : 1);
-  useEffect(() => {
-    if (volume > 0) lastVolumeRef.current = volume;
-  }, [volume]);
+  useEffect(() => { if (volume > 0) lastVolumeRef.current = volume; }, [volume]);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
-      <button
-        type="button"
-        onClick={() => onChange(muted ? (lastVolumeRef.current || 1) : 0)}
-        aria-label={muted ? 'Unmute' : 'Mute'}
+      <button type="button" onClick={() => onChange(muted ? (lastVolumeRef.current || 1) : 0)} aria-label={muted ? 'Unmute' : 'Mute'}
         style={{ background: 'transparent', border: 'none', color: LCARS.peach, cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
       >
         <VolumeIcon muted={muted} />
       </button>
-      <input
-        type="range"
-        min={0}
-        max={1}
-        step={0.01}
-        value={volume}
-        onChange={e => onChange(Number(e.target.value))}
-        aria-label="Volume"
-        style={{ flex: 1, accentColor: LCARS.peach, cursor: 'pointer' }}
-      />
-      <span style={{ color: LCARS.subText, fontFamily: 'monospace', fontSize: 11, minWidth: 36, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-        {pct}%
-      </span>
+      <input type="range" min={0} max={1} step={0.01} value={volume} onChange={e => onChange(Number(e.target.value))} aria-label="Volume" style={{ flex: 1, accentColor: LCARS.peach, cursor: 'pointer' }} />
+      <span style={{ color: LCARS.subText, fontFamily: 'monospace', fontSize: 11, minWidth: 36, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
     </div>
   );
 }
@@ -923,59 +765,27 @@ function VolumeIcon({ muted }: { muted: boolean }) {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
       <path d="M3 10v4h4l5 4V6L7 10H3z" fill="currentColor" />
-      {muted ? (
-        <path d="M16 9l6 6M22 9l-6 6" />
-      ) : (
-        <path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14" />
-      )}
+      {muted ? <path d="M16 9l6 6M22 9l-6 6" /> : <path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14" />}
     </svg>
   );
 }
 
 function GlobeIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
-    </svg>
-  );
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" /></svg>;
 }
 
 function DatabaseIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <ellipse cx="12" cy="5" rx="8" ry="3" />
-      <path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" />
-      <path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
-    </svg>
-  );
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3" /><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5" /><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" /></svg>;
 }
 
 function UploadIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path d="M12 3v12M6 9l6-6 6 6M4 21h16" />
-    </svg>
-  );
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3v12M6 9l6-6 6 6M4 21h16" /></svg>;
 }
 
 function ChipIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <rect x="6" y="6" width="12" height="12" rx="1" />
-      <rect x="9" y="9" width="6" height="6" />
-      <path d="M3 9h3M3 15h3M18 9h3M18 15h3M9 3v3M15 3v3M9 18v3M15 18v3" />
-    </svg>
-  );
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1" /><rect x="9" y="9" width="6" height="6" /><path d="M3 9h3M3 15h3M18 9h3M18 15h3M9 3v3M15 3v3M9 18v3M15 18v3" /></svg>;
 }
 
 function NetworkIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <circle cx="12" cy="5" r="2" />
-      <circle cx="5" cy="19" r="2" />
-      <circle cx="19" cy="19" r="2" />
-      <path d="M12 7v4M12 11l-6 6M12 11l6 6" />
-    </svg>
-  );
+  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="12" cy="5" r="2" /><circle cx="5" cy="19" r="2" /><circle cx="19" cy="19" r="2" /><path d="M12 7v4M12 11l-6 6M12 11l6 6" /></svg>;
 }
