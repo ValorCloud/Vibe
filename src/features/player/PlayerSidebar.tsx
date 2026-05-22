@@ -49,9 +49,12 @@ export function SidebarButton({ label, color, textColor, onClick, icon, active }
 
 type LibraryView = 'cloud' | 'local' | 'lyria';
 
+// WAV is the default (first item). M4A and MP4 added.
 const PROTOCOLS: Array<{ label: string; value: ScanConfig['accept'] }> = [
   { label: 'WAV', value: 'wav' },
   { label: 'MP3', value: 'mp3' },
+  { label: 'M4A', value: 'm4a' },
+  { label: 'MP4', value: 'mp4' },
   { label: 'ALL', value: 'all' },
 ];
 
@@ -116,9 +119,10 @@ export function PlayerSidebar({
         <div style={{ fontSize: 10, letterSpacing: 2, marginTop: 4, opacity: 0.85 }}>NV-42 CORE</div>
       </div>
 
+      {/* CLOUD first, LYRIA directly below, then LOCAL, PURGE */}
       <SidebarButton label="CLOUD" color={LCARS.purple} textColor="#0a0a10" active={view === 'cloud'} onClick={() => setView('cloud')} icon={<GlobeIcon />} />
-      <SidebarButton label="LOCAL" color={LCARS.orange} textColor="#0a0a10" active={view === 'local'} onClick={() => setView('local')} icon={<DatabaseIcon />} />
       <SidebarButton label="LYRIA" color="#00c8a0" textColor="#000" active={view === 'lyria'} onClick={() => setView('lyria')} icon={<SparkleIcon />} />
+      <SidebarButton label="LOCAL" color={LCARS.orange} textColor="#0a0a10" active={view === 'local'} onClick={() => setView('local')} icon={<DatabaseIcon />} />
       <SidebarButton label="PURGE" color={LCARS.red} textColor="#0a0a10" onClick={onPurge} />
 
       {/* Track list */}
@@ -214,14 +218,14 @@ export function PlayerSidebar({
       >
         <div>
           <div style={{ color: LCARS.orange, fontSize: 9, letterSpacing: 3, marginBottom: 6 }}>AUDIO PROTOCOL</div>
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {PROTOCOLS.map(p => (
               <button
                 key={p.value}
                 type="button"
                 onClick={() => setScanProtocol(p.value)}
                 style={{
-                  flex: 1,
+                  flex: '1 1 auto',
                   padding: '5px 4px',
                   background: scanProtocol === p.value ? LCARS.orange : 'transparent',
                   color: scanProtocol === p.value ? '#000' : LCARS.orange,

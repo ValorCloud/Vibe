@@ -48,7 +48,9 @@ function useSectorTime(): string {
 function buildAccept(protocol: ScanConfig['accept']): string {
   if (protocol === 'wav') return '.wav,audio/wav,audio/x-wav';
   if (protocol === 'mp3') return '.mp3,audio/mpeg';
-  return '.wav,.mp3,.ogg,.flac,.aac,audio/*';
+  if (protocol === 'm4a') return '.m4a,audio/mp4,audio/x-m4a';
+  if (protocol === 'mp4') return '.mp4,video/mp4,audio/mp4';
+  return '.wav,.mp3,.m4a,.mp4,.ogg,.flac,.aac,audio/*';
 }
 
 function filterFiles(
@@ -59,6 +61,8 @@ function filterFiles(
   return files.filter(f => {
     if (protocol === 'wav' && !f.name.toLowerCase().endsWith('.wav')) return false;
     if (protocol === 'mp3' && !f.name.toLowerCase().endsWith('.mp3')) return false;
+    if (protocol === 'm4a' && !f.name.toLowerCase().endsWith('.m4a')) return false;
+    if (protocol === 'mp4' && !f.name.toLowerCase().endsWith('.mp4')) return false;
     const p = pattern.trim().toLowerCase();
     if (p && !f.name.toLowerCase().includes(p)) return false;
     return true;
@@ -84,7 +88,8 @@ export function VoxNovaPlayer() {
 
   const [view, setView] = useState<LibraryView>('cloud');
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [scanProtocol, setScanProtocol] = useState<ScanConfig['accept']>('all');
+  // WAV is the default protocol
+  const [scanProtocol, setScanProtocol] = useState<ScanConfig['accept']>('wav');
   const [scanPattern, setScanPattern] = useState('');
 
   const uploadInputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +138,9 @@ export function VoxNovaPlayer() {
 
   const handleUplinkFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = filterFiles(
-      Array.from(e.target.files ?? []).filter(f => f.type.startsWith('audio/')),
+      Array.from(e.target.files ?? []).filter(f =>
+        f.type.startsWith('audio/') || f.type === 'video/mp4'
+      ),
       scanProtocol,
       scanPattern,
     );
@@ -153,7 +160,9 @@ export function VoxNovaPlayer() {
 
   const handleScanFolder = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = filterFiles(
-      Array.from(e.target.files ?? []).filter(f => f.type.startsWith('audio/')),
+      Array.from(e.target.files ?? []).filter(f =>
+        f.type.startsWith('audio/') || f.type === 'video/mp4'
+      ),
       scanProtocol,
       scanPattern,
     );
@@ -191,9 +200,6 @@ export function VoxNovaPlayer() {
   const CONTENT_WIDTH = 'min(680px, 95%)';
   const WIDE_WIDTH = 'min(900px, 98%)';
 
-  // Hide left sidebar when player is active (playing)
-  const sidebarVisible = !engine.isPlaying;
-
   const lyriaCount = library.tracks.filter(t => t.source === 'lyria').length;
   const prevLyriaCount = useRef(lyriaCount);
   useEffect(() => {
@@ -214,25 +220,24 @@ export function VoxNovaPlayer() {
         overflow: 'hidden',
       }}
     >
-      {sidebarVisible && (
-        <PlayerSidebar
-          view={view}
-          setView={setView}
-          tracks={library.tracks}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          onPurge={handlePurge}
-          scanProtocol={scanProtocol}
-          setScanProtocol={setScanProtocol}
-          scanPattern={scanPattern}
-          setScanPattern={setScanPattern}
-          uploadInputRef={uploadInputRef}
-          folderInputRef={folderInputRef}
-          buildAccept={buildAccept}
-          handleUplinkFiles={handleUplinkFiles}
-          handleScanFolder={handleScanFolder}
-        />
-      )}
+      {/* Sidebar always visible */}
+      <PlayerSidebar
+        view={view}
+        setView={setView}
+        tracks={library.tracks}
+        selectedId={selectedId}
+        onSelect={handleSelect}
+        onPurge={handlePurge}
+        scanProtocol={scanProtocol}
+        setScanProtocol={setScanProtocol}
+        scanPattern={scanPattern}
+        setScanPattern={setScanPattern}
+        uploadInputRef={uploadInputRef}
+        folderInputRef={folderInputRef}
+        buildAccept={buildAccept}
+        handleUplinkFiles={handleUplinkFiles}
+        handleScanFolder={handleScanFolder}
+      />
 
       {/* MAIN PANEL */}
       <main
