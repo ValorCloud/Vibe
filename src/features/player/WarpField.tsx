@@ -6,8 +6,6 @@ interface WarpFieldProps {
 }
 
 // ─── Gravitational lensing background shader ──────────────────────────────────
-// Simulates Schwarzschild metric light bending around a black hole.
-// UV coordinates are distorted radially — stars behind/near the BH appear bent into arcs.
 const lensingVertexShader = `
   varying vec2 vUv;
   void main() {
@@ -18,8 +16,8 @@ const lensingVertexShader = `
 
 const lensingFragmentShader = `
   uniform float uTime;
-  uniform vec2 uBhScreen;   // black hole center in UV space (0..1)
-  uniform float uBhRadius;  // event horizon radius in UV units
+  uniform vec2 uBhScreen;
+  uniform float uBhRadius;
   varying vec2 vUv;
 
   float hash(vec2 p) {
@@ -61,7 +59,7 @@ const lensingFragmentShader = `
     float dist = length(toCenter);
     float r = uBhRadius;
 
-    if (dist < r * 0.92) {
+    if (dist < r * 0.90) {
       gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
       return;
     }
@@ -70,19 +68,19 @@ const lensingFragmentShader = `
     float deflection = (rs * rs) / (dist * dist + rs * 0.3);
     deflection = clamp(deflection, 0.0, 0.95);
     vec2 dir = normalize(toCenter);
-    vec2 lensedUv = uv + dir * deflection * 0.55;
+    vec2 lensedUv = uv + dir * deflection * 0.6;
 
-    float ringWidth = r * 0.18;
-    float ringDist  = abs(dist - r * 1.08);
+    float ringWidth = r * 0.16;
+    float ringDist  = abs(dist - r * 1.06);
     float ring = smoothstep(ringWidth, 0.0, ringDist);
     float topBottom = 0.5 - toCenter.y / (r * 2.0);
-    ring *= (0.6 + topBottom * 0.8);
+    ring *= (0.5 + topBottom * 0.9);
 
     vec3 stars = starField(lensedUv);
-    vec3 ringColor = mix(vec3(1.0, 0.55, 0.1), vec3(1.0, 0.9, 0.6), topBottom);
-    stars += ringColor * ring * 2.5;
+    vec3 ringColor = mix(vec3(1.0, 0.55, 0.1), vec3(1.0, 0.92, 0.65), topBottom);
+    stars += ringColor * ring * 3.0;
 
-    float halo = smoothstep(r * 4.0, r * 1.2, dist) * 0.06;
+    float halo = smoothstep(r * 4.0, r * 1.2, dist) * 0.07;
     stars += vec3(0.2, 0.15, 0.4) * halo;
 
     float vignette = smoothstep(r * 1.5, r * 3.5, dist);
@@ -112,16 +110,16 @@ const diskVertexShader = `
     float vLos = sin(angle);
     float doppler = vLos * 0.6;
 
-    float rNorm = clamp((aRadius - 60.0) / 160.0, 0.0, 1.0);
+    float rNorm = clamp((aRadius - 65.0) / 215.0, 0.0, 1.0);
 
-    vec3 innerColor = vec3(0.75, 0.88, 1.0);
-    vec3 midColor   = vec3(1.0,  0.55, 0.1);
-    vec3 outerColor = vec3(0.4,  0.05, 0.12);
+    vec3 innerColor = vec3(0.78, 0.90, 1.0);
+    vec3 midColor   = vec3(1.0,  0.58, 0.1);
+    vec3 outerColor = vec3(0.38, 0.05, 0.10);
     vec3 thermalCol;
     if (rNorm < 0.35) {
-      thermalCol = mix(innerColor, vec3(1.0, 0.92, 0.7), rNorm / 0.35);
+      thermalCol = mix(innerColor, vec3(1.0, 0.94, 0.72), rNorm / 0.35);
     } else if (rNorm < 0.65) {
-      thermalCol = mix(vec3(1.0, 0.92, 0.7), midColor, (rNorm - 0.35) / 0.30);
+      thermalCol = mix(vec3(1.0, 0.94, 0.72), midColor, (rNorm - 0.35) / 0.30);
     } else {
       thermalCol = mix(midColor, outerColor, (rNorm - 0.65) / 0.35);
     }
@@ -136,7 +134,7 @@ const diskVertexShader = `
     vAlpha = (1.0 - rNorm * 0.7) * clamp(brightness * 0.5, 0.1, 1.0);
 
     vec4 mvPos = modelViewMatrix * vec4(x, y, z, 1.0);
-    gl_PointSize = (3.5 - rNorm * 1.5) * (300.0 / -mvPos.z);
+    gl_PointSize = (3.8 - rNorm * 1.6) * (300.0 / -mvPos.z);
     gl_Position = projectionMatrix * mvPos;
   }
 `;
@@ -164,14 +162,14 @@ const ghostVertexShader = `
   void main() {
     float angle = aAngle + uTime * 0.008 * uRotSpeed;
     float x = cos(angle) * aRadius * 0.9;
-    float z = -12.0 - abs(sin(angle)) * 8.0;
-    float y = sin(angle) * aRadius * 0.12;
+    float z = -14.0 - abs(sin(angle)) * 8.0;
+    float y = sin(angle) * aRadius * 0.10;
 
-    float rNorm = clamp((aRadius - 60.0) / 160.0, 0.0, 1.0);
+    float rNorm = clamp((aRadius - 65.0) / 160.0, 0.0, 1.0);
     float vLos = -sin(angle);
     float doppler = vLos * 0.5;
     float brightness = clamp(1.0 + doppler * 0.8, 0.2, 2.2);
-    vec3 baseColor = mix(vec3(1.0, 0.7, 0.2), vec3(0.8, 0.3, 0.1), rNorm);
+    vec3 baseColor = mix(vec3(1.0, 0.72, 0.2), vec3(0.8, 0.3, 0.1), rNorm);
     vColor = baseColor * brightness;
     vAlpha = (1.0 - rNorm * 0.8) * 0.55 * clamp(brightness * 0.6, 0.1, 1.0);
 
@@ -200,14 +198,17 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = 1.2;
     container.appendChild(renderer.domElement);
 
-    // ── Scene & Camera ────────────────────────────────────────────────────────
+    // ── Scene & Camera — equatorial low-angle view ────────────────────────────
+    // Camera placed near equatorial plane, slightly above, looking toward BH center.
+    // This gives the characteristic Interstellar view: disk as bright ellipse,
+    // ghost arc visible below, photon ring encircling the shadow.
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 0.1, 20000);
-    camera.position.set(60, 90, 420);
-    camera.lookAt(0, -30, 0);
+    const camera = new THREE.PerspectiveCamera(52, container.clientWidth / container.clientHeight, 0.1, 20000);
+    camera.position.set(0, 35, 480);
+    camera.lookAt(0, -10, 0);
 
     // ── Full-screen lensing background quad ───────────────────────────────────
     const bgScene = new THREE.Scene();
@@ -217,8 +218,8 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
       fragmentShader: lensingFragmentShader,
       uniforms: {
         uTime:     { value: 0 },
-        uBhScreen: { value: new THREE.Vector2(0.52, 0.40) },
-        uBhRadius: { value: 0.095 },
+        uBhScreen: { value: new THREE.Vector2(0.5, 0.48) },
+        uBhRadius: { value: 0.115 },
       },
       depthWrite: false,
       depthTest: false,
@@ -227,10 +228,10 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     // ── Black hole group ──────────────────────────────────────────────────────
     const bhGroup = new THREE.Group();
-    bhGroup.position.set(0, -30, 0);
+    bhGroup.position.set(0, -10, 0);
     scene.add(bhGroup);
 
-    const EH_RADIUS = 55;
+    const EH_RADIUS = 65;
 
     // Event horizon
     bhGroup.add(new THREE.Mesh(
@@ -239,7 +240,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     ));
 
     // ── Accretion disk ────────────────────────────────────────────────────────
-    const DISK_COUNT = 8000;
+    const DISK_COUNT = 9000;
     const dRadius = new Float32Array(DISK_COUNT);
     const dAngle  = new Float32Array(DISK_COUNT);
     const dSpeed  = new Float32Array(DISK_COUNT);
@@ -247,12 +248,12 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
 
     for (let i = 0; i < DISK_COUNT; i++) {
       const inner = Math.random() < 0.35;
-      const rMin = inner ? 58 : 90;
-      const rMax = inner ? 100 : 240;
+      const rMin = inner ? 68 : 100;
+      const rMax = inner ? 115 : 280;
       const r = rMin + Math.pow(Math.random(), 0.6) * (rMax - rMin);
       dRadius[i] = r;
       dAngle[i]  = Math.random() * Math.PI * 2;
-      dSpeed[i]  = 0.016 * Math.sqrt(80 / Math.max(r, 60));
+      dSpeed[i]  = 0.016 * Math.sqrt(80 / Math.max(r, 68));
       dTilt[i]   = (Math.random() - 0.5) * (inner ? 4 : 14);
     }
 
@@ -275,15 +276,15 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
       depthWrite: false,
     });
     const diskMesh = new THREE.Points(diskGeom, diskMat);
-    diskMesh.rotation.x = THREE.MathUtils.degToRad(15);
+    diskMesh.rotation.x = THREE.MathUtils.degToRad(12);
     bhGroup.add(diskMesh);
 
     // ── Ghost arc — lensed lower image ────────────────────────────────────────
-    const GHOST_COUNT = 1800;
+    const GHOST_COUNT = 2000;
     const gRadius = new Float32Array(GHOST_COUNT);
     const gAngle  = new Float32Array(GHOST_COUNT);
     for (let i = 0; i < GHOST_COUNT; i++) {
-      gRadius[i] = 62 + Math.pow(Math.random(), 0.5) * 130;
+      gRadius[i] = 70 + Math.pow(Math.random(), 0.5) * 140;
       gAngle[i]  = Math.random() * Math.PI * 2;
     }
     const ghostGeom = new THREE.BufferGeometry();
@@ -303,42 +304,45 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
     });
     bhGroup.add(new THREE.Points(ghostGeom, ghostMat));
 
-    // ── Photon ring ───────────────────────────────────────────────────────────
-    const prCanvas = document.createElement('canvas');
-    prCanvas.width = 512; prCanvas.height = 512;
-    const prCtx = prCanvas.getContext('2d')!;
-    const cx = 256, cy = 256;
-    ([[56, 64, 0.9, [255,220,140]], [62, 78, 0.5, [255,160,60]], [68, 92, 0.2, [200,80,20]]] as [number,number,number,number[]][]).forEach(([ir, or, al, col]) => {
-      const g = prCtx.createRadialGradient(cx, cy, ir, cx, cy, or);
-      g.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${al})`);
-      g.addColorStop(1, 'rgba(0,0,0,0)');
-      prCtx.fillStyle = g;
-      prCtx.fillRect(0, 0, 512, 512);
-    });
-    prCtx.globalCompositeOperation = 'destination-out';
-    const mk = prCtx.createRadialGradient(cx, cy, 0, cx, cy, 56);
-    mk.addColorStop(0.7, 'rgba(0,0,0,1)');
-    mk.addColorStop(1,   'rgba(0,0,0,0)');
-    prCtx.fillStyle = mk;
-    prCtx.fillRect(0, 0, 512, 512);
-    prCtx.globalCompositeOperation = 'source-over';
-
+    // ── Photon ring — TorusGeometry, billboard-aligned, additive glow ─────────
+    // Using a torus instead of a flat plane so it wraps correctly around the
+    // event horizon from any camera angle, especially equatorial view.
     const photonRingMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(280, 280),
+      new THREE.TorusGeometry(EH_RADIUS + 7, 3.5, 24, 128),
       new THREE.MeshBasicMaterial({
-        map: new THREE.CanvasTexture(prCanvas),
-        transparent: true, opacity: 1,
-        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+        color: new THREE.Color(1.0, 0.75, 0.3),
+        transparent: true,
+        opacity: 0.9,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
       }),
     );
-    photonRingMesh.rotation.x = THREE.MathUtils.degToRad(15);
+    // Tilt matches disk inclination
+    photonRingMesh.rotation.x = THREE.MathUtils.degToRad(12);
     bhGroup.add(photonRingMesh);
 
-    // Shadow disk
-    bhGroup.add(new THREE.Mesh(
+    // Inner thin photon ring (brighter, tighter)
+    const innerRingMesh = new THREE.Mesh(
+      new THREE.TorusGeometry(EH_RADIUS + 2, 1.5, 16, 128),
+      new THREE.MeshBasicMaterial({
+        color: new THREE.Color(1.0, 0.95, 0.8),
+        transparent: true,
+        opacity: 1.0,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+      }),
+    );
+    innerRingMesh.rotation.x = THREE.MathUtils.degToRad(12);
+    bhGroup.add(innerRingMesh);
+
+    // Shadow disk — occludes geometry behind event horizon
+    const shadowDisk = new THREE.Mesh(
       new THREE.CircleGeometry(EH_RADIUS - 1, 64),
-      new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide }),
-    ));
+      new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, depthWrite: true }),
+    );
+    bhGroup.add(shadowDisk);
 
     // ── Relativistic jets ─────────────────────────────────────────────────────
     const makeJet = (dir: 1 | -1) => {
@@ -359,7 +363,7 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
       g.setAttribute('color',    new THREE.BufferAttribute(col, 3));
       return new THREE.Points(g, new THREE.PointsMaterial({
         size: 4, vertexColors: true,
-        transparent: true, opacity: 0.5,
+        transparent: true, opacity: 0.45,
         blending: THREE.AdditiveBlending, depthWrite: false,
       }));
     };
@@ -386,8 +390,11 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
         depthWrite: false, side: THREE.DoubleSide,
       }),
     );
-    dustLane.rotation.x = THREE.MathUtils.degToRad(15);
+    dustLane.rotation.x = THREE.MathUtils.degToRad(12);
     bhGroup.add(dustLane);
+
+    // ── Helper: project BH world position → background shader UV ─────────────
+    const bhWorldPos = new THREE.Vector3();
 
     // ── Resize ────────────────────────────────────────────────────────────────
     const handleResize = () => {
@@ -405,21 +412,33 @@ export const WarpField = memo(function WarpField({ isPlaying }: WarpFieldProps) 
       const targetSpeed = isPlayingRef.current ? 3.5 : 0.4;
       state.rotSpeed = THREE.MathUtils.lerp(state.rotSpeed, targetSpeed, 0.02);
 
+      // Compute BH screen-space UV dynamically so lensing always centers correctly
+      bhGroup.getWorldPosition(bhWorldPos);
+      const projected = bhWorldPos.clone().project(camera);
+      // projected is in NDC [-1,1]; convert to UV [0,1]
+      lensMat.uniforms['uBhScreen']!.value.set(
+        (projected.x + 1) * 0.5,
+        (projected.y + 1) * 0.5,
+      );
+
       lensMat.uniforms['uTime']!.value     = state.time;
       diskMat.uniforms['uTime']!.value     = state.time;
       diskMat.uniforms['uRotSpeed']!.value = state.rotSpeed;
-      ghostMat.uniforms['uTime']!.value     = state.time;
+      ghostMat.uniforms['uTime']!.value    = state.time;
       ghostMat.uniforms['uRotSpeed']!.value = state.rotSpeed;
 
-      const pulse = 0.88 + Math.sin(state.time * 3.5) * 0.12;
-      (photonRingMesh.material as THREE.MeshBasicMaterial).opacity = pulse;
+      // Photon ring pulse
+      const pulse = 0.85 + Math.sin(state.time * 3.2) * 0.15;
+      (photonRingMesh.material as THREE.MeshBasicMaterial).opacity = pulse * 0.9;
+      (innerRingMesh.material as THREE.MeshBasicMaterial).opacity  = 0.7 + Math.sin(state.time * 4.1 + 1.2) * 0.3;
 
       bhGroup.rotation.y = Math.sin(state.time * 0.08) * 0.02;
       bhGroup.rotation.z = Math.cos(state.time * 0.06) * 0.015;
 
-      camera.position.x = 60 + Math.sin(state.time * 0.04) * 12;
-      camera.position.y = 90 + Math.cos(state.time * 0.03) * 8;
-      camera.lookAt(0, -30, 0);
+      // Slow equatorial drift — camera stays near the plane
+      camera.position.x = Math.sin(state.time * 0.04) * 14;
+      camera.position.y = 35 + Math.cos(state.time * 0.03) * 6;
+      camera.lookAt(0, -10, 0);
 
       renderer.autoClear = true;
       renderer.render(bgScene, bgCamera);
