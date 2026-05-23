@@ -8,6 +8,5 @@ export * from './editor';
 export * from './session';
 export * from './library';
 export * from './analysis';
-export * from './audio';
 export * from './composer';
 export * from './shared';

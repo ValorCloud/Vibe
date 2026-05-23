@@ -30,8 +30,7 @@
     "noImplicitOverride": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "ignoreDeprecations": "5.0",
-    "typeRoots": ["src/types", "node_modules/@types"]
+    "ignoreDeprecations": "5.0"
   },
   "exclude": [
     "sauvegardes",
