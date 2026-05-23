@@ -155,13 +155,14 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
     <div onMouseMove={handleMouseMove} onMouseLeave={() => setShowControls(false)}
       style={{
         alignSelf: 'center', width: contentWidth,
-        border: `1px solid ${LCARS.purple}55`, borderRadius: 4, overflow: 'hidden',
+        border: `1px solid ${LCARS.purple}55`, borderRadius: 4,
         background: '#000', position: 'relative',
         boxShadow: `0 0 24px ${LCARS.purple}1a, 0 4px 16px rgba(0,0,0,0.5)`,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '5px 12px 4px', background: 'rgba(0,0,0,0.7)', borderBottom: `1px solid ${LCARS.purple}33` }}>
+        padding: '5px 12px 4px', background: 'rgba(0,0,0,0.7)', borderBottom: `1px solid ${LCARS.purple}33`,
+        borderRadius: '4px 4px 0 0' }}>
         <span style={{ color: LCARS.purple, fontSize: 9, letterSpacing: 3, fontWeight: 700 }}>VIDEO STREAM</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 5,
           color: isPlaying ? LCARS.alertRed : LCARS.subText, fontSize: 9, letterSpacing: 2, transition: 'color 200ms ease' }}>
@@ -172,11 +173,19 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
           {isPlaying ? 'ACTIVE' : 'STANDBY'}
         </span>
       </div>
-      {/* FIX #2: fluid height via aspect-ratio, no hard maxHeight that crops */}
+      {/* No overflow:hidden on wrapper — objectFit:contain handles framing without cropping */}
       <video
         ref={videoRef}
         src={src}
-        style={{ width: '100%', display: 'block', maxHeight: 'clamp(180px, 38vh, 420px)', background: '#000', objectFit: 'contain' }}
+        style={{
+          width: '100%',
+          display: 'block',
+          maxHeight: 'clamp(180px, 40vh, 480px)',
+          height: 'auto',
+          background: '#000',
+          objectFit: 'contain',
+          borderRadius: '0 0 4px 4px',
+        }}
         playsInline
         controls={showControls}
         preload="metadata"
