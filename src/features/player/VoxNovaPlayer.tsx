@@ -321,7 +321,6 @@ function SpotifySourcePanel() {
               aria-label="Previous track"
               style={transportBtnStyle(!track)}
             >
-              {/* prev */}
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
             </button>
             <button
@@ -425,6 +424,20 @@ export function VoxNovaPlayer() {
   const library = useLibraryContext();
 
   const [audioSource, setAudioSource] = useState<AudioSource>('local');
+
+  // Auto-switch to Spotify source when the user authenticates
+  const { status: spotifyStatus } = useSpotifyAuth();
+  const prevSpotifyStatus = useRef(spotifyStatus);
+  useEffect(() => {
+    if (prevSpotifyStatus.current !== 'authenticated' && spotifyStatus === 'authenticated') {
+      setAudioSource('spotify');
+    }
+    // Revert to local when user disconnects
+    if (prevSpotifyStatus.current === 'authenticated' && spotifyStatus !== 'authenticated') {
+      setAudioSource('local');
+    }
+    prevSpotifyStatus.current = spotifyStatus;
+  }, [spotifyStatus]);
 
   const videoElRef = useRef<HTMLVideoElement>(null);
   const registry = useMemo(() => genRegistry(), []);
