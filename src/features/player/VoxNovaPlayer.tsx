@@ -63,15 +63,6 @@ function LCARSBackground() {
   );
 }
 
-function formatBytes(size?: number): string | null {
-  if (!size || !Number.isFinite(size)) return null;
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let value = size;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++; }
-  return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
-}
-
 function formatDate(value?: string): string | null {
   if (!value) return null;
   const time = Date.parse(value);
@@ -79,9 +70,10 @@ function formatDate(value?: string): string | null {
 }
 
 /**
- * OneDriveMetaLine — replaces MemoMetadata.
- * Displays only safe scalar fields: SOURCE | SIZE | MODIFIED | LINK status.
- * Never renders track.url or any blob/https URL.
+ * OneDriveMetaLine — safe scalar fields only.
+ * Displays: SOURCE | MODIFIED | LINK
+ * SIZE removed (redundant with SIGNAL_ANALYSIS duration/bitrate).
+ * FORMAT/type removed (redundant with SIGNAL_ANALYSIS VIDEO+AUDIO tag).
  */
 function OneDriveMetaLine({ track }: { track: TrackEntry }) {
   const items: Array<{ label: string; value: string; color: string }> = [];
@@ -91,9 +83,6 @@ function OneDriveMetaLine({ track }: { track: TrackEntry }) {
     value: track.source.toUpperCase(),
     color: track.source === 'local' ? LCARS.orange : track.source === 'lyria' ? '#00c8a0' : LCARS.purple,
   });
-
-  const size = formatBytes(track.oneDriveSize);
-  if (size) items.push({ label: 'SIZE', value: size, color: LCARS.amber });
 
   const modified = formatDate(track.oneDriveLastModified);
   if (modified) items.push({ label: 'MODIFIED', value: modified, color: LCARS.subText });
@@ -177,8 +166,7 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
         border: `1px solid ${LCARS.purple}55`, borderRadius: 4,
         background: '#000', position: 'relative',
         boxShadow: `0 0 24px ${LCARS.purple}1a, 0 4px 16px rgba(0,0,0,0.5)`,
-      }}
-    >
+      }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '5px 12px 4px', background: 'rgba(0,0,0,0.7)', borderBottom: `1px solid ${LCARS.purple}33`,
         borderRadius: '4px 4px 0 0' }}>
@@ -192,24 +180,12 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
           {isPlaying ? 'ACTIVE' : 'STANDBY'}
         </span>
       </div>
-      <div style={{
-        aspectRatio,
-        maxHeight: 'clamp(180px, 40vh, 480px)',
-        width: '100%',
-        background: '#000',
-        borderRadius: '0 0 4px 4px',
-        overflow: 'hidden',
-      }}>
-        <video
-          ref={videoRef}
-          src={src}
+      <div style={{ aspectRatio, maxHeight: 'clamp(180px, 40vh, 480px)', width: '100%', background: '#000', borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
+        <video ref={videoRef} src={src}
           style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
-          playsInline
-          controls={showControls}
-          preload="metadata"
+          playsInline controls={showControls} preload="metadata"
           onLoadedMetadata={handleLoadedMetadata}
-          aria-label={isPlaying ? 'Video player – playing' : 'Video player – paused'}
-        />
+          aria-label={isPlaying ? 'Video player – playing' : 'Video player – paused'} />
       </div>
       <div aria-hidden="true" style={{ position: 'absolute', top: 30, left: 0, width: 3, height: 36, background: LCARS.purple, borderRadius: '0 2px 2px 0', opacity: 0.55 }} />
       <div aria-hidden="true" style={{ position: 'absolute', top: 30, right: 0, width: 3, height: 36, background: LCARS.orange, borderRadius: '2px 0 0 2px', opacity: 0.55 }} />
@@ -267,12 +243,8 @@ export function VoxNovaPlayer() {
       <LCARSBackground />
       <SidebarProvider onLocalTracksAdded={() => setView('local')}>
         <PlayerSidebar
-          view={view}
-          setView={setView}
-          tracks={library.tracks}
-          selectedId={selectedId}
-          onSelect={handleSelect}
-          onPurge={handlePurge}
+          view={view} setView={setView} tracks={library.tracks}
+          selectedId={selectedId} onSelect={handleSelect} onPurge={handlePurge}
         />
       </SidebarProvider>
 
@@ -312,10 +284,9 @@ export function VoxNovaPlayer() {
           </div>
 
           {/* MEMO LOG
-              Layout (no redites):
-              1. memo text  — free-form description
-              2. OneDriveMetaLine — SOURCE | SIZE | MODIFIED | LINK  (scalars only, no URL)
-              3. SIGNAL_ANALYSIS  — encoding: channels | kHz | kbps | codec | duration | type
+              1. memo text
+              2. OneDriveMetaLine — SOURCE | MODIFIED | LINK  (SIZE+FORMAT removed, redundant)
+              3. SIGNAL_ANALYSIS  — channels | kHz | kbps | codec | duration | type
           */}
           <div style={{ alignSelf: 'center', width: CONTENT_WIDTH, border: `1px solid ${LCARS.purple}55`, borderRadius: 4, padding: '10px 14px', background: LCARS_BOX_COLORS[1] }}>
             <div style={{ color: LCARS.purple, fontSize: 10, letterSpacing: 3, marginBottom: 6 }}>LOCAL MEMO LOG</div>
@@ -334,20 +305,19 @@ export function VoxNovaPlayer() {
             <VideoPlayer src={selectedTrack.url} isPlaying={engine.isPlaying} videoRef={videoElRef} contentWidth={CONTENT_WIDTH} />
           )}
 
-          {/* Transport + seek */}
-          <div style={{ alignSelf: 'center', width: CONTENT_WIDTH, border: `1px solid ${LCARS.peach}33`, borderRadius: 4, padding: '12px 16px', background: LCARS_BOX_COLORS[2], display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <PlayerControls engine={engine} onPrev={handlePrev} onNext={handleNext} disabled={!selectedTrack} />
+          {/*
+            Transport container:
+            Order — SeekBar → VolumeControl → PlayerControls (transport first, mode grid below)
+          */}
+          <div style={{ alignSelf: 'center', width: CONTENT_WIDTH, border: `1px solid ${LCARS.peach}33`, borderRadius: 4, padding: '12px 16px', background: LCARS_BOX_COLORS[2], display: 'flex', flexDirection: 'column', gap: 10 }}>
             <SeekBar currentTime={engine.currentTime} duration={engine.duration} onSeek={engine.seek} disabled={!selectedTrack} />
-          </div>
-
-          {/* Volume */}
-          <div style={{ alignSelf: 'center', width: CONTENT_WIDTH, border: `1px solid ${LCARS.amber}33`, borderRadius: 4, padding: '10px 16px', background: LCARS_BOX_COLORS[4] }}>
             <VolumeControl volume={engine.volume} onChange={engine.setVolume} />
+            <PlayerControls engine={engine} onPrev={handlePrev} onNext={handleNext} disabled={!selectedTrack} />
           </div>
 
           <div style={{ flex: 1, minHeight: 0 }} aria-hidden="true" />
 
-          {/* Frequency scan — ABOVE Singularity (inverted order) */}
+          {/* Frequency scan — above Singularity */}
           {selectedTrack && (
             <div style={{ alignSelf: 'center', width: WIDE_WIDTH, border: `1px solid ${LCARS.red ?? '#cc3333'}33`, borderRadius: 4, padding: '8px', background: LCARS_BOX_COLORS[3] }}>
               <div style={{ color: LCARS.subText, fontSize: 9, letterSpacing: 3, marginBottom: 6, paddingLeft: 4 }}>
@@ -357,7 +327,7 @@ export function VoxNovaPlayer() {
             </div>
           )}
 
-          {/* Singularity status — BELOW equalizer (inverted order) */}
+          {/* Singularity status — below equalizer */}
           <div style={{ alignSelf: 'center', width: WIDE_WIDTH, border: '1px solid rgba(100,100,200,0.25)', borderRadius: 4, padding: '10px 14px', background: 'rgba(0,0,20,0.35)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ color: 'rgba(100,150,255,0.7)', fontSize: 9, letterSpacing: 3, marginBottom: 4 }}>SINGULARITY STATUS</div>
