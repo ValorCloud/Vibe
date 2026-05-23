@@ -1,4 +1,4 @@
-export type TrackSource = 'cloud' | 'local' | 'lyria';
+export type TrackSource = 'cloud' | 'local' | 'lyria' | 'spotify';
 
 export interface TrackEntry {
   id: string;
@@ -19,6 +19,16 @@ export interface TrackEntry {
   oneDriveSize?: number;
   /** Known media duration in seconds, populated after metadata loads */
   durationSeconds?: number;
+  /** Spotify URI — present only for source === 'spotify' */
+  spotifyUri?: string;
+  /** Spotify track ID — present only for source === 'spotify' */
+  spotifyId?: string;
+  /** Spotify album artwork URL */
+  spotifyArtworkUrl?: string;
+  /** Spotify artist name(s) */
+  spotifyArtists?: string[];
+  /** Spotify album name */
+  spotifyAlbum?: string;
 }
 
 export const SCAN_PROTOCOLS = [
