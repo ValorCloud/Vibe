@@ -149,6 +149,14 @@ interface SpotifyAuthContextValue extends SpotifyAuthState {
   login: () => Promise<void>;
   logout: () => void;
   getValidToken: () => Promise<string | null>;
+  /**
+   * Force a token refresh regardless of the cached `expiresAt`.
+   * Use this after a Spotify REST call returns 401 (cached token rejected
+   * server-side, e.g. revoked, rotated, or clock-skewed). Shares the same
+   * mutex as `getValidToken` to avoid concurrent refresh races.
+   * Returns null if no refresh token is available or the refresh failed.
+   */
+  forceRefreshToken: () => Promise<string | null>;
 }
 
 const SpotifyAuthContext = createContext<SpotifyAuthContextValue | null>(null);
@@ -290,14 +298,11 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
     setState({ status: 'idle', accessToken: null, expiresAt: null, error: null });
   }, [clearStorage]);
 
-  const getValidToken = useCallback(async (): Promise<string | null> => {
-    const accessToken = storeGet(TOKEN_KEY);
-    const expiresAt = Number(storeGet(EXPIRY_KEY) ?? 0);
-    if (accessToken && Date.now() + TOKEN_EXPIRY_BUFFER_MS < expiresAt) return accessToken;
-
-    const refreshToken = storeGet(REFRESH_KEY);
-    if (!refreshToken) return null;
-
+  /**
+   * Run a refresh through the shared mutex. Multiple callers awaiting at
+   * the same time will all observe the result of a single underlying request.
+   */
+  const refreshWithMutex = useCallback(async (refreshToken: string): Promise<string | null> => {
     try {
       if (!refreshPromiseRef.current) {
         refreshPromiseRef.current = doRefresh(refreshToken)
@@ -328,8 +333,24 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
     }
   }, [clearStorage, scheduleRefresh]);
 
+  const getValidToken = useCallback(async (): Promise<string | null> => {
+    const accessToken = storeGet(TOKEN_KEY);
+    const expiresAt = Number(storeGet(EXPIRY_KEY) ?? 0);
+    if (accessToken && Date.now() + TOKEN_EXPIRY_BUFFER_MS < expiresAt) return accessToken;
+
+    const refreshToken = storeGet(REFRESH_KEY);
+    if (!refreshToken) return null;
+    return refreshWithMutex(refreshToken);
+  }, [refreshWithMutex]);
+
+  const forceRefreshToken = useCallback(async (): Promise<string | null> => {
+    const refreshToken = storeGet(REFRESH_KEY);
+    if (!refreshToken) return null;
+    return refreshWithMutex(refreshToken);
+  }, [refreshWithMutex]);
+
   return (
-    <SpotifyAuthContext.Provider value={{ ...state, login, logout, getValidToken }}>
+    <SpotifyAuthContext.Provider value={{ ...state, login, logout, getValidToken, forceRefreshToken }}>
       {children}
     </SpotifyAuthContext.Provider>
   );

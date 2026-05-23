@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useSpotifyAuth } from '../../contexts/SpotifyAuthContext';
+import { spotifyFetch, SpotifyApiError } from './spotifyApi';
 
 export interface SpotifySearchTrack {
   id: string;
@@ -20,13 +21,33 @@ interface SpotifySearchState {
   search: (q?: string) => Promise<void>;
 }
 
-/** Strip characters that cause Spotify search API 400 errors */
+/**
+ * Strip characters that cause Spotify search API 400 errors.
+ *
+ * The Spotify search endpoint rejects unescaped reserved characters even when
+ * URL-encoded inside the `q` value (notably `?`, `#`, `:`, `/`, `\`, `"`,
+ * `[`, `]`, `@`). We collapse them to spaces so a user query like
+ * `artist:foo` still produces a meaningful search instead of a 400.
+ */
 function sanitizeQuery(q: string): string {
   return q.replace(/[\/\\\":?#\[\]@]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+interface SpotifySearchResponse {
+  tracks?: {
+    items?: Array<{
+      id: string;
+      uri: string;
+      name: string;
+      duration_ms: number;
+      artists: Array<{ name: string }>;
+      album: { name: string; images?: Array<{ url: string }> };
+    }>;
+  };
+}
+
 export function useSpotifySearch(): SpotifySearchState {
-  const { status, getValidToken } = useSpotifyAuth();
+  const { status, getValidToken, forceRefreshToken } = useSpotifyAuth();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,32 +67,17 @@ export function useSpotifySearch(): SpotifySearchState {
       return;
     }
 
-    const token = await getValidToken();
-    if (!token) {
-      setError('Spotify token unavailable.');
-      setResults([]);
-      return;
-    }
-
     setSearching(true);
     setError(null);
     try {
-      // market omitted: the Bearer token scopes availability to the user's account country
-      const endpoint = `https://api.spotify.com/v1/search?type=track&limit=25&q=${encodeURIComponent(term)}`;
-      const res = await fetch(endpoint, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error(`Spotify API ${res.status}: ${res.statusText}`);
-      const data = await res.json() as {
-        tracks?: {
-          items?: Array<{
-            id: string;
-            uri: string;
-            name: string;
-            duration_ms: number;
-            artists: Array<{ name: string }>;
-            album: { name: string; images?: Array<{ url: string }> };
-          }>;
-        };
-      };
+      // `q` first per Spotify docs convention; type & limit follow.
+      // Market omitted — the Bearer token scopes availability to the
+      // user's account country natively.
+      const endpoint = `https://api.spotify.com/v1/search?q=${encodeURIComponent(term)}&type=track&limit=25`;
+      const data = await spotifyFetch<SpotifySearchResponse>(
+        endpoint,
+        { getValidToken, forceRefreshToken },
+      );
       setResults((data.tracks?.items ?? []).map(item => ({
         id: item.id,
         uri: item.uri,
@@ -82,12 +88,21 @@ export function useSpotifySearch(): SpotifySearchState {
         albumArtUrl: item.album.images?.[0]?.url ?? null,
       })));
     } catch (err) {
-      setError((err as Error).message ?? 'Failed to search Spotify tracks');
+      const e = err as Error;
+      if (err instanceof SpotifyApiError) {
+        if (err.status === 401) {
+          setError('Spotify session expired — please reconnect.');
+        } else {
+          setError(`Spotify search failed (${err.status}): ${e.message}`);
+        }
+      } else {
+        setError(e.message ?? 'Failed to search Spotify tracks');
+      }
       setResults([]);
     } finally {
       setSearching(false);
     }
-  }, [getValidToken, query, status]);
+  }, [getValidToken, forceRefreshToken, query, status]);
 
   return { query, setQuery, searching, error, results, search };
 }

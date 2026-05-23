@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSpotifyAuth } from '../../contexts/SpotifyAuthContext';
+import { spotifyFetch, SpotifyApiError } from './spotifyApi';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,15 +55,12 @@ function formatMs(ms: number): string {
 }
 export { formatMs };
 
-async function apiFetch<T>(url: string, getToken: () => Promise<string | null>, signal: AbortSignal): Promise<T> {
-  const token = await getToken();
-  if (!token) throw new Error('Spotify token unavailable');
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    signal,
-  });
-  if (!res.ok) throw new Error(`Spotify API ${res.status}: ${res.statusText}`);
-  return res.json() as Promise<T>;
+async function apiFetch<T>(
+  url: string,
+  tokens: { getValidToken: () => Promise<string | null>; forceRefreshToken: () => Promise<string | null> },
+  signal: AbortSignal,
+): Promise<T> {
+  return spotifyFetch<T>(url, tokens, { signal });
 }
 
 // ---------------------------------------------------------------------------
@@ -70,7 +68,7 @@ async function apiFetch<T>(url: string, getToken: () => Promise<string | null>, 
 // ---------------------------------------------------------------------------
 
 export function useSpotifyPlaylists(): PlaylistsState {
-  const { status, accessToken, getValidToken } = useSpotifyAuth();
+  const { status, accessToken, getValidToken, forceRefreshToken } = useSpotifyAuth();
 
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [loading, setLoading] = useState(false);
@@ -82,6 +80,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
   const abortRef = useRef<AbortController | null>(null);
   const [tick, setTick] = useState(0);
   const reload = useCallback(() => setTick(t => t + 1), []);
+  const tokens = { getValidToken, forceRefreshToken };
 
   // ── Fetch playlist list ────────────────────────────────────────────
   useEffect(() => {
@@ -113,7 +112,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
           }>;
           next: string | null;
         };
-        const page: RawPage = await apiFetch<RawPage>(url, getValidToken, ctrl.signal);
+        const page: RawPage = await apiFetch<RawPage>(url, tokens, ctrl.signal);
         for (const item of page.items) {
           if (!item) continue;
           collected.push({
@@ -134,12 +133,19 @@ export function useSpotifyPlaylists(): PlaylistsState {
 
     fetchAll().catch((err: unknown) => {
       if ((err as Error)?.name === 'AbortError') return;
-      setError((err as Error)?.message ?? 'Failed to load playlists');
+      const e = err as Error;
+      const status = err instanceof SpotifyApiError ? err.status : 0;
+      // Persistent 401 after force-refresh means the refresh token is no
+      // longer accepted; reflect that as an actionable error.
+      const message = status === 401
+        ? 'Spotify session expired — please reconnect.'
+        : e?.message ?? 'Failed to load playlists';
+      setError(message);
       setLoading(false);
     });
 
     return () => ctrl.abort();
-  }, [status, accessToken, getValidToken, tick]);
+  }, [status, accessToken, getValidToken, forceRefreshToken, tick]);
 
   // ── Fetch tracks for a single playlist (on demand) ─────────────────────
   const fetchTracks = useCallback((playlistId: string) => {
@@ -157,8 +163,10 @@ export function useSpotifyPlaylists(): PlaylistsState {
         `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=50`;
 
       while (url) {
-        // `item` is the current field; `track` is deprecated but kept as fallback
-        // per Spotify Web API docs (GET /playlists/{id}/tracks)
+        // Per Spotify Web API docs (GET /playlists/{id}/tracks), each
+        // PlaylistTrackObject has a `track` field (TrackObject | EpisodeObject).
+        // There is no `item` field; the previous fallback was a misreading of
+        // the spec. Episodes are filtered out by the `spotify:track:` prefix check.
         type RawTrackObject = {
           id: string;
           name: string;
@@ -171,17 +179,13 @@ export function useSpotifyPlaylists(): PlaylistsState {
 
         type RawTrackPage = {
           next: string | null;
-          items: Array<{
-            item?: RawTrackObject;
-            track?: RawTrackObject;
-          }>;
+          items: Array<{ track: RawTrackObject }>;
         };
 
-        const page: RawTrackPage = await apiFetch<RawTrackPage>(url, getValidToken, ctrl.signal);
+        const page: RawTrackPage = await apiFetch<RawTrackPage>(url, tokens, ctrl.signal);
         for (const entry of page.items) {
-          // Prefer `item` (current API field), fall back to deprecated `track`
-          const t = entry.item ?? entry.track;
-          if (!t || !t.uri.startsWith('spotify:track:')) continue;
+          const t = entry.track;
+          if (!t || !t.uri || !t.uri.startsWith('spotify:track:')) continue;
           collected.push({
             id: t.id,
             name: t.name,
@@ -201,10 +205,15 @@ export function useSpotifyPlaylists(): PlaylistsState {
 
     fetchAll().catch((err: unknown) => {
       if ((err as Error)?.name === 'AbortError') return;
-      setTracksError(prev => ({ ...prev, [playlistId]: (err as Error)?.message ?? 'Failed to load tracks' }));
+      const e = err as Error;
+      const status = err instanceof SpotifyApiError ? err.status : 0;
+      const message = status === 401
+        ? 'Spotify session expired — please reconnect.'
+        : e?.message ?? 'Failed to load tracks';
+      setTracksError(prev => ({ ...prev, [playlistId]: message }));
       setTracksLoading(prev => ({ ...prev, [playlistId]: false }));
     });
-  }, [status, accessToken, getValidToken, tracks, tracksLoading]);
+  }, [status, accessToken, getValidToken, forceRefreshToken, tracks, tracksLoading]);
 
   return { playlists, loading, error, tracks, tracksLoading, tracksError, fetchTracks, reload };
 }
