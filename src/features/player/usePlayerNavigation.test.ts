@@ -17,12 +17,12 @@ function makeEngine(overrides: Partial<AudioEngineState> = {}): AudioEngineState
     crossfadeMs: 0,
     sleepTimerEnd: null,
     trackInfo: null,
-    play: vi.fn(),
+    play: vi.fn(() => Promise.resolve()),
     pause: vi.fn(),
     togglePlay: vi.fn(),
     seek: vi.fn(),
     setVolume: vi.fn(),
-    loadTrack: vi.fn(),
+    loadTrack: vi.fn(() => Promise.resolve()),
     beep: vi.fn(),
     toggleRepeat: vi.fn(),
     toggleShuffle: vi.fn(),
@@ -59,47 +59,71 @@ describe('usePlayerNavigation', () => {
     expect(result.current.visibleTracks.map(t => t.id)).toEqual(['d']);
   });
 
-  it('handleSelect loads and plays audio tracks', () => {
+  it('handleSelect loads and plays audio tracks', async () => {
     const engine = makeEngine();
     const { result } = renderHook(() => usePlayerNavigation({ tracks, engine }));
-    act(() => result.current.handleSelect(tracks[0]));
+    await act(async () => { await result.current.handleSelect(tracks[0]); });
     expect(result.current.selectedId).toBe('a');
     expect(engine.loadTrack).toHaveBeenCalledWith(tracks[0]);
     expect(engine.play).toHaveBeenCalled();
   });
 
-  it('handleSelect on video does not auto-play via engine.play', () => {
+  it('handleSelect waits for audio tracks to load before playing', async () => {
+    let resolveLoad!: () => void;
+    const loadTrack = vi.fn(() => new Promise<void>(resolve => { resolveLoad = resolve; }));
+    const play = vi.fn(() => Promise.resolve());
+    const engine = makeEngine({ loadTrack, play });
+    const { result } = renderHook(() => usePlayerNavigation({ tracks, engine }));
+
+    let selectPromise!: Promise<void>;
+    act(() => {
+      selectPromise = result.current.handleSelect(tracks[0]);
+    });
+
+    expect(result.current.selectedId).toBe('a');
+    expect(loadTrack).toHaveBeenCalledWith(tracks[0]);
+    expect(play).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveLoad();
+      await selectPromise;
+    });
+
+    expect(play).toHaveBeenCalled();
+  });
+
+  it('handleSelect on video does not auto-play via engine.play', async () => {
     const engine = makeEngine();
     const { result } = renderHook(() => usePlayerNavigation({ tracks, engine }));
-    act(() => result.current.handleSelect(tracks[4]));
+    await act(async () => { await result.current.handleSelect(tracks[4]); });
     expect(result.current.selectedId).toBe('v');
     expect(engine.loadTrack).not.toHaveBeenCalled();
     expect(engine.play).not.toHaveBeenCalled();
     expect(engine.beep).toHaveBeenCalled();
   });
 
-  it('handleNext advances within the visible view', () => {
+  it('handleNext advances within the visible view', async () => {
     const engine = makeEngine();
     const { result } = renderHook(() => usePlayerNavigation({ tracks, engine }));
-    act(() => result.current.handleSelect(tracks[0]));
-    act(() => result.current.handleNext());
+    await act(async () => { await result.current.handleSelect(tracks[0]); });
+    await act(async () => { await result.current.handleNext(); });
     expect(result.current.selectedId).toBe('b');
-    act(() => result.current.handleNext());
+    await act(async () => { await result.current.handleNext(); });
     expect(result.current.selectedId).toBe('c');
   });
 
-  it('handlePrev wraps around to the last visible track', () => {
+  it('handlePrev wraps around to the last visible track', async () => {
     const engine = makeEngine();
     const { result } = renderHook(() => usePlayerNavigation({ tracks, engine }));
-    act(() => result.current.handleSelect(tracks[0]));
-    act(() => result.current.handlePrev());
+    await act(async () => { await result.current.handleSelect(tracks[0]); });
+    await act(async () => { await result.current.handlePrev(); });
     expect(result.current.selectedId).toBe('v');
   });
 
-  it('handleNext is a no-op when there are no visible tracks', () => {
+  it('handleNext is a no-op when there are no visible tracks', async () => {
     const engine = makeEngine();
     const { result } = renderHook(() => usePlayerNavigation({ tracks: [], engine }));
-    act(() => result.current.handleNext());
+    await act(async () => { await result.current.handleNext(); });
     expect(result.current.selectedId).toBeNull();
     expect(engine.loadTrack).not.toHaveBeenCalled();
   });

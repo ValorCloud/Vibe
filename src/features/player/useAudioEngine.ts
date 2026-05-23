@@ -24,12 +24,12 @@ export interface AudioEngineState {
   crossfadeMs: number;
   sleepTimerEnd: number | null;
   trackInfo: TrackInfo | null;
-  play: () => void;
+  play: () => Promise<void>;
   pause: () => void;
   togglePlay: () => void;
   seek: (t: number) => void;
   setVolume: (v: number) => void;
-  loadTrack: (track: TrackEntry) => void;
+  loadTrack: (track: TrackEntry) => Promise<void>;
   beep: (freq?: number, type?: OscillatorType, duration?: number) => void;
   toggleRepeat: () => void;
   toggleShuffle: () => void;
@@ -66,6 +66,23 @@ function codecFromTitle(title: string): string | null {
     case 'mkv':  return 'MKV';
     default:     return ext ? ext.toUpperCase() : null;
   }
+}
+
+function waitForMediaReady(el: HTMLMediaElement): Promise<void> {
+  if (el.readyState >= 3) return Promise.resolve();
+
+  return new Promise(resolve => {
+    const finish = () => {
+      el.removeEventListener('canplay', finish);
+      el.removeEventListener('loadedmetadata', finish);
+      el.removeEventListener('error', finish);
+      resolve();
+    };
+
+    el.addEventListener('canplay', finish);
+    el.addEventListener('loadedmetadata', finish);
+    el.addEventListener('error', finish);
+  });
 }
 
 async function probeAudioFile(
@@ -119,9 +136,10 @@ export function useAudioEngine(): AudioEngineState {
     if (sleepTimerRef.current) { clearTimeout(sleepTimerRef.current); sleepTimerRef.current = null; }
     if (ms === null) { setSleepTimerEndState(null); return; }
     const end = Date.now() + ms;
+    const media = activeMediaRef.current;
     setSleepTimerEndState(end);
     sleepTimerRef.current = setTimeout(() => {
-      activeMediaRef.current.pause();
+      media.pause();
       setSleepTimerEndState(null);
     }, ms);
   }, []);
@@ -223,7 +241,11 @@ export function useAudioEngine(): AudioEngineState {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bindListeners]);
 
-  const play = useCallback(() => { activeMediaRef.current.play().catch(() => {}); }, []);
+  const play = useCallback(async () => {
+    try {
+      await activeMediaRef.current.play();
+    } catch {}
+  }, []);
   const pause = useCallback(() => { activeMediaRef.current.pause(); }, []);
   const togglePlay = useCallback(() => {
     if (activeMediaRef.current.paused) activeMediaRef.current.play().catch(() => {});
@@ -232,12 +254,13 @@ export function useAudioEngine(): AudioEngineState {
   const seek = useCallback((t: number) => { activeMediaRef.current.currentTime = t; setCurrentTime(t); }, []);
   const setVolume = useCallback((v: number) => { activeMediaRef.current.volume = v; setVolumeState(v); }, []);
 
-  const loadTrack = useCallback((track: TrackEntry) => {
+  const loadTrack = useCallback(async (track: TrackEntry) => {
     if (!track.url) return;
     if (!track.isVideo) {
       const el = internalAudioRef.current;
       el.src = track.url;
       el.load();
+      const ready = waitForMediaReady(el);
       activeMediaRef.current = el;
       audioRef.current = el;
       bindListeners(el);
@@ -258,8 +281,11 @@ export function useAudioEngine(): AudioEngineState {
           });
         });
       }, { once: true });
+      setCurrentTime(0);
+      await ready;
+    } else {
+      setCurrentTime(0);
     }
-    setCurrentTime(0);
   }, [bindListeners]);
 
   const toggleRepeat = useCallback(() => { setRepeat(r => r === 'none' ? 'one' : r === 'one' ? 'all' : 'none'); }, []);

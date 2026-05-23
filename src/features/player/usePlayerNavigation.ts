@@ -11,9 +11,9 @@ export interface PlayerNavigation {
   setSelectedId: (id: string | null) => void;
   selectedTrack: TrackEntry | undefined;
   visibleTracks: TrackEntry[];
-  handleSelect: (track: TrackEntry) => void;
-  handlePrev: () => void;
-  handleNext: () => void;
+  handleSelect: (track: TrackEntry) => Promise<void>;
+  handlePrev: () => Promise<void>;
+  handleNext: () => Promise<void>;
 }
 
 interface UsePlayerNavigationOptions {
@@ -46,7 +46,7 @@ export function usePlayerNavigation({ tracks, engine }: UsePlayerNavigationOptio
   const selectedIdRef = useRef(selectedId);
   useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
 
-  const handleNext = useCallback(() => {
+  const handleNext = useCallback(async () => {
     if (!visibleTracks.length) return;
     const idx = visibleTracks.findIndex(t => t.id === selectedIdRef.current);
     let next: TrackEntry | undefined;
@@ -58,31 +58,31 @@ export function usePlayerNavigation({ tracks, engine }: UsePlayerNavigationOptio
     }
     if (next) {
       setSelectedId(next.id);
-      engine.loadTrack(next);
-      if (!next.isVideo) engine.play();
+      await engine.loadTrack(next);
+      if (!next.isVideo) await engine.play();
       engine.beep(1100, 'sine', 0.04);
     }
   }, [visibleTracks, engine]);
 
-  const handlePrev = useCallback(() => {
+  const handlePrev = useCallback(async () => {
     if (!visibleTracks.length) return;
     const idx = visibleTracks.findIndex(t => t.id === selectedIdRef.current);
     const prev = idx < 0 ? visibleTracks[0] : visibleTracks[idx === 0 ? visibleTracks.length - 1 : idx - 1];
     if (prev) {
       setSelectedId(prev.id);
-      engine.loadTrack(prev);
-      if (!prev.isVideo) engine.play();
+      await engine.loadTrack(prev);
+      if (!prev.isVideo) await engine.play();
       engine.beep(660, 'sine', 0.04);
     }
   }, [visibleTracks, engine]);
 
-  const handleSelect = useCallback((track: TrackEntry) => {
+  const handleSelect = useCallback(async (track: TrackEntry) => {
     setSelectedId(track.id);
     if (track.isVideo) {
       engine.beep(880, 'sine', 0.05);
     } else {
-      engine.loadTrack(track);
-      engine.play();
+      await engine.loadTrack(track);
+      await engine.play();
       engine.beep(880, 'sine', 0.05);
     }
   }, [engine]);
