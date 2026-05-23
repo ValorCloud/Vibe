@@ -85,27 +85,80 @@ function waitForMediaReady(el: HTMLMediaElement): Promise<void> {
   });
 }
 
+const CLOUD_PROBE_BYTES = 64 * 1024;
+
+function parseContentLength(headers: Headers): number | null {
+  const len = Number(headers.get('content-length'));
+  return Number.isFinite(len) && len >= 0 ? len : null;
+}
+
+function parseContentRangeSize(headers: Headers): number | null {
+  const match = headers.get('content-range')?.match(/^bytes \d+-\d+\/(\d+)$/);
+  if (!match) return null;
+  const size = Number(match[1]);
+  return Number.isFinite(size) ? size : null;
+}
+
+function calculateBitrate(fileSize: number | null, duration: number): number | null {
+  return fileSize !== null && duration > 0
+    ? Math.round((fileSize * 8) / duration / 1000)
+    : null;
+}
+
+function determineFileSize(
+  fileSizeBytes: number | null,
+  headers: Headers,
+  status: number,
+  bufferLength: number,
+): number | null {
+  if (fileSizeBytes !== null) return fileSizeBytes;
+  const rangeSize = parseContentRangeSize(headers);
+  if (rangeSize !== null) return rangeSize;
+  return status === 206 ? null : bufferLength;
+}
+
+async function cancelResponseBody(res: Response): Promise<void> {
+  try {
+    await res.body?.cancel();
+  } catch (error) {
+    console.warn('[probeAudioFile] Failed to cancel oversized response:', error);
+  }
+}
+
 async function probeAudioFile(
   url: string,
   fileSizeBytes: number | null,
   duration: number,
+  maxProbeBytes?: number,
 ): Promise<Partial<TrackInfo>> {
+  const fallbackBitrate = calculateBitrate(fileSizeBytes, duration);
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, maxProbeBytes
+      ? { headers: { Range: `bytes=0-${maxProbeBytes - 1}` } }
+      : undefined);
+    const contentLength = parseContentLength(res.headers);
+    const declaredSize = contentLength ?? fileSizeBytes;
+    if (maxProbeBytes && res.status !== 206 && declaredSize !== null && declaredSize > maxProbeBytes) {
+      await cancelResponseBody(res);
+      return { bitrateKbps: fallbackBitrate };
+    }
     const buf = await res.arrayBuffer();
+    if (maxProbeBytes && buf.byteLength > maxProbeBytes) {
+      return { bitrateKbps: fallbackBitrate };
+    }
     const AudioCtx = window.AudioContext ||
       (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return {};
+    if (!AudioCtx) return { bitrateKbps: fallbackBitrate };
     const ctx = new AudioCtx();
     const decoded = await ctx.decodeAudioData(buf);
     await ctx.close();
     const ch = decoded.numberOfChannels;
     const sr = decoded.sampleRate;
-    const size = fileSizeBytes ?? buf.byteLength;
-    const bitrate = duration > 0 ? Math.round((size * 8) / duration / 1000) : null;
+    const size = determineFileSize(fileSizeBytes, res.headers, res.status, buf.byteLength);
+    const bitrate = calculateBitrate(size, duration);
     return { channels: ch, sampleRate: sr, bitrateKbps: bitrate, channelLabel: channelLabel(ch), isVideo: false };
   } catch {
-    return {};
+    return { bitrateKbps: fallbackBitrate };
   }
 }
 
@@ -267,9 +320,11 @@ export function useAudioEngine(): AudioEngineState {
       setTrackInfo(null);
       const srcUrl = track.url;
       const trackTitle = track.title;
+      const trackSize = track.oneDriveSize ?? null;
+      const probeLimit = track.source === 'cloud' ? CLOUD_PROBE_BYTES : undefined;
       el.addEventListener('loadedmetadata', () => {
         const dur = el.duration || 0;
-        probeAudioFile(srcUrl, null, dur).then(info => {
+        probeAudioFile(srcUrl, trackSize, dur, probeLimit).then(info => {
           setTrackInfo({
             channels: info.channels ?? null,
             sampleRate: info.sampleRate ?? null,

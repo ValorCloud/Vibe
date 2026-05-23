@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useAudioEngine } from './useAudioEngine';
 
 function makeMediaElement(tag: 'audio' | 'video') {
@@ -66,5 +66,95 @@ describe('useAudioEngine', () => {
 
     expect(audio.pause).toHaveBeenCalledOnce();
     expect(video.pause).not.toHaveBeenCalled();
+  });
+
+  it('probes cloud audio metadata with a bounded range request', async () => {
+    const audio = makeMediaElement('audio');
+    Object.defineProperty(audio.el, 'duration', { value: 120, configurable: true });
+    vi.stubGlobal('Audio', vi.fn(() => audio.el));
+    const decodeAudioData = vi.fn().mockResolvedValue({ numberOfChannels: 6, sampleRate: 48000 });
+    const close = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('AudioContext', vi.fn(() => ({ decodeAudioData, close })));
+    const arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(16));
+    const fetch = vi.fn().mockResolvedValue({
+      status: 206,
+      headers: new Headers({
+        'content-length': '16',
+        'content-range': 'bytes 0-15/9600000',
+      }),
+      arrayBuffer,
+    } as Response);
+    vi.stubGlobal('fetch', fetch);
+
+    const { result } = renderHook(() => useAudioEngine());
+    await act(async () => {
+      const loadPromise = result.current.loadTrack({
+        id: 'song',
+        title: 'Song.flac',
+        source: 'cloud',
+        url: 'https://onedrive.example/song.flac',
+        oneDriveSize: 9_600_000,
+      });
+      audio.el.dispatchEvent(new Event('loadedmetadata'));
+      audio.el.dispatchEvent(new Event('canplay'));
+      await loadPromise;
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.trackInfo?.channels).toBe(6));
+
+    expect(fetch).toHaveBeenCalledWith('https://onedrive.example/song.flac', {
+      headers: { Range: 'bytes=0-65535' },
+    });
+    expect(arrayBuffer).toHaveBeenCalledOnce();
+    expect(result.current.trackInfo).toMatchObject({
+      sampleRate: 48000,
+      bitrateKbps: 640,
+      channelLabel: '5.1 SURROUND',
+      codec: 'FLAC',
+    });
+  });
+
+  it('does not buffer a full cloud response when range is ignored', async () => {
+    const audio = makeMediaElement('audio');
+    Object.defineProperty(audio.el, 'duration', { value: 10_000, configurable: true });
+    vi.stubGlobal('Audio', vi.fn(() => audio.el));
+    const decodeAudioData = vi.fn();
+    vi.stubGlobal('AudioContext', vi.fn(() => ({ decodeAudioData, close: vi.fn() })));
+    const arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(1));
+    const cancel = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      status: 200,
+      headers: new Headers({ 'content-length': '800000000' }),
+      body: { cancel } as unknown as ReadableStream<Uint8Array>,
+      arrayBuffer,
+    } as Response));
+
+    const { result } = renderHook(() => useAudioEngine());
+    await act(async () => {
+      const loadPromise = result.current.loadTrack({
+        id: 'song',
+        title: 'Song.flac',
+        source: 'cloud',
+        url: 'https://onedrive.example/song.flac',
+        oneDriveSize: 800_000_000,
+      });
+      audio.el.dispatchEvent(new Event('loadedmetadata'));
+      audio.el.dispatchEvent(new Event('canplay'));
+      await loadPromise;
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.trackInfo?.bitrateKbps).toBe(640));
+
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(arrayBuffer).not.toHaveBeenCalled();
+    expect(decodeAudioData).not.toHaveBeenCalled();
+    expect(result.current.trackInfo).toMatchObject({
+      channels: null,
+      sampleRate: null,
+      channelLabel: 'STEREO',
+      codec: 'FLAC',
+    });
   });
 });
