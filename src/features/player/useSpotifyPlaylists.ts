@@ -83,7 +83,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
   const [tick, setTick] = useState(0);
   const reload = useCallback(() => setTick(t => t + 1), []);
 
-  // ── Fetch playlist list ──────────────────────────────────────────────────
+  // ── Fetch playlist list ────────────────────────────────────────────
   useEffect(() => {
     if (status !== 'authenticated' || !accessToken) {
       setPlaylists([]);
@@ -141,7 +141,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
     return () => ctrl.abort();
   }, [status, accessToken, getValidToken, tick]);
 
-  // ── Fetch tracks for a single playlist (on demand) ───────────────────────
+  // ── Fetch tracks for a single playlist (on demand) ─────────────────────
   const fetchTracks = useCallback((playlistId: string) => {
     if (status !== 'authenticated' || !accessToken || tracks[playlistId] || tracksLoading[playlistId]) return;
 
@@ -152,28 +152,35 @@ export function useSpotifyPlaylists(): PlaylistsState {
 
     const fetchAll = async () => {
       const collected: SpotifyTrackItem[] = [];
-      // encodeURIComponent ensures IDs with spaces or special chars don't break the URL
+      // market omitted: the Bearer token scopes availability to the user's account country
       let url: string | null =
-        `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=50&market=FR`;
+        `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=50`;
 
       while (url) {
+        // `item` is the current field; `track` is deprecated but kept as fallback
+        // per Spotify Web API docs (GET /playlists/{id}/tracks)
+        type RawTrackObject = {
+          id: string;
+          name: string;
+          uri: string;
+          duration_ms: number;
+          is_playable?: boolean;
+          artists: Array<{ name: string }>;
+          album: { images: Array<{ url: string }> };
+        } | null;
+
         type RawTrackPage = {
           next: string | null;
           items: Array<{
-            track: {
-              id: string;
-              name: string;
-              uri: string;
-              duration_ms: number;
-              is_playable?: boolean;
-              artists: Array<{ name: string }>;
-              album: { images: Array<{ url: string }> };
-            } | null;
+            item?: RawTrackObject;
+            track?: RawTrackObject;
           }>;
         };
+
         const page: RawTrackPage = await apiFetch<RawTrackPage>(url, getValidToken, ctrl.signal);
-        for (const item of page.items) {
-          const t = item.track;
+        for (const entry of page.items) {
+          // Prefer `item` (current API field), fall back to deprecated `track`
+          const t = entry.item ?? entry.track;
           if (!t || !t.uri.startsWith('spotify:track:')) continue;
           collected.push({
             id: t.id,
