@@ -117,7 +117,7 @@ describe('useAudioEngine', () => {
 
   it('does not buffer a full cloud response when range is ignored', async () => {
     const audio = makeMediaElement('audio');
-    Object.defineProperty(audio.el, 'duration', { value: 100, configurable: true });
+    Object.defineProperty(audio.el, 'duration', { value: 10_000, configurable: true });
     vi.stubGlobal('Audio', vi.fn(() => audio.el));
     const decodeAudioData = vi.fn();
     vi.stubGlobal('AudioContext', vi.fn(() => ({ decodeAudioData, close: vi.fn() })));
@@ -145,7 +145,7 @@ describe('useAudioEngine', () => {
       await Promise.resolve();
     });
 
-    await waitFor(() => expect(result.current.trackInfo?.bitrateKbps).toBe(64000));
+    await waitFor(() => expect(result.current.trackInfo?.bitrateKbps).toBe(640));
 
     expect(cancel).toHaveBeenCalledOnce();
     expect(arrayBuffer).not.toHaveBeenCalled();

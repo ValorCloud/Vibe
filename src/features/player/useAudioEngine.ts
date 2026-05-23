@@ -93,10 +93,16 @@ function parseContentLength(headers: Headers): number | null {
 }
 
 function parseContentRangeSize(headers: Headers): number | null {
-  const match = headers.get('content-range')?.match(/\/(\d+)$/);
+  const match = headers.get('content-range')?.match(/^bytes \d+-\d+\/(\d+)$/);
   if (!match) return null;
   const size = Number(match[1]);
   return Number.isFinite(size) ? size : null;
+}
+
+function calculateBitrate(fileSize: number | null, duration: number): number | null {
+  return fileSize !== null && duration > 0
+    ? Math.round((fileSize * 8) / duration / 1000)
+    : null;
 }
 
 function determineFileSize(
@@ -125,9 +131,7 @@ async function probeAudioFile(
   duration: number,
   maxProbeBytes?: number,
 ): Promise<Partial<TrackInfo>> {
-  const fallbackBitrate = fileSizeBytes && duration > 0
-    ? Math.round((fileSizeBytes * 8) / duration / 1000)
-    : null;
+  const fallbackBitrate = calculateBitrate(fileSizeBytes, duration);
   try {
     const res = await fetch(url, maxProbeBytes
       ? { headers: { Range: `bytes=0-${maxProbeBytes - 1}` } }
@@ -151,7 +155,7 @@ async function probeAudioFile(
     const ch = decoded.numberOfChannels;
     const sr = decoded.sampleRate;
     const size = determineFileSize(fileSizeBytes, res.headers, res.status, buf.byteLength);
-    const bitrate = size !== null && duration > 0 ? Math.round((size * 8) / duration / 1000) : null;
+    const bitrate = calculateBitrate(size, duration);
     return { channels: ch, sampleRate: sr, bitrateKbps: bitrate, channelLabel: channelLabel(ch), isVideo: false };
   } catch {
     return { bitrateKbps: fallbackBitrate };
