@@ -121,7 +121,7 @@
     },
     "textMode": {
       "title": "Text mode",
-      "description": "Plan Text Editor",
+      "description": "Plain Text Editor",
       "hint": "Write freely without formatting. Your text will be preserved when switching modes.",
       "placeholder": "Start writing your lyrics here..."
     },
