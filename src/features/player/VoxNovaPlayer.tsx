@@ -354,7 +354,7 @@ export function VoxNovaPlayer() {
               <div style={{ color: 'rgba(100,150,255,0.7)', fontSize: 9, letterSpacing: 3, marginBottom: 4 }}>SINGULARITY STATUS</div>
               <div style={{ color: LCARS.subText, fontSize: 11, letterSpacing: 1 }}>{engine.isPlaying ? 'ACCRETION ACTIVE' : 'EVENT HORIZON STABLE'}</div>
             </div>
-            <BlackHoleBadge active={engine.isPlaying} />
+            <BlackHoleBadge active={engine.isPlaying} analyser={analyser} />
           </div>
         </div>
       </main>

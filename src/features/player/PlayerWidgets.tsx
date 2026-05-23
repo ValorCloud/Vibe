@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import { LCARS } from './lcarsTheme';
+import type { FrequencyAnalyserState } from './useFrequencyAnalyser';
 
 // ─── Icons ───────────────────────────────────────────────────────────────────
 
@@ -105,18 +106,21 @@ export function VolumeControl({ volume, onChange }: VolumeControlProps) {
 // ─── BlackHoleBadge ──────────────────────────────────────────────────────────
 
 const PULSE_STYLE = `
-  @keyframes bhPulse1 {
-    0%   { r: 18; opacity: 0.72; stroke-width: 1.1; }
-    68%  { r: 35; opacity: 0; stroke-width: 0.35; }
-    100% { r: 35; opacity: 0; stroke-width: 0.35; }
+  @keyframes bhBeatPulse {
+    0%   { transform: scale(0.55); opacity: 0; stroke-width: 1.6; }
+    18%  { opacity: 0.85; }
+    100% { transform: scale(1.95); opacity: 0; stroke-width: 0.25; }
   }
-  @keyframes bhPulse2 {
-    0%   { r: 23; opacity: 0.48; stroke-width: 0.9; }
-    72%  { r: 41; opacity: 0; stroke-width: 0.25; }
-    100% { r: 41; opacity: 0; stroke-width: 0.25; }
+  @keyframes bhBlobMorph {
+    0%   { transform: scale(0.55) rotate(0deg); }
+    100% { transform: scale(1.95) rotate(24deg); }
   }
-  .bh-pulse-active .bh-ring1 { animation: bhPulse1 1.35s ease-out infinite; }
-  .bh-pulse-active .bh-ring2 { animation: bhPulse2 1.35s ease-out 0.42s infinite; }
+  .bh-beat-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: bhBeatPulse 1.4s cubic-bezier(0.2, 0.7, 0.3, 1) forwards,
+               bhBlobMorph 1.4s linear forwards;
+  }
 `;
 
 let _pulseStyleInjected = false;
@@ -128,21 +132,176 @@ function injectPulseStyle() {
   document.head.appendChild(el);
 }
 
-export function BlackHoleBadge({ active }: { active: boolean }) {
+/**
+ * Deterministic-ish PRNG for blob generation so each pulse is consistent during
+ * its lifetime but different from neighbours.
+ */
+function makeRng(seed: number) {
+  let s = (seed * 9301 + 49297) % 233280;
+  return () => {
+    s = (s * 9301 + 49297) % 233280;
+    return s / 233280;
+  };
+}
+
+/**
+ * Build a closed biomorphic blob path centred on (0,0) using N points around a
+ * circle of given radius, with smoothed quadratic curves through midpoints so
+ * the shape stays organic and asymmetric rather than a perfect circle.
+ */
+function blobPath(radius: number, points: number, jitter: number, seed: number): string {
+  const rng = makeRng(seed);
+  const phase = rng() * Math.PI * 2;
+  const pts: Array<[number, number]> = [];
+  for (let i = 0; i < points; i++) {
+    const angle = phase + (i / points) * Math.PI * 2;
+    const rr = radius * (1 + (rng() - 0.5) * jitter * 2);
+    pts.push([Math.cos(angle) * rr, Math.sin(angle) * rr]);
+  }
+  const mid = (a: [number, number], b: [number, number]): [number, number] => [
+    (a[0] + b[0]) / 2,
+    (a[1] + b[1]) / 2,
+  ];
+  let d = '';
+  for (let i = 0; i < points; i++) {
+    const cur = pts[i]!;
+    const next = pts[(i + 1) % points]!;
+    const after = pts[(i + 2) % points]!;
+    const m = mid(cur, next);
+    if (i === 0) d += `M${m[0].toFixed(2)},${m[1].toFixed(2)}`;
+    const nm = mid(next, after);
+    d += ` Q${next[0].toFixed(2)},${next[1].toFixed(2)} ${nm[0].toFixed(2)},${nm[1].toFixed(2)}`;
+  }
+  d += 'Z';
+  return d;
+}
+
+interface Pulse {
+  id: number;
+  path: string;
+  hue: number;
+}
+
+const PULSE_LIFETIME_MS = 1400;
+const BEAT_COOLDOWN_MS = 220;
+// Fallback cadence when no analyser data is available but audio is playing
+// (e.g. CORS-restricted media). Kept slow so it never feels metronomic.
+const FALLBACK_BEAT_MS = 900;
+// Cap concurrent pulses so the SVG stays readable and cheap to render.
+const MAX_CONCURRENT_PULSES = 4;
+// Extra delay before removing a pulse so the CSS animation can fully settle.
+const PULSE_CLEANUP_BUFFER_MS = 40;
+
+export function BlackHoleBadge({
+  active,
+  analyser,
+}: {
+  active: boolean;
+  analyser?: FrequencyAnalyserState;
+}) {
   useEffect(() => { injectPulseStyle(); }, []);
-  const ringColor = active ? 'rgba(196,92,255,0.88)' : 'rgba(126,78,205,0.34)';
-  const pulseClass = active ? 'bh-pulse-active' : 'bh-pulse-static';
+
+  const [pulses, setPulses] = useState<Pulse[]>([]);
+  const idRef = useRef(0);
+  const lastBeatRef = useRef(0);
+  const energyAvgRef = useRef(0);
+
+  // Drive pulses from the audio analyser, falling back to a slow cadence when
+  // analyser data is unavailable. Only runs while playback is active so the
+  // badge is completely still when nothing is playing.
+  useEffect(() => {
+    if (!active) {
+      setPulses([]);
+      energyAvgRef.current = 0;
+      lastBeatRef.current = 0;
+      return;
+    }
+
+    let rafId: number;
+    const emitPulse = (now: number) => {
+      lastBeatRef.current = now;
+      const id = ++idRef.current;
+      const pulse: Pulse = {
+        id,
+        path: blobPath(16, 9, 0.22, id),
+        hue: 268 + ((id * 37) % 30) - 15,
+      };
+      setPulses((prev) => [...prev.slice(-(MAX_CONCURRENT_PULSES - 1)), pulse]);
+      window.setTimeout(() => {
+        setPulses((prev) => prev.filter((p) => p.id !== id));
+      }, PULSE_LIFETIME_MS + PULSE_CLEANUP_BUFFER_MS);
+    };
+
+    const tick = () => {
+      const now = performance.now();
+      const analyserNode = analyser?.analyserRef.current;
+      const data = analyser?.dataArrayRef.current;
+      let beat = false;
+
+      if (analyserNode && data) {
+        analyserNode.getByteFrequencyData(data as Uint8Array<ArrayBuffer>);
+        // Bass-heavy window: first ~10% of bins captures kick/low energy.
+        const bassEnd = Math.max(4, Math.floor(data.length * 0.1));
+        let sum = 0;
+        for (let i = 0; i < bassEnd; i++) sum += data[i]!;
+        const energy = sum / bassEnd;
+        // Exponential moving average as a noise floor.
+        const avg = energyAvgRef.current;
+        energyAvgRef.current = avg === 0 ? energy : avg * 0.92 + energy * 0.08;
+        const threshold = Math.max(28, energyAvgRef.current * 1.35);
+        if (
+          energy > threshold &&
+          now - lastBeatRef.current > BEAT_COOLDOWN_MS
+        ) {
+          beat = true;
+        }
+      } else if (now - lastBeatRef.current > FALLBACK_BEAT_MS) {
+        beat = true;
+      }
+
+      if (beat) emitPulse(now);
+      rafId = window.requestAnimationFrame(tick);
+    };
+    rafId = window.requestAnimationFrame(tick);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [active, analyser]);
+
+  const coreColor = active ? 'rgba(218,158,255,0.9)' : 'rgba(126,78,205,0.42)';
+  const haloColor = active ? 'rgba(184,92,255,0.24)' : 'rgba(126,78,205,0.12)';
+  // A single static biomorphic outline around the event horizon so the badge
+  // still reads as organic when paused.
+  const staticOutline = useMemo(() => blobPath(28, 11, 0.08, 7), []);
+
   return (
     <svg
       width="72" height="72" viewBox="-36 -36 72 72"
       aria-label={active ? 'Black hole — accretion active' : 'Black hole — event horizon stable'}
-      className={pulseClass}
-      style={{ flexShrink: 0, overflow: 'visible', filter: active ? 'drop-shadow(0 0 16px rgba(184,92,255,0.72))' : 'drop-shadow(0 0 5px rgba(126,78,205,0.18))', transition: 'filter 600ms ease' }}
+      style={{
+        flexShrink: 0,
+        overflow: 'visible',
+        filter: active
+          ? 'drop-shadow(0 0 16px rgba(184,92,255,0.72))'
+          : 'drop-shadow(0 0 5px rgba(126,78,205,0.18))',
+        transition: 'filter 600ms ease',
+      }}
     >
-      <circle className="bh-ring1" cx="0" cy="0" r="18" fill="none" stroke={ringColor} strokeWidth="1.1" />
-      <circle className="bh-ring2" cx="0" cy="0" r="23" fill="none" stroke={ringColor} strokeWidth="0.9" />
-      <circle cx="0" cy="0" r="28" fill="none" stroke={active ? 'rgba(184,92,255,0.24)' : 'rgba(126,78,205,0.12)'} strokeWidth="2.5" />
-      <circle cx="0" cy="0" r="18" fill="none" stroke={active ? 'rgba(218,158,255,0.9)' : 'rgba(126,78,205,0.42)'} strokeWidth="1.7" />
+      {/* Beat-driven biomorphic pulses — only present while audio is playing. */}
+      {active && pulses.map((p) => (
+        <path
+          key={p.id}
+          className="bh-beat-pulse"
+          d={p.path}
+          fill="none"
+          stroke={`hsla(${p.hue}, 88%, 72%, 0.85)`}
+          strokeWidth="1.4"
+          strokeLinejoin="round"
+        />
+      ))}
+      {/* Static body */}
+      <path d={staticOutline} fill="none" stroke={haloColor} strokeWidth="2.2" strokeLinejoin="round" />
+      <circle cx="0" cy="0" r="18" fill="none" stroke={coreColor} strokeWidth="1.7" />
       <circle cx="0" cy="0" r="10" fill="none" stroke="rgba(13,0,24,0.96)" strokeWidth="3.2" />
       {active && <ellipse cx="0" cy="0" rx="25" ry="6" fill="none" stroke="rgba(224,170,255,0.52)" strokeWidth="1.8" />}
     </svg>
