@@ -79,9 +79,9 @@ function waitForMediaReady(el: HTMLMediaElement): Promise<void> {
       resolve();
     };
 
-    el.addEventListener('canplay', finish, { once: true });
-    el.addEventListener('loadedmetadata', finish, { once: true });
-    el.addEventListener('error', finish, { once: true });
+    el.addEventListener('canplay', finish);
+    el.addEventListener('loadedmetadata', finish);
+    el.addEventListener('error', finish);
   });
 }
 
@@ -259,8 +259,8 @@ export function useAudioEngine(): AudioEngineState {
     if (!track.isVideo) {
       const el = internalAudioRef.current;
       el.src = track.url;
-      const ready = waitForMediaReady(el);
       el.load();
+      const ready = waitForMediaReady(el);
       activeMediaRef.current = el;
       audioRef.current = el;
       bindListeners(el);
