@@ -1,18 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FrequencyVisualizer } from './FrequencyVisualizer';
 import { PlayerControls } from './PlayerControls';
 import { PlayerSidebar } from './PlayerSidebar';
+import { SidebarProvider } from './SidebarContext';
 import { StatusBar, SeekBar, VolumeControl, BlackHoleBadge, ChipIcon, NetworkIcon } from './PlayerWidgets';
 import { useAudioEngine } from './useAudioEngine';
 import { useFrequencyAnalyser } from './useFrequencyAnalyser';
 import { useLibraryContext } from '../../contexts/LibraryContext';
+import { usePlayerNavigation } from './usePlayerNavigation';
 import { LCARS } from './lcarsTheme';
-import type { TrackEntry, ScanConfig } from './types';
 import type { TrackInfo } from './useAudioEngine';
 
-type LibraryView = 'cloud' | 'local' | 'lyria';
 const LIBRARY_CAPACITY = 50;
-const VIDEO_EXT = /\.(mp4|webm|mov|mkv)$/i;
 const LCARS_BOX_COLORS = [
   'rgba(255,153,0,0.08)',
   'rgba(153,102,204,0.08)',
@@ -38,34 +37,6 @@ function useSectorTime(): string {
   const whole = Math.floor(t / 10).toString().padStart(4, '0');
   const dec = Math.floor(t % 10);
   return `${whole}.${dec}`;
-}
-
-function buildAccept(protocol: ScanConfig['accept']): string {
-  if (protocol === 'wav') return '.wav,audio/wav,audio/x-wav';
-  if (protocol === 'mp3') return '.mp3,audio/mpeg';
-  if (protocol === 'm4a') return '.m4a,audio/mp4,audio/x-m4a';
-  if (protocol === 'mp4') return '.mp4,video/mp4,audio/mp4';
-  return '.wav,.mp3,.m4a,.mp4,.webm,.mov,.ogg,.flac,.aac,audio/*,video/*';
-}
-
-function filterFiles(files: File[], protocol: ScanConfig['accept'], pattern: string): File[] {
-  return files.filter(f => {
-    if (protocol === 'wav' && !f.name.toLowerCase().endsWith('.wav')) return false;
-    if (protocol === 'mp3' && !f.name.toLowerCase().endsWith('.mp3')) return false;
-    if (protocol === 'm4a' && !f.name.toLowerCase().endsWith('.m4a')) return false;
-    if (protocol === 'mp4' && !f.name.toLowerCase().endsWith('.mp4')) return false;
-    const p = pattern.trim().toLowerCase();
-    if (p && !f.name.toLowerCase().includes(p)) return false;
-    return true;
-  });
-}
-
-function immediateParentName(f: File): string {
-  const relPath = (f as File & { webkitRelativePath?: string }).webkitRelativePath ?? '';
-  const segments = relPath.split('/');
-  if (segments.length >= 3) return segments[segments.length - 2] ?? f.name.replace(/\.[^/.]+$/, '');
-  if (segments.length === 2 && segments[1]) return segments[0] ?? f.name.replace(/\.[^/.]+$/, '');
-  return f.name.replace(/\.[^/.]+$/, '');
 }
 
 function LCARSBackground() {
@@ -170,58 +141,15 @@ export function VoxNovaPlayer() {
   const analyser = useFrequencyAnalyser();
   const library = useLibraryContext();
 
-  const [view, setView] = useState<LibraryView>('cloud');
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [scanProtocol, setScanProtocol] = useState<ScanConfig['accept']>('wav');
-  const [scanPattern, setScanPattern] = useState('');
-
-  const uploadInputRef = useRef<HTMLInputElement>(null);
-  const folderInputRef = useRef<HTMLInputElement>(null);
   const videoElRef = useRef<HTMLVideoElement>(null);
-  const pendingVideoPlay = useRef(false);
 
   const registry = useMemo(() => genRegistry(), []);
   const sectorTime = useSectorTime();
 
-  const selectedTrack = library.tracks.find(t => t.id === selectedId);
-  const visibleTracks = library.tracks.filter(t => t.source === view);
-
-  const shuffleRef = useRef(engine.shuffle);
-  const repeatRef = useRef(engine.repeat);
-  const autoplayRef = useRef(engine.autoplay);
-  useEffect(() => { shuffleRef.current = engine.shuffle; }, [engine.shuffle]);
-  useEffect(() => { repeatRef.current = engine.repeat; }, [engine.repeat]);
-  useEffect(() => { autoplayRef.current = engine.autoplay; }, [engine.autoplay]);
-
-  const selectedIdRef = useRef(selectedId);
-  useEffect(() => { selectedIdRef.current = selectedId; }, [selectedId]);
-
-  const handleNext = useCallback(() => {
-    if (!visibleTracks.length) return;
-    const idx = visibleTracks.findIndex(t => t.id === selectedIdRef.current);
-    let next: TrackEntry | undefined;
-    if (shuffleRef.current) {
-      const others = visibleTracks.filter(t => t.id !== selectedIdRef.current);
-      next = others.length ? others[Math.floor(Math.random() * others.length)] : visibleTracks[0];
-    } else {
-      next = idx < 0 ? visibleTracks[0] : visibleTracks[idx >= visibleTracks.length - 1 ? 0 : idx + 1];
-    }
-    if (next) { setSelectedId(next.id); engine.loadTrack(next); if (!next.isVideo) engine.play(); engine.beep(1100, 'sine', 0.04); }
-  }, [visibleTracks, engine]);
-
-  const handlePrev = useCallback(() => {
-    if (!visibleTracks.length) return;
-    const idx = visibleTracks.findIndex(t => t.id === selectedIdRef.current);
-    const prev = idx < 0 ? visibleTracks[0] : visibleTracks[idx === 0 ? visibleTracks.length - 1 : idx - 1];
-    if (prev) { setSelectedId(prev.id); engine.loadTrack(prev); if (!prev.isVideo) engine.play(); engine.beep(660, 'sine', 0.04); }
-  }, [visibleTracks, engine]);
-
-  useEffect(() => {
-    engine.setOnTrackEnded(() => {
-      if (repeatRef.current !== 'none' || autoplayRef.current) handleNext();
-    });
-    return () => engine.setOnTrackEnded(undefined);
-  }, [engine, handleNext]);
+  const {
+    view, setView, selectedId, setSelectedId, selectedTrack,
+    handleSelect, handlePrev, handleNext,
+  } = usePlayerNavigation({ tracks: library.tracks, engine });
 
   useEffect(() => {
     if (!selectedTrack?.isVideo) { engine.attachVideoElement(null); return; }
@@ -233,26 +161,6 @@ export function VoxNovaPlayer() {
     el.play().catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTrack?.id, selectedTrack?.isVideo]);
-
-  const handleSelect = useCallback((track: TrackEntry) => {
-    setSelectedId(track.id);
-    if (track.isVideo) { pendingVideoPlay.current = true; engine.beep(880, 'sine', 0.05); }
-    else { engine.loadTrack(track); engine.play(); engine.beep(880, 'sine', 0.05); }
-  }, [engine]);
-
-  const handleUplinkFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = filterFiles(Array.from(e.target.files ?? []).filter(f => f.type.startsWith('audio/') || f.type.startsWith('video/')), scanProtocol, scanPattern);
-    const added: Omit<TrackEntry, 'id'>[] = files.map(f => ({ title: f.name.replace(/\.[^/.]+$/, ''), source: 'local', url: URL.createObjectURL(f), memo: `[UPLINK] ${f.name} | Integrity: Nominal`, linked: true, isVideo: VIDEO_EXT.test(f.name) }));
-    if (added.length) { library.addTracks(added); setView('local'); }
-    if (uploadInputRef.current) uploadInputRef.current.value = '';
-  };
-
-  const handleScanFolder = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = filterFiles(Array.from(e.target.files ?? []).filter(f => f.type.startsWith('audio/') || f.type.startsWith('video/')), scanProtocol, scanPattern);
-    const added: Omit<TrackEntry, 'id'>[] = files.map(f => ({ title: immediateParentName(f), source: 'local', url: URL.createObjectURL(f), memo: `[LCARS_SCAN] Identified: ${f.name} | Protocol: ${scanProtocol.toUpperCase()} | Integrity: Nominal`, linked: true, isVideo: VIDEO_EXT.test(f.name) }));
-    if (added.length) { library.addTracks(added); setView('local'); }
-    if (folderInputRef.current) folderInputRef.current.value = '';
-  };
 
   const handlePurge = () => {
     if (typeof window !== 'undefined' && !window.confirm('Purge all tracks from local cache?')) return;
@@ -268,15 +176,21 @@ export function VoxNovaPlayer() {
 
   const lyriaCount = library.tracks.filter(t => t.source === 'lyria').length;
   const prevLyriaCount = useRef(lyriaCount);
-  useEffect(() => { if (lyriaCount > prevLyriaCount.current) setView('lyria'); prevLyriaCount.current = lyriaCount; }, [lyriaCount]);
+  useEffect(() => { if (lyriaCount > prevLyriaCount.current) setView('lyria'); prevLyriaCount.current = lyriaCount; }, [lyriaCount, setView]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', background: 'var(--bg-app)', color: LCARS.text, fontFamily: '"Antonio", "Eurostile", "Helvetica Neue", Arial, sans-serif', overflow: 'hidden' }}>
       <LCARSBackground />
-      <PlayerSidebar view={view} setView={setView} tracks={library.tracks} selectedId={selectedId} onSelect={handleSelect} onPurge={handlePurge}
-        scanProtocol={scanProtocol} setScanProtocol={setScanProtocol} scanPattern={scanPattern} setScanPattern={setScanPattern}
-        uploadInputRef={uploadInputRef} folderInputRef={folderInputRef} buildAccept={buildAccept}
-        handleUplinkFiles={handleUplinkFiles} handleScanFolder={handleScanFolder} />
+      <SidebarProvider onLocalTracksAdded={() => setView('local')}>
+        <PlayerSidebar
+          view={view}
+          setView={setView}
+          tracks={library.tracks}
+          selectedId={selectedId}
+          onSelect={handleSelect}
+          onPurge={handlePurge}
+        />
+      </SidebarProvider>
 
       <main style={{ position: 'relative', zIndex: 1, flex: 1, minWidth: 0, padding: '12px 16px 16px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
         {/* Header */}

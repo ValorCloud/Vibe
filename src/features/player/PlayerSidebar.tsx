@@ -1,6 +1,6 @@
-import type { RefObject } from 'react';
 import { LCARS } from './lcarsTheme';
 import { GlobeIcon, DatabaseIcon, SparkleIcon, UploadIcon } from './PlayerWidgets';
+import { useSidebarContext } from './SidebarContext';
 import type { TrackEntry, ScanConfig } from './types';
 
 const LCARS_BOX_COLORS = [
@@ -64,22 +64,15 @@ export interface PlayerSidebarProps {
   selectedId: string | null;
   onSelect: (track: TrackEntry) => void;
   onPurge: () => void;
-  scanProtocol: ScanConfig['accept'];
-  setScanProtocol: (p: ScanConfig['accept']) => void;
-  scanPattern: string;
-  setScanPattern: (p: string) => void;
-  uploadInputRef: RefObject<HTMLInputElement>;
-  folderInputRef: RefObject<HTMLInputElement>;
-  buildAccept: (p: ScanConfig['accept']) => string;
-  handleUplinkFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleScanFolder: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export function PlayerSidebar({
   view, setView, tracks, selectedId, onSelect, onPurge,
-  scanProtocol, setScanProtocol, scanPattern, setScanPattern,
-  uploadInputRef, folderInputRef, buildAccept, handleUplinkFiles, handleScanFolder,
 }: PlayerSidebarProps) {
+  const {
+    scanProtocol, setScanProtocol, scanPattern, setScanPattern,
+    uploadInputRef, folderInputRef, buildAccept, handleUplinkFiles, handleScanFolder,
+  } = useSidebarContext();
   const visibleTracks = tracks.filter(t => t.source === view);
 
   return (
