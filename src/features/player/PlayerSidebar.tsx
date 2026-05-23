@@ -148,34 +148,40 @@ export function PlayerSidebar({
           <div style={{ color: LCARS.mutedText, fontSize: 10, letterSpacing: 1, padding: '8px 4px' }}>
             NO {view.toUpperCase()} SIGNALS
           </div>
-        ) : visibleTracks.map(track => (
+        ) : visibleTracks.map(track => {
+          const mediaColor = track.isVideo ? LCARS.purple : LCARS.orange;
+          const selected = track.id === selectedId;
+          return (
           <button
             key={track.id}
             type="button"
             onClick={() => onSelect(track)}
             style={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
               width: '100%',
               textAlign: 'left',
               padding: '6px 8px',
               marginBottom: 2,
-              background: track.id === selectedId ? `${LCARS.peach}33` : 'transparent',
+              background: selected ? `${mediaColor}24` : 'transparent',
               border: 'none',
-              borderLeft: `3px solid ${track.id === selectedId ? LCARS.peach : 'transparent'}`,
-              color: track.id === selectedId ? LCARS.peach : LCARS.text,
+              borderLeft: `3px solid ${selected ? mediaColor : `${mediaColor}66`}`,
+              color: selected ? mediaColor : LCARS.text,
               fontSize: 11,
               letterSpacing: 1,
               cursor: 'pointer',
               fontFamily: 'inherit',
               overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
             }}
             title={track.title}
           >
-            {track.title}
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{track.title}</span>
+            <span style={{ flexShrink: 0, color: mediaColor, border: `1px solid ${mediaColor}88`, borderRadius: 2, padding: '1px 3px', fontSize: 7, fontWeight: 700, letterSpacing: 1 }}>
+              {track.isVideo ? 'VID' : 'AUD'}
+            </span>
           </button>
-        ))}
+        );})}
       </div>
 
       {/* UPLINK button */}

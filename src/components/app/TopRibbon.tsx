@@ -29,7 +29,7 @@ interface Props {
 export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, onOpenNewEmpty, currentEditMode: _currentEditMode }: Props) {
   const { past, future, undo, redo } = useSongHistoryContext();
   const { isGenerating, clearSelection } = useComposerContext();
-  const { song } = useSongContext();
+  const { song, musicalPrompt } = useSongContext();
   const { activeTab, setActiveTab: _setActiveTab, isLeftPanelOpen, setIsLeftPanelOpen, isStructureOpen, setIsStructureOpen } = useAppNavigationContext();
   const { openKeyboardShortcuts, isAnalyzing } = useTopRibbonActions();
   const { t } = useTranslation();
@@ -52,6 +52,7 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [lyricsCopied, setLyricsCopied] = useState(false);
+  const [musicalPromptCopied, setMusicalPromptCopied] = useState(false);
 
   const lyricsText = useMemo(() => {
     if (!song || song.length === 0) return '';
@@ -74,6 +75,15 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
     });
   }, [lyricsText]);
 
+  const handleCopyMusicalPrompt = useCallback(() => {
+    if (!musicalPrompt) return;
+    void copyToClipboard(musicalPrompt).then((ok) => {
+      if (!ok) return;
+      setMusicalPromptCopied(true);
+      setTimeout(() => setMusicalPromptCopied(false), 2000);
+    });
+  }, [musicalPrompt]);
+
   const toggleLeftPanel = () => {
     if (!isLeftPanelOpen) { setIsStructureOpen(false); }
     setIsLeftPanelOpen(!isLeftPanelOpen);
@@ -88,6 +98,9 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
   const lyricsTooltip = lyricsCopied
     ? (t.tooltips.copyLyricsConfirm ?? 'Lyrics copied to clipboard')
     : (t.tooltips.copyLyrics ?? 'Copy lyrics');
+  const musicalPromptTooltip = musicalPromptCopied
+    ? (t.tooltips.copyMusicalPromptConfirm ?? 'Musical prompt copied to clipboard')
+    : (t.tooltips.copyMusicalPrompt ?? 'Copy musical prompt');
 
   return (
     <div
@@ -143,6 +156,19 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
             >
               {lyricsCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               <span className="hidden lg:inline">{lyricsCopied ? (t.musical?.copied ?? 'Copied!') : (t.ribbon.copy_lyrics ?? 'Copy Lyrics')}</span>
+            </button>
+          </Tooltip>
+        )}
+        {activeTab === 'musical' && (
+          <Tooltip title={musicalPromptTooltip}>
+            <button
+              onClick={handleCopyMusicalPrompt}
+              disabled={!musicalPrompt}
+              aria-label={t.ribbon.copy_musical_prompt ?? t.tooltips.copyMusicalPrompt ?? 'Copy Musical Prompt'}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wide border border-[var(--border-color)] text-[var(--text-secondary)] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {musicalPromptCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <span className="hidden lg:inline">{musicalPromptCopied ? (t.musical?.copied ?? 'Copied!') : (t.ribbon.copy_musical_prompt ?? 'Copy Musical Prompt')}</span>
             </button>
           </Tooltip>
         )}

@@ -59,7 +59,7 @@ describe('useAudioEngine', () => {
     expect(settled).toBe(true);
   });
 
-  it('sleep timer pauses the media element that was active when it was set', () => {
+  it('sleep timer pauses the media element that is active when it expires', () => {
     vi.useFakeTimers();
     const audio = makeMediaElement('audio');
     const video = makeMediaElement('video');
@@ -72,8 +72,8 @@ describe('useAudioEngine', () => {
       vi.advanceTimersByTime(1000);
     });
 
-    expect(audio.pause).toHaveBeenCalledOnce();
-    expect(video.pause).not.toHaveBeenCalled();
+    expect(video.pause).toHaveBeenCalledOnce();
+    expect(audio.pause).not.toHaveBeenCalled();
   });
 
   it('probes cloud audio metadata with a bounded range request', async () => {

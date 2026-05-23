@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { TopRibbon } from './TopRibbon';
 
@@ -21,6 +21,7 @@ const mockSetActiveTab = vi.fn();
 const mockSetIsLeftPanelOpen = vi.fn();
 const mockSetIsStructureOpen = vi.fn();
 const mockOpenKeyboardShortcuts = vi.fn();
+const mockCopyToClipboard = vi.fn(() => Promise.resolve(true));
 
 vi.mock('../../contexts/SongContext', () => ({
   useSongHistoryContext: () => ({
@@ -59,6 +60,10 @@ vi.mock('../../hooks/useTopRibbonActions', () => ({
   }),
 }));
 
+vi.mock('../../utils/clipboard', () => ({
+  copyToClipboard: (text: string) => mockCopyToClipboard(text),
+}));
+
 vi.mock('../../i18n', () => ({
   useTranslation: () => ({
     t: {
@@ -76,11 +81,14 @@ vi.mock('../../i18n', () => ({
         sendToLyria: 'Open the Musical tab to generate a preview with Lyria',
         sendToLyriaConfirm: 'Opening Musical…',
         quantizeLineDone: 'Line quantized',
+        copyMusicalPrompt: 'Copy musical prompt',
+        copyMusicalPromptConfirm: 'Musical prompt copied to clipboard',
       },
       ribbon: {
         aiUnavailable: 'AI unavailable',
         send_to_lyria: 'Send to LYRIA',
         copy_lyrics: 'Copy Lyrics',
+        copy_musical_prompt: 'Copy Musical Prompt',
         menu: 'Menu',
         menuAria: 'Open main menu',
       },
@@ -125,6 +133,8 @@ describe('TopRibbon', () => {
     mockActiveTab = 'lyrics';
     mockIsLeftPanelOpen = false;
     mockIsStructureOpen = false;
+    mockCopyToClipboard.mockClear();
+    mockCopyToClipboard.mockResolvedValue(true);
   });
 
   it('renders without crashing', () => {
@@ -227,6 +237,34 @@ describe('TopRibbon', () => {
     mockIsAnalyzing = true;
     renderRibbon();
     expect(screen.getByLabelText('Processing')).toBeDefined();
+  });
+
+
+  it('shows Copy Musical Prompt button only in musical mode', () => {
+    renderRibbon();
+    expect(screen.queryByRole('button', { name: 'Copy Musical Prompt' })).toBeNull();
+
+    mockActiveTab = 'musical';
+    mockMusicalPrompt = 'STYLE: synth pop';
+    renderRibbon();
+    expect(screen.getByRole('button', { name: 'Copy Musical Prompt' })).toBeEnabled();
+  });
+
+  it('disables Copy Musical Prompt when the prompt is empty', () => {
+    mockActiveTab = 'musical';
+    mockMusicalPrompt = '';
+    renderRibbon();
+    expect(screen.getByRole('button', { name: 'Copy Musical Prompt' })).toBeDisabled();
+  });
+
+  it('copies the musical prompt from the top ribbon', async () => {
+    mockActiveTab = 'musical';
+    mockMusicalPrompt = 'STYLE: dark ambient';
+    renderRibbon();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy Musical Prompt' }));
+
+    await waitFor(() => expect(mockCopyToClipboard).toHaveBeenCalledWith('STYLE: dark ambient'));
   });
 
   // NOTE: "Send to LYRIA" button was removed from TopRibbon per UX decision

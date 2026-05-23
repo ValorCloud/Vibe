@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { usePlayerNavigation } from './usePlayerNavigation';
 import type { AudioEngineState } from './useAudioEngine';
@@ -34,6 +34,10 @@ function makeEngine(overrides: Partial<AudioEngineState> = {}): AudioEngineState
     ...overrides,
   };
 }
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 const tracks: TrackEntry[] = [
   { id: 'a', title: 'A', source: 'cloud', url: 'a.wav' },
@@ -110,6 +114,29 @@ describe('usePlayerNavigation', () => {
     expect(result.current.selectedId).toBe('b');
     await act(async () => { await result.current.handleNext(); });
     expect(result.current.selectedId).toBe('c');
+  });
+
+
+  it('fades volume before advancing when crossfade is enabled', async () => {
+    vi.useFakeTimers();
+    const setVolume = vi.fn();
+    const engine = makeEngine({ isPlaying: true, crossfadeMs: 80, volume: 1, setVolume });
+    const { result } = renderHook(() => usePlayerNavigation({ tracks, engine }));
+    await act(async () => { await result.current.handleSelect(tracks[0]); });
+
+    let nextPromise!: Promise<void>;
+    act(() => {
+      nextPromise = result.current.handleNext();
+    });
+    await act(async () => {
+      await vi.runAllTimersAsync();
+      await nextPromise;
+    });
+
+    expect(result.current.selectedId).toBe('b');
+    expect(engine.loadTrack).toHaveBeenLastCalledWith(tracks[1]);
+    expect(setVolume).toHaveBeenCalledWith(0);
+    expect(setVolume).toHaveBeenLastCalledWith(1);
   });
 
   it('handlePrev wraps around to the last visible track', async () => {

@@ -57,7 +57,8 @@
     "menu": "Menu",
     "menuAria": "Open main menu",
     "send_to_lyria": "Send to LYRIA",
-    "copy_lyrics": "Copy lyrics"
+    "copy_lyrics": "Copy lyrics",
+    "copy_musical_prompt": "Copy Musical Prompt"
   },
   "mobileNav": {
     "navigation": "Mobile navigation",
@@ -114,13 +115,13 @@
     },
     "markupMode": {
       "title": "Markdown mode",
-      "description": "Plain-text editing experience",
+      "description": "Simple Editor",
       "hint": "Format: [Section Name] followed by lyrics. Separate sections with double line breaks.",
       "placeholder": "[Verse 1]\nLyrics go here...\n\n[Chorus]\nChorus lines..."
     },
     "textMode": {
       "title": "Text mode",
-      "description": "Basic notepad editor",
+      "description": "Plain Text Editor",
       "hint": "Write freely without formatting. Your text will be preserved when switching modes.",
       "placeholder": "Start writing your lyrics here..."
     },
@@ -535,6 +536,8 @@
     "sendToLyriaConfirm": "Opening Musical…",
     "sendToLyria": "Open the Musical tab to generate a preview with Lyria",
     "quantizeLineDone": "Line quantized",
+    "copyMusicalPrompt": "Copy musical prompt",
+    "copyMusicalPromptConfirm": "Musical prompt copied to clipboard",
     "voiceAssistant": "Voice assistant",
     "voiceListening": "Listening…",
     "voiceProcessing": "Processing your request…",

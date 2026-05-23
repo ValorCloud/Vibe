@@ -196,11 +196,11 @@ export function useAudioEngine(): AudioEngineState {
     if (sleepTimerRef.current) { clearTimeout(sleepTimerRef.current); sleepTimerRef.current = null; }
     if (ms === null) { setSleepTimerEndState(null); return; }
     const end = Date.now() + ms;
-    const media = activeMediaRef.current;
     setSleepTimerEndState(end);
     sleepTimerRef.current = setTimeout(() => {
-      media.pause();
+      activeMediaRef.current.pause();
       setSleepTimerEndState(null);
+      sleepTimerRef.current = null;
     }, ms);
   }, []);
 
