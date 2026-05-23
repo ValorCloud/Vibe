@@ -178,9 +178,15 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
           {isPlaying ? 'ACTIVE' : 'STANDBY'}
         </span>
       </div>
-      <div style={{ aspectRatio, maxHeight: 'clamp(180px, 40vh, 480px)', width: '100%', background: '#000', borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
+      {/*
+        The inner div uses aspectRatio (native video ratio) WITHOUT maxHeight.
+        Constraining via maxHeight clashes with aspectRatio and produces black bars.
+        Height is implicitly bounded by contentWidth (min(680px, 95%)) × aspectRatio.
+        Portrait or square videos will be naturally contained by the parent width.
+      */}
+      <div style={{ aspectRatio, width: '100%', background: '#000', borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
         <video ref={videoRef} src={src}
-          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
+          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'fill' }}
           playsInline controls={showControls} preload="metadata"
           onLoadedMetadata={handleLoadedMetadata}
           aria-label={isPlaying ? 'Video player – playing' : 'Video player – paused'} />
