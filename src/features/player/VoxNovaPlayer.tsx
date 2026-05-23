@@ -194,7 +194,7 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
         - <video> fills the wrapper exactly → zero letterbox bands
       */}
       <div style={{
-        aspectRatio,
+        aspectRatio: String(aspectRatio),
         maxHeight: 'clamp(180px, 40vh, 480px)',
         width: '100%',
         background: '#000',
