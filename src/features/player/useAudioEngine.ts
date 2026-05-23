@@ -183,6 +183,11 @@ export function useAudioEngine(): AudioEngineState {
   const [sleepTimerEnd, setSleepTimerEndState] = useState<number | null>(null);
   const [trackInfo, setTrackInfo] = useState<TrackInfo | null>(null);
 
+  // Stores the current track title so attachVideoElement can call
+  // codecFromTitle(title) instead of codecFromTitle(el.src) — el.src
+  // is a blob: URL at runtime, not the original filename.
+  const currentTrackTitleRef = useRef<string>('');
+
   useEffect(() => { internalAudioRef.current.volume = 0.5; }, []);
 
   const repeatRef = useRef<RepeatMode>('none');
@@ -273,9 +278,9 @@ export function useAudioEngine(): AudioEngineState {
     bindListeners(el);
 
     const onMeta = () => {
-      // FIX #4: infer codec from the src filename stored on the element
-      const srcName = el.src ?? '';
-      const guessedCodec = codecFromTitle(srcName);
+      // Use the track title (stored in ref by loadTrack) — el.src is a blob:
+      // URL at runtime and yields a UUID fragment instead of an extension.
+      const guessedCodec = codecFromTitle(currentTrackTitleRef.current);
       const info: TrackInfo = {
         channels: 2,
         sampleRate: null,
@@ -315,6 +320,9 @@ export function useAudioEngine(): AudioEngineState {
 
   const loadTrack = useCallback(async (track: TrackEntry) => {
     if (!track.url) return;
+    // Always update the title ref first so attachVideoElement.onMeta
+    // can read the correct filename when it fires.
+    currentTrackTitleRef.current = track.title;
     if (!track.isVideo) {
       const el = internalAudioRef.current;
       el.src = track.url;
