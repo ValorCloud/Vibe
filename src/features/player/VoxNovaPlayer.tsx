@@ -143,13 +143,26 @@ interface VideoPlayerProps {
 
 function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState<string>('16 / 9');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleMouseMove = () => {
     setShowControls(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => setShowControls(false), 2800);
   };
+
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+
+  // Reset ratio when src changes so we don't flash wrong geometry
+  useEffect(() => { setAspectRatio('16 / 9'); }, [src]);
+
+  const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = e.currentTarget;
+    if (v.videoWidth && v.videoHeight) {
+      setAspectRatio(`${v.videoWidth} / ${v.videoHeight}`);
+    }
+  };
 
   return (
     <div onMouseMove={handleMouseMove} onMouseLeave={() => setShowControls(false)}
@@ -173,24 +186,37 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
           {isPlaying ? 'ACTIVE' : 'STANDBY'}
         </span>
       </div>
-      {/* No overflow:hidden on wrapper — objectFit:contain handles framing without cropping */}
-      <video
-        ref={videoRef}
-        src={src}
-        style={{
-          width: '100%',
-          display: 'block',
-          maxHeight: 'clamp(180px, 40vh, 480px)',
-          height: 'auto',
-          background: '#000',
-          objectFit: 'contain',
-          borderRadius: '0 0 4px 4px',
-        }}
-        playsInline
-        controls={showControls}
-        preload="metadata"
-        aria-label={isPlaying ? 'Video player – playing' : 'Video player – paused'}
-      />
+      {/*
+        Adaptive ratio wrapper:
+        - aspect-ratio mirrors the video's intrinsic dimensions (set on loadedmetadata)
+        - max-height caps very tall/portrait videos so they don't overflow the layout
+        - <video> fills the wrapper exactly → zero letterbox bands
+      */}
+      <div style={{
+        aspectRatio,
+        maxHeight: 'clamp(180px, 40vh, 480px)',
+        width: '100%',
+        background: '#000',
+        borderRadius: '0 0 4px 4px',
+        overflow: 'hidden',
+      }}>
+        <video
+          ref={videoRef}
+          src={src}
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'block',
+            objectFit: 'fill',
+            borderRadius: '0 0 4px 4px',
+          }}
+          playsInline
+          controls={showControls}
+          preload="metadata"
+          onLoadedMetadata={handleLoadedMetadata}
+          aria-label={isPlaying ? 'Video player – playing' : 'Video player – paused'}
+        />
+      </div>
       <div aria-hidden="true" style={{ position: 'absolute', top: 30, left: 0, width: 3, height: 36, background: LCARS.purple, borderRadius: '0 2px 2px 0', opacity: 0.55 }} />
       <div aria-hidden="true" style={{ position: 'absolute', top: 30, right: 0, width: 3, height: 36, background: LCARS.orange, borderRadius: '2px 0 0 2px', opacity: 0.55 }} />
     </div>
