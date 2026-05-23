@@ -42,7 +42,6 @@ const DEVICE_NAME = 'Lyricist Player';
 const VOLUME_DEFAULT = 0.7;
 
 export interface UseSpotifyEngineOptions {
-  /** Spotify access token. Pass null/undefined to skip initialization. */
   accessToken: string | null | undefined;
 }
 
@@ -71,12 +70,10 @@ export function useSpotifyEngine({ accessToken }: UseSpotifyEngineOptions): UseS
   const playerRef = useRef<SpotifySDKPlayer | null>(null);
   const tokenRef = useRef<string | null | undefined>(accessToken);
 
-  // Keep token ref fresh for the SDK getOAuthToken callback
   useEffect(() => { tokenRef.current = accessToken; }, [accessToken]);
 
   useEffect(() => {
     if (!accessToken) return;
-
     let cancelled = false;
 
     const init = async () => {
@@ -84,7 +81,7 @@ export function useSpotifyEngine({ accessToken }: UseSpotifyEngineOptions): UseS
       await loadSpotifySDK();
       if (cancelled) return;
 
-      const Spotify = (window as Window & { Spotify: { Player: new (opts: unknown) => SpotifySDKPlayer } }).Spotify;
+      const { Spotify } = window;
 
       const player = new Spotify.Player({
         name: DEVICE_NAME,
@@ -94,41 +91,48 @@ export function useSpotifyEngine({ accessToken }: UseSpotifyEngineOptions): UseS
         },
       });
 
-      player.addListener('ready', ({ device_id }: { device_id: string }) => {
-        if (cancelled) return;
-        setDeviceId(device_id);
-        setPlayerState('ready');
-      });
+      // Use explicit cast per listener to avoid overload conflicts
+      (player.addListener as (event: 'ready', cb: (payload: { device_id: string }) => void) => boolean)(
+        'ready',
+        ({ device_id }) => {
+          if (cancelled) return;
+          setDeviceId(device_id);
+          setPlayerState('ready');
+        },
+      );
 
-      player.addListener('not_ready', () => {
-        if (cancelled) return;
-        setPlayerState('idle');
-        setDeviceId(null);
-      });
+      (player.addListener as (event: 'not_ready', cb: (payload: { device_id: string }) => void) => boolean)(
+        'not_ready',
+        () => {
+          if (cancelled) return;
+          setPlayerState('idle');
+          setDeviceId(null);
+        },
+      );
 
-      player.addListener('player_state_changed', (state: SpotifyPlaybackState | null) => {
-        if (cancelled) return;
-        setPlaybackState(state);
-        if (state) setPlayerState('playing');
-      });
+      (player.addListener as (event: 'player_state_changed', cb: (state: SpotifyPlaybackState | null) => void) => boolean)(
+        'player_state_changed',
+        (state) => {
+          if (cancelled) return;
+          setPlaybackState(state);
+          if (state) setPlayerState('playing');
+        },
+      );
 
-      player.addListener('initialization_error', ({ message }: WebPlaybackError) => {
-        if (cancelled) return;
-        console.error('[SpotifyEngine] init error:', message);
-        setPlayerState('error');
-      });
+      (player.addListener as (event: 'initialization_error', cb: (err: WebPlaybackError) => void) => boolean)(
+        'initialization_error',
+        ({ message }) => { if (!cancelled) { console.error('[SpotifyEngine] init:', message); setPlayerState('error'); } },
+      );
 
-      player.addListener('authentication_error', ({ message }: WebPlaybackError) => {
-        if (cancelled) return;
-        console.error('[SpotifyEngine] auth error:', message);
-        setPlayerState('error');
-      });
+      (player.addListener as (event: 'authentication_error', cb: (err: WebPlaybackError) => void) => boolean)(
+        'authentication_error',
+        ({ message }) => { if (!cancelled) { console.error('[SpotifyEngine] auth:', message); setPlayerState('error'); } },
+      );
 
-      player.addListener('account_error', ({ message }: WebPlaybackError) => {
-        if (cancelled) return;
-        console.error('[SpotifyEngine] account error (Premium required):', message);
-        setPlayerState('error');
-      });
+      (player.addListener as (event: 'account_error', cb: (err: WebPlaybackError) => void) => boolean)(
+        'account_error',
+        ({ message }) => { if (!cancelled) { console.error('[SpotifyEngine] account (Premium required):', message); setPlayerState('error'); } },
+      );
 
       await player.connect();
       playerRef.current = player;
@@ -146,10 +150,6 @@ export function useSpotifyEngine({ accessToken }: UseSpotifyEngineOptions): UseS
     };
   }, [accessToken]);
 
-  // ---------------------------------------------------------------------------
-  // Controls
-  // ---------------------------------------------------------------------------
-
   const play = useCallback(async (uris: string[]) => {
     if (!deviceId || !tokenRef.current) return;
     await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${deviceId}`, {
@@ -162,29 +162,14 @@ export function useSpotifyEngine({ accessToken }: UseSpotifyEngineOptions): UseS
     });
   }, [deviceId]);
 
-  const resume = useCallback(async () => {
-    await playerRef.current?.resume();
-  }, []);
-
-  const pause = useCallback(async () => {
-    await playerRef.current?.pause();
-  }, []);
-
-  const seek = useCallback(async (positionMs: number) => {
-    await playerRef.current?.seek(positionMs);
-  }, []);
-
+  const resume = useCallback(async () => { await playerRef.current?.resume(); }, []);
+  const pause = useCallback(async () => { await playerRef.current?.pause(); }, []);
+  const seek = useCallback(async (positionMs: number) => { await playerRef.current?.seek(positionMs); }, []);
   const setVolume = useCallback(async (fraction: number) => {
     await playerRef.current?.setVolume(Math.max(0, Math.min(1, fraction)));
   }, []);
-
-  const nextTrack = useCallback(async () => {
-    await playerRef.current?.nextTrack();
-  }, []);
-
-  const previousTrack = useCallback(async () => {
-    await playerRef.current?.previousTrack();
-  }, []);
+  const nextTrack = useCallback(async () => { await playerRef.current?.nextTrack(); }, []);
+  const previousTrack = useCallback(async () => { await playerRef.current?.previousTrack(); }, []);
 
   return {
     playerState,
