@@ -20,6 +20,7 @@ const LCARS_BOX_COLORS = [
   'rgba(255,102,102,0.08)',
   'rgba(102,204,255,0.08)',
 ];
+const DEFAULT_VIDEO_ASPECT_RATIO = 16 / 9;
 
 function genRegistry(): string {
   const buf = new Uint8Array(4);
@@ -143,7 +144,7 @@ interface VideoPlayerProps {
 
 function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(false);
-  const [aspectRatio, setAspectRatio] = useState<string>('16 / 9');
+  const [aspectRatio, setAspectRatio] = useState(DEFAULT_VIDEO_ASPECT_RATIO);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseMove = () => {
@@ -155,12 +156,12 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
   useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   // Reset ratio when src changes so we don't flash wrong geometry
-  useEffect(() => { setAspectRatio('16 / 9'); }, [src]);
+  useEffect(() => { setAspectRatio(DEFAULT_VIDEO_ASPECT_RATIO); }, [src]);
 
   const handleLoadedMetadata = (e: React.SyntheticEvent<HTMLVideoElement>) => {
     const v = e.currentTarget;
     if (v.videoWidth && v.videoHeight) {
-      setAspectRatio(`${v.videoWidth} / ${v.videoHeight}`);
+      setAspectRatio(v.videoWidth / v.videoHeight);
     }
   };
 
@@ -207,8 +208,7 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
             width: '100%',
             height: '100%',
             display: 'block',
-            objectFit: 'fill',
-            borderRadius: '0 0 4px 4px',
+            objectFit: 'contain',
           }}
           playsInline
           controls={showControls}
