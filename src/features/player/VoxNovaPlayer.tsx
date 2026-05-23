@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { FrequencyVisualizer } from './FrequencyVisualizer';
 import { PlayerControls } from './PlayerControls';
 import { PlayerSidebar } from './PlayerSidebar';
@@ -61,6 +61,14 @@ function LCARSBackground() {
         WebkitMaskImage: 'radial-gradient(ellipse at center, rgba(0,0,0,0.5) 0%, transparent 80%)' }} />
     </div>
   );
+}
+
+
+function isEditableSpaceTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName.toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button';
 }
 
 function formatDate(value?: string): string | null {
@@ -231,6 +239,17 @@ export function VoxNovaPlayer() {
     library.purgeAll(); setSelectedId(null); engine.pause();
   };
 
+  const handleSpacePlayPause = useCallback((event: KeyboardEvent) => {
+    if (event.defaultPrevented || event.code !== 'Space' || !selectedTrack || isEditableSpaceTarget(event.target)) return;
+    event.preventDefault();
+    engine.togglePlay();
+  }, [engine, selectedTrack]);
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleSpacePlayPause);
+    return () => window.removeEventListener('keydown', handleSpacePlayPause);
+  }, [handleSpacePlayPause]);
+
   const structuralIntegrity = Math.min(1, library.tracks.length / LIBRARY_CAPACITY);
   const neuralBuffer = engine.duration > 0 ? Math.min(1, engine.currentTime / engine.duration) : 0;
   const memo = selectedTrack?.memo || (selectedTrack ? `[LCARS_SCAN] Identified: ${selectedTrack.title} | Integrity: Nominal` : '[LCARS_SCAN] Standby — awaiting signal selection.');
@@ -243,7 +262,7 @@ export function VoxNovaPlayer() {
   useEffect(() => { if (lyriaCount > prevLyriaCount.current) setView('lyria'); prevLyriaCount.current = lyriaCount; }, [lyriaCount, setView]);
 
   return (
-    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', background: `${LCARS.void}`, color: LCARS.text, fontFamily: '"Antonio", "Eurostile", "Helvetica Neue", Arial, sans-serif', overflow: 'hidden' }}>
+    <div className="lcars-lyrics-area" style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', backgroundColor: LCARS.void, color: LCARS.text, fontFamily: '"Antonio", "Eurostile", "Helvetica Neue", Arial, sans-serif', overflow: 'hidden' }}>
       <LCARSBackground />
       <SidebarProvider onLocalTracksAdded={() => setView('local')}>
         <PlayerSidebar

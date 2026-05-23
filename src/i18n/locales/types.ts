@@ -90,6 +90,8 @@ export interface Translations {
     send_to_lyria?: string;
     /** Label for the "Copy Lyrics" button in the ribbon */
     copy_lyrics?: string;
+    /** Label for the "Copy Musical Prompt" button in the ribbon */
+    copy_musical_prompt?: string;
     /** Label for the Player tab */
     player?: string;
   };
@@ -668,6 +670,10 @@ export interface Translations {
     copyLyrics?: string;
     /** Tooltip shown after lyrics have been successfully copied to clipboard */
     copyLyricsConfirm?: string;
+    /** Tooltip shown on the Copy Musical Prompt button */
+    copyMusicalPrompt?: string;
+    /** Tooltip shown after musical prompt has been successfully copied to clipboard */
+    copyMusicalPromptConfirm?: string;
     /** Aria-label for the voice assistant button (idle state) */
     voiceAssistant?: string;
     /** Status label while the mic is actively listening */

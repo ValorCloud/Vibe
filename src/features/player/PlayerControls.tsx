@@ -76,11 +76,11 @@ const CONTROLS_CSS = `
     justify-content: center;
     align-items: stretch;
     width: 100%;
-    overflow-x: auto;
+    overflow: visible;
     padding-bottom: 2px;
   }
   @media (max-width: 480px) {
-    .lcars-mode-grid { justify-content: flex-start; }
+    .lcars-mode-grid { justify-content: flex-start; overflow-x: auto; overflow-y: visible; }
   }
 `;
 
