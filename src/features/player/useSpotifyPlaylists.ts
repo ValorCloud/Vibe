@@ -8,8 +8,8 @@
  *
  * Feb 2026 migration:
  *   - /playlists/{id}/tracks → /playlists/{id}/items (renamed endpoint)
- *   - 403 on playlist tracks = playlist inaccessible (collaborative/shared);
- *     surfaced as a user-visible error instead of silent TAP TO LOAD.
+ *   - Only playlists owned by the current user are shown; shared/collaborative
+ *     playlists are excluded at source to avoid Dev Mode 403s.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ZodError, z } from 'zod';
@@ -54,6 +54,10 @@ function formatMs(ms: number): string {
 }
 export { formatMs };
 
+const ME_SCHEMA = z.object({
+  id: z.string(),
+});
+
 const PLAYLIST_PAGE_SCHEMA = z.object({
   items: z.array(
     z.object({
@@ -63,6 +67,7 @@ const PLAYLIST_PAGE_SCHEMA = z.object({
       images: z.array(z.object({ url: z.string() })).nullable().optional(),
       tracks: z.object({ total: z.number() }).nullable().optional(),
       uri: z.string(),
+      owner: z.object({ id: z.string() }),
     }),
   ),
   next: z.string().nullable(),
@@ -160,6 +165,13 @@ export function useSpotifyPlaylists(): PlaylistsState {
     setError(null);
 
     const fetchAll = async () => {
+      // Resolve the current user's Spotify ID to filter owned playlists.
+      const me = await request<{ id: string }>('https://api.spotify.com/v1/me', {
+        signal: ctrl.signal,
+        parse: (payload) => ME_SCHEMA.parse(payload),
+      });
+      const userId = me.id;
+
       const collected: SpotifyPlaylist[] = [];
       let url: string | null = 'https://api.spotify.com/v1/me/playlists?limit=50';
 
@@ -169,6 +181,9 @@ export function useSpotifyPlaylists(): PlaylistsState {
           parse: (payload) => PLAYLIST_PAGE_SCHEMA.parse(payload),
         });
         for (const item of page.items) {
+          // Exclude playlists not owned by the current user (shared, collaborative,
+          // Spotify editorial) — they trigger 403 on /items in Dev Mode.
+          if (item.owner.id !== userId) continue;
           collected.push({
             id: item.id,
             name: item.name,
@@ -249,7 +264,6 @@ export function useSpotifyPlaylists(): PlaylistsState {
 
     fetchAll().catch((err: unknown) => {
       if ((err as Error)?.name === 'AbortError') return;
-      // Feb 2026: 403 = playlist inaccessible (shared/collaborative outside whitelist)
       if (err instanceof SpotifyApiError && err.status === 403) {
         setTracksError((prev) => ({ ...prev, [playlistId]: 'Playlist inaccessible — not available in Dev Mode.' }));
       } else if (err instanceof ZodError) {
