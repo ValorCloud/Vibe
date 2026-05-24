@@ -1,3 +1,5 @@
+import type { SpotifyTokenProvider } from '../../types/spotify';
+
 /**
  * Shared helpers for Spotify Web API REST calls.
  *
@@ -17,19 +19,14 @@
  *     query", etc.) for both users and the dev console.
  */
 
-export interface SpotifyTokenProvider {
-  /** Returns a token, refreshing only if cached `expiresAt` is past the buffer. */
-  getValidToken: () => Promise<string | null>;
-  /** Forces a refresh regardless of cached `expiresAt`. Used after a 401. */
-  forceRefreshToken: () => Promise<string | null>;
-}
-
-export interface SpotifyFetchOptions {
+export interface SpotifyFetchOptions<T = unknown> {
   signal?: AbortSignal;
   /** Defaults to GET. */
   method?: string;
   /** JSON-serializable body for PUT/POST. */
   body?: unknown;
+  /** Optional JSON response parser/validator (e.g., Zod). */
+  parse?: (payload: unknown) => T;
 }
 
 /**
@@ -64,6 +61,20 @@ async function extractErrorMessage(res: Response): Promise<string> {
   return res.statusText || 'request failed';
 }
 
+const forceRefreshInFlight = new WeakMap<SpotifyTokenProvider['forceRefreshToken'], Promise<string | null>>();
+
+function forceRefreshTokenOnce(tokens: SpotifyTokenProvider): Promise<string | null> {
+  const refreshFn = tokens.forceRefreshToken;
+  const existing = forceRefreshInFlight.get(refreshFn);
+  if (existing) return existing;
+  const pending = refreshFn()
+    .finally(() => {
+      forceRefreshInFlight.delete(refreshFn);
+    });
+  forceRefreshInFlight.set(refreshFn, pending);
+  return pending;
+}
+
 /**
  * Performs a Spotify Web API call with one automatic 401 retry after a
  * forced token refresh. Throws `SpotifyApiError` on non-2xx responses.
@@ -71,9 +82,9 @@ async function extractErrorMessage(res: Response): Promise<string> {
 export async function spotifyFetch<T>(
   url: string,
   tokens: SpotifyTokenProvider,
-  options: SpotifyFetchOptions = {},
+  options: SpotifyFetchOptions<T> = {},
 ): Promise<T> {
-  const { signal, method = 'GET', body } = options;
+  const { signal, method = 'GET', body, parse } = options;
 
   const doOne = async (token: string): Promise<Response> => {
     const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
@@ -93,7 +104,7 @@ export async function spotifyFetch<T>(
 
   // 401 → cached token rejected; force a refresh and retry exactly once.
   if (res.status === 401) {
-    const refreshed = await tokens.forceRefreshToken();
+    const refreshed = await forceRefreshTokenOnce(tokens);
     if (!refreshed) {
       const msg = await extractErrorMessage(res);
       throw new SpotifyApiError(401, msg);
@@ -109,5 +120,6 @@ export async function spotifyFetch<T>(
 
   // 204 No Content (e.g. PUT /me/player/play) — caller decides what to do.
   if (res.status === 204) return undefined as unknown as T;
-  return res.json() as Promise<T>;
+  const payload: unknown = await res.json();
+  return parse ? parse(payload) : (payload as T);
 }

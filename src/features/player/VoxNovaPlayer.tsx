@@ -16,6 +16,7 @@ import type { TrackEntry } from './types';
 import { SpotifyPlaylistPanel } from './SpotifyPlaylistPanel';
 import { SpotifySearchPanel } from './SpotifySearchPanel';
 import { getStoredSpotifyVolume, SPOTIFY_VOLUME_STORAGE_KEY } from '../../hooks/useSpotifyEngine';
+import { ErrorBoundary } from '../../components/app/ErrorBoundary';
 
 const LIBRARY_CAPACITY = 50;
 const LCARS_BOX_COLORS = [
@@ -413,7 +414,9 @@ function SpotifySourcePanel() {
               SEARCH
             </button>
           </div>
-          {browserTab === 'playlists' ? <SpotifyPlaylistPanel /> : <SpotifySearchPanel />}
+          <ErrorBoundary label="Spotify browser">
+            {browserTab === 'playlists' ? <SpotifyPlaylistPanel /> : <SpotifySearchPanel />}
+          </ErrorBoundary>
         </div>
       )}
     </div>

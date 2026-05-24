@@ -2,17 +2,14 @@
  * useSpotifyPlaylists
  * Fetches the authenticated user's playlists and, lazily, their tracks.
  *
- * - Uses the accessToken from SpotifyAuthContext (no proxy needed — PKCE public client).
+ * - Uses SpotifyAuthContext tokens via shared spotify API client.
  * - AbortController cancels in-flight requests on unmount / token change.
  * - Playlist tracks are loaded on-demand when a playlist is expanded.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ZodError, z } from 'zod';
 import { useSpotifyAuth } from '../../contexts/SpotifyAuthContext';
-import { spotifyFetch, SpotifyApiError } from './spotifyApi';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { useSpotifyApiClient } from './useSpotifyApiClient';
 
 export interface SpotifyPlaylist {
   id: string;
@@ -45,47 +42,106 @@ export interface PlaylistsState {
   reload: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
 function formatMs(ms: number): string {
   const s = Math.floor(ms / 1000);
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 export { formatMs };
 
-async function apiFetch<T>(
-  url: string,
-  tokens: { getValidToken: () => Promise<string | null>; forceRefreshToken: () => Promise<string | null> },
-  signal: AbortSignal,
-): Promise<T> {
-  return spotifyFetch<T>(url, tokens, { signal });
+const PLAYLIST_PAGE_SCHEMA = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      description: z.string().nullable().optional(),
+      images: z.array(z.object({ url: z.string() })).nullable().optional(),
+      tracks: z.object({ total: z.number() }).nullable().optional(),
+      uri: z.string(),
+    }),
+  ),
+  next: z.string().nullable(),
+});
+
+const TRACK_PAGE_SCHEMA = z.object({
+  next: z.string().nullable(),
+  items: z.array(
+    z.object({
+      track: z
+        .object({
+          id: z.string().nullable(),
+          name: z.string(),
+          uri: z.string().nullable(),
+          duration_ms: z.number(),
+          is_playable: z.boolean().optional(),
+          artists: z.array(z.object({ name: z.string() })),
+          album: z
+            .object({
+              images: z.array(z.object({ url: z.string() })).optional(),
+            })
+            .optional(),
+        })
+        .nullable(),
+    }),
+  ),
+});
+
+type PlaylistPage = z.infer<typeof PLAYLIST_PAGE_SCHEMA>;
+type TrackPage = z.infer<typeof TRACK_PAGE_SCHEMA>;
+
+const PLAYLISTS_CACHE_TTL_MS = 2 * 60_000;
+
+let playlistsCache: { value: SpotifyPlaylist[]; fetchedAt: number } | null = null;
+const tracksCache = new Map<string, SpotifyTrackItem[]>();
+let cacheAccessToken: string | null = null;
+
+function syncCacheScope(accessToken: string | null): void {
+  if (cacheAccessToken === accessToken) return;
+  playlistsCache = null;
+  tracksCache.clear();
+  cacheAccessToken = accessToken;
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 export function useSpotifyPlaylists(): PlaylistsState {
-  const { status, accessToken, getValidToken, forceRefreshToken } = useSpotifyAuth();
+  const { status, accessToken } = useSpotifyAuth();
+  const { request, getErrorMessage } = useSpotifyApiClient();
 
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [tracks, setTracks] = useState<Record<string, SpotifyTrackItem[]>>({});
+  const [tracks, setTracks] = useState<Record<string, SpotifyTrackItem[]>>(
+    () => Object.fromEntries(tracksCache.entries()),
+  );
   const [tracksLoading, setTracksLoading] = useState<Record<string, boolean>>({});
   const [tracksError, setTracksError] = useState<Record<string, string | null>>({});
 
   const abortRef = useRef<AbortController | null>(null);
   const [tick, setTick] = useState(0);
-  const reload = useCallback(() => setTick(t => t + 1), []);
-  const tokens = { getValidToken, forceRefreshToken };
+  const reload = useCallback(() => setTick((t) => t + 1), []);
 
-  // ── Fetch playlist list ────────────────────────────────────────────
   useEffect(() => {
+    syncCacheScope(accessToken);
+    setTracks(Object.fromEntries(tracksCache.entries()));
+    setTracksLoading({});
+    setTracksError({});
+  }, [accessToken]);
+
+  useEffect(() => {
+    syncCacheScope(accessToken);
+
     if (status !== 'authenticated' || !accessToken) {
       setPlaylists([]);
+      setLoading(false);
+      return;
+    }
+
+    const hasFreshCache =
+      tick === 0 &&
+      playlistsCache !== null &&
+      Date.now() - playlistsCache.fetchedAt < PLAYLISTS_CACHE_TTL_MS;
+    if (hasFreshCache && playlistsCache) {
+      setPlaylists(playlistsCache.value);
+      setError(null);
+      setLoading(false);
       return;
     }
 
@@ -101,20 +157,11 @@ export function useSpotifyPlaylists(): PlaylistsState {
       let url: string | null = 'https://api.spotify.com/v1/me/playlists?limit=50';
 
       while (url) {
-        type RawPage = {
-          items: Array<{
-            id: string;
-            name: string;
-            description: string | null;
-            images: Array<{ url: string }> | null;
-            tracks: { total: number } | null;
-            uri: string;
-          }>;
-          next: string | null;
-        };
-        const page: RawPage = await apiFetch<RawPage>(url, tokens, ctrl.signal);
+        const page: PlaylistPage = await request<PlaylistPage>(url, {
+          signal: ctrl.signal,
+          parse: (payload) => PLAYLIST_PAGE_SCHEMA.parse(payload),
+        });
         for (const item of page.items) {
-          if (!item) continue;
           collected.push({
             id: item.id,
             name: item.name,
@@ -127,71 +174,59 @@ export function useSpotifyPlaylists(): PlaylistsState {
         url = page.next;
       }
 
+      playlistsCache = { value: collected, fetchedAt: Date.now() };
       setPlaylists(collected);
       setLoading(false);
     };
 
     fetchAll().catch((err: unknown) => {
       if ((err as Error)?.name === 'AbortError') return;
-      const e = err as Error;
-      const status = err instanceof SpotifyApiError ? err.status : 0;
-      // Persistent 401 after force-refresh means the refresh token is no
-      // longer accepted; reflect that as an actionable error.
-      const message = status === 401
-        ? 'Spotify session expired — please reconnect.'
-        : e?.message ?? 'Failed to load playlists';
-      setError(message);
+      if (err instanceof ZodError) {
+        setError('Spotify returned an unexpected playlists payload.');
+      } else {
+        setError(getErrorMessage(err, 'Failed to load playlists'));
+      }
       setLoading(false);
     });
 
     return () => ctrl.abort();
-  }, [status, accessToken, getValidToken, forceRefreshToken, tick]);
+  }, [status, accessToken, request, getErrorMessage, tick]);
 
-  // ── Fetch tracks for a single playlist (on demand) ─────────────────────
   const fetchTracks = useCallback((playlistId: string) => {
-    if (status !== 'authenticated' || !accessToken || tracks[playlistId] || tracksLoading[playlistId]) return;
+    syncCacheScope(accessToken);
+
+    if (status !== 'authenticated' || !accessToken) return;
+    if (tracks[playlistId]) return;
+    if (tracksLoading[playlistId]) return;
+    const cachedTracks = tracksCache.get(playlistId);
+    if (cachedTracks) {
+      setTracks((prev) => ({ ...prev, [playlistId]: cachedTracks }));
+      return;
+    }
 
     const ctrl = new AbortController();
 
-    setTracksLoading(prev => ({ ...prev, [playlistId]: true }));
-    setTracksError(prev => ({ ...prev, [playlistId]: null }));
+    setTracksLoading((prev) => ({ ...prev, [playlistId]: true }));
+    setTracksError((prev) => ({ ...prev, [playlistId]: null }));
 
     const fetchAll = async () => {
       const collected: SpotifyTrackItem[] = [];
-      // market omitted: the Bearer token scopes availability to the user's account country
-      let url: string | null =
-        `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=50`;
+      let url: string | null = `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=50`;
 
       while (url) {
-        // Per Spotify Web API docs (GET /playlists/{id}/tracks), each
-        // PlaylistTrackObject has a `track` field (TrackObject | EpisodeObject).
-        // There is no `item` field; the previous fallback was a misreading of
-        // the spec. Episodes are filtered out by the `spotify:track:` prefix check.
-        type RawTrackObject = {
-          id: string;
-          name: string;
-          uri: string;
-          duration_ms: number;
-          is_playable?: boolean;
-          artists: Array<{ name: string }>;
-          album: { images: Array<{ url: string }> };
-        } | null;
-
-        type RawTrackPage = {
-          next: string | null;
-          items: Array<{ track: RawTrackObject }>;
-        };
-
-        const page: RawTrackPage = await apiFetch<RawTrackPage>(url, tokens, ctrl.signal);
+        const page: TrackPage = await request<TrackPage>(url, {
+          signal: ctrl.signal,
+          parse: (payload) => TRACK_PAGE_SCHEMA.parse(payload),
+        });
         for (const entry of page.items) {
           const t = entry.track;
-          if (!t || !t.uri || !t.uri.startsWith('spotify:track:')) continue;
+          if (!t?.uri || !t.uri.startsWith('spotify:track:') || !t.id) continue;
           collected.push({
             id: t.id,
             name: t.name,
             uri: t.uri,
             durationMs: t.duration_ms,
-            artists: t.artists.map(a => a.name).join(', '),
+            artists: t.artists.map((a) => a.name).join(', '),
             albumArtUrl: t.album?.images?.[0]?.url ?? null,
             isPlayable: t.is_playable !== false,
           });
@@ -199,21 +234,21 @@ export function useSpotifyPlaylists(): PlaylistsState {
         url = page.next;
       }
 
-      setTracks(prev => ({ ...prev, [playlistId]: collected }));
-      setTracksLoading(prev => ({ ...prev, [playlistId]: false }));
+      tracksCache.set(playlistId, collected);
+      setTracks((prev) => ({ ...prev, [playlistId]: collected }));
+      setTracksLoading((prev) => ({ ...prev, [playlistId]: false }));
     };
 
     fetchAll().catch((err: unknown) => {
       if ((err as Error)?.name === 'AbortError') return;
-      const e = err as Error;
-      const status = err instanceof SpotifyApiError ? err.status : 0;
-      const message = status === 401
-        ? 'Spotify session expired — please reconnect.'
-        : e?.message ?? 'Failed to load tracks';
-      setTracksError(prev => ({ ...prev, [playlistId]: message }));
-      setTracksLoading(prev => ({ ...prev, [playlistId]: false }));
+      if (err instanceof ZodError) {
+        setTracksError((prev) => ({ ...prev, [playlistId]: 'Spotify returned an unexpected tracks payload.' }));
+      } else {
+        setTracksError((prev) => ({ ...prev, [playlistId]: getErrorMessage(err, 'Failed to load tracks') }));
+      }
+      setTracksLoading((prev) => ({ ...prev, [playlistId]: false }));
     });
-  }, [status, accessToken, getValidToken, forceRefreshToken, tracks, tracksLoading]);
+  }, [status, accessToken, tracksLoading, tracks, request, getErrorMessage]);
 
   return { playlists, loading, error, tracks, tracksLoading, tracksError, fetchTracks, reload };
 }

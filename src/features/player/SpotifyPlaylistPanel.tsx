@@ -4,7 +4,7 @@
  * Expanding a row loads and shows its tracks; clicking a track plays it
  * via context_uri so Spotify handles shuffle / repeat / radio natively.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useSpotifyPlaylists, formatMs } from './useSpotifyPlaylists';
 import { useSpotifyEngine_ } from '../../contexts/SpotifyEngineContext';
 import { LCARS } from './lcarsTheme';
@@ -92,21 +92,40 @@ function TrackRow({ uri, name, artists, durationMs, albumArtUrl, isPlayable, isA
 // ── Playlist row (accordion header) ──────────────────────────────────────────
 
 interface PlaylistRowProps {
-  id: string;
   name: string;
   imageUrl: string | null;
   totalTracks: number;
+  index: number;
   isOpen: boolean;
+  headerId: string;
+  panelId: string;
   onToggle: () => void;
+  onKeyDown: (event: KeyboardEvent<HTMLButtonElement>, index: number) => void;
+  registerButton: (index: number, element: HTMLButtonElement | null) => void;
 }
 
-function PlaylistRow({ id, name, imageUrl, totalTracks, isOpen, onToggle }: PlaylistRowProps) {
+function PlaylistRow({
+  name,
+  imageUrl,
+  totalTracks,
+  index,
+  isOpen,
+  headerId,
+  panelId,
+  onToggle,
+  onKeyDown,
+  registerButton,
+}: PlaylistRowProps) {
   const [hovered, setHovered] = useState(false);
-  void id;
+
   return (
     <button
+      id={headerId}
       onClick={onToggle}
+      onKeyDown={(event) => onKeyDown(event, index)}
+      ref={(element) => registerButton(index, element)}
       aria-expanded={isOpen}
+      aria-controls={panelId}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
@@ -156,6 +175,11 @@ export function SpotifyPlaylistPanel() {
     useSpotifyPlaylists();
   const { controls, playbackState } = useSpotifyEngine_();
   const [openId, setOpenId] = useState<string | null>(null);
+  const headerButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
+  useEffect(() => {
+    headerButtonRefs.current = headerButtonRefs.current.slice(0, playlists.length);
+  }, [playlists.length]);
 
   const currentUri = playbackState?.track_window?.current_track?.uri ?? null;
 
@@ -177,6 +201,39 @@ export function SpotifyPlaylistPanel() {
       contextUri: `spotify:playlist:${playlist.id}`,
       offsetUri: trackUri,
     });
+  };
+
+  const registerButton = (index: number, element: HTMLButtonElement | null) => {
+    headerButtonRefs.current[index] = element;
+  };
+
+  const focusHeaderAt = (index: number) => {
+    const target = headerButtonRefs.current[index];
+    if (target) target.focus();
+  };
+
+  const handleHeaderKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    if (playlists.length === 0) return;
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        focusHeaderAt((index + 1) % playlists.length);
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        focusHeaderAt((index - 1 + playlists.length) % playlists.length);
+        break;
+      case 'Home':
+        event.preventDefault();
+        focusHeaderAt(0);
+        break;
+      case 'End':
+        event.preventDefault();
+        focusHeaderAt(playlists.length - 1);
+        break;
+      default:
+        break;
+    }
   };
 
   return (
@@ -244,62 +301,75 @@ export function SpotifyPlaylistPanel() {
 
         {!loading && !error && playlists.length > 0 && (
           <div style={{ maxHeight: 420, overflowY: 'auto' }} role="list">
-            {playlists.map(pl => (
-              <div key={pl.id} role="listitem">
-                <PlaylistRow
-                  id={pl.id}
-                  name={pl.name}
-                  imageUrl={pl.imageUrl}
-                  totalTracks={pl.totalTracks}
-                  isOpen={openId === pl.id}
-                  onToggle={() => handleToggle(pl.id)}
-                />
+            {playlists.map((pl, index) => {
+              const headerId = `spotify-playlist-header-${pl.id}`;
+              const panelId = `spotify-playlist-panel-${pl.id}`;
+              return (
+                <div key={pl.id} role="listitem">
+                  <PlaylistRow
+                    name={pl.name}
+                    imageUrl={pl.imageUrl}
+                    totalTracks={pl.totalTracks}
+                    index={index}
+                    isOpen={openId === pl.id}
+                    headerId={headerId}
+                    panelId={panelId}
+                    onToggle={() => handleToggle(pl.id)}
+                    onKeyDown={handleHeaderKeyDown}
+                    registerButton={registerButton}
+                  />
 
-                {openId === pl.id && (
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '4px 4px 4px 8px' }}>
-                    {tracksLoading[pl.id] && (
-                      <div style={{ padding: '8px 4px', display: 'flex', flexDirection: 'column', gap: 7 }}>
-                        {[65, 80, 50, 70].map((w, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 2, background: 'rgba(255,255,255,0.05)', flexShrink: 0 }} aria-hidden="true" />
-                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                              <SkeletonRow width={`${w}%`} />
-                              <SkeletonRow width="35%" />
+                  {openId === pl.id && (
+                    <div
+                      id={panelId}
+                      role="region"
+                      aria-labelledby={headerId}
+                      style={{ background: 'rgba(0,0,0,0.2)', padding: '4px 4px 4px 8px' }}
+                    >
+                      {tracksLoading[pl.id] && (
+                        <div style={{ padding: '8px 4px', display: 'flex', flexDirection: 'column', gap: 7 }}>
+                          {[65, 80, 50, 70].map((w, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <div style={{ width: 28, height: 28, borderRadius: 2, background: 'rgba(255,255,255,0.05)', flexShrink: 0 }} aria-hidden="true" />
+                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                                <SkeletonRow width={`${w}%`} />
+                                <SkeletonRow width="35%" />
+                              </div>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
 
-                    {tracksError[pl.id] && (
-                      <div role="alert" style={{ padding: '6px 8px', color: LCARS.alertRed, fontSize: 10, fontFamily: 'monospace' }}>
-                        ⚠ {tracksError[pl.id]}
-                      </div>
-                    )}
+                      {tracksError[pl.id] && (
+                        <div role="alert" style={{ padding: '6px 8px', color: LCARS.alertRed, fontSize: 10, fontFamily: 'monospace' }}>
+                          ⚠ {tracksError[pl.id]}
+                        </div>
+                      )}
 
-                    {!tracksLoading[pl.id] && !tracksError[pl.id] && tracks[pl.id]?.length === 0 && (
-                      <div style={{ padding: '8px', color: LCARS.subText, fontSize: 10, letterSpacing: 1 }}>
-                        This playlist is empty.
-                      </div>
-                    )}
+                      {!tracksLoading[pl.id] && !tracksError[pl.id] && tracks[pl.id]?.length === 0 && (
+                        <div style={{ padding: '8px', color: LCARS.subText, fontSize: 10, letterSpacing: 1 }}>
+                          This playlist is empty.
+                        </div>
+                      )}
 
-                    {!tracksLoading[pl.id] && tracks[pl.id]?.map(track => (
-                      <TrackRow
-                        key={track.id}
-                        uri={track.uri}
-                        name={track.name}
-                        artists={track.artists}
-                        durationMs={track.durationMs}
-                        albumArtUrl={track.albumArtUrl}
-                        isPlayable={track.isPlayable}
-                        isActive={track.uri === currentUri}
-                        onPlay={handlePlay}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+                      {!tracksLoading[pl.id] && tracks[pl.id]?.map(track => (
+                        <TrackRow
+                          key={track.id}
+                          uri={track.uri}
+                          name={track.name}
+                          artists={track.artists}
+                          durationMs={track.durationMs}
+                          albumArtUrl={track.albumArtUrl}
+                          isPlayable={track.isPlayable}
+                          isActive={track.uri === currentUri}
+                          onPlay={handlePlay}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
