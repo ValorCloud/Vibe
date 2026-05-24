@@ -24,6 +24,11 @@ export interface SpotifyAuthState {
   error: string | null;
 }
 
+export interface SpotifyTokenProvider {
+  getValidToken: () => Promise<string | null>;
+  forceRefreshToken: () => Promise<string | null>;
+}
+
 // ---------------------------------------------------------------------------
 // Web Playback SDK — Player lifecycle
 // ---------------------------------------------------------------------------

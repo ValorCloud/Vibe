@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
+import { ZodError, z } from 'zod';
 import { useSpotifyAuth } from '../../contexts/SpotifyAuthContext';
-import { spotifyFetch, SpotifyApiError } from './spotifyApi';
+import { useSpotifyApiClient } from './useSpotifyApiClient';
 
 export interface SpotifySearchTrack {
   id: string;
@@ -33,21 +34,25 @@ function sanitizeQuery(q: string): string {
   return q.replace(/[\/\\\":?#\[\]@]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-interface SpotifySearchResponse {
-  tracks?: {
-    items?: Array<{
-      id: string;
-      uri: string;
-      name: string;
-      duration_ms: number;
-      artists: Array<{ name: string }>;
-      album: { name: string; images?: Array<{ url: string }> };
-    }>;
-  };
-}
+const SpotifySearchResponseSchema = z.object({
+  tracks: z.object({
+    items: z.array(z.object({
+      id: z.string(),
+      uri: z.string(),
+      name: z.string(),
+      duration_ms: z.number(),
+      artists: z.array(z.object({ name: z.string() })),
+      album: z.object({
+        name: z.string(),
+        images: z.array(z.object({ url: z.string() })).optional(),
+      }),
+    })).optional(),
+  }).optional(),
+});
 
 export function useSpotifySearch(): SpotifySearchState {
-  const { status, getValidToken, forceRefreshToken } = useSpotifyAuth();
+  const { status } = useSpotifyAuth();
+  const { request, getErrorMessage } = useSpotifyApiClient();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,9 +79,9 @@ export function useSpotifySearch(): SpotifySearchState {
       // Market omitted — the Bearer token scopes availability to the
       // user's account country natively.
       const endpoint = `https://api.spotify.com/v1/search?q=${encodeURIComponent(term)}&type=track&limit=25`;
-      const data = await spotifyFetch<SpotifySearchResponse>(
+      const data = await request(
         endpoint,
-        { getValidToken, forceRefreshToken },
+        { parse: (payload) => SpotifySearchResponseSchema.parse(payload) },
       );
       setResults((data.tracks?.items ?? []).map(item => ({
         id: item.id,
@@ -87,22 +92,17 @@ export function useSpotifySearch(): SpotifySearchState {
         albumName: item.album.name,
         albumArtUrl: item.album.images?.[0]?.url ?? null,
       })));
-    } catch (err) {
-      const e = err as Error;
-      if (err instanceof SpotifyApiError) {
-        if (err.status === 401) {
-          setError('Spotify session expired — please reconnect.');
-        } else {
-          setError(`Spotify search failed (${err.status}): ${e.message}`);
-        }
+    } catch (err: unknown) {
+      if (err instanceof ZodError) {
+        setError('Spotify returned an unexpected search payload.');
       } else {
-        setError(e.message ?? 'Failed to search Spotify tracks');
+        setError(getErrorMessage(err, 'Failed to search Spotify tracks'));
       }
       setResults([]);
     } finally {
       setSearching(false);
     }
-  }, [getValidToken, forceRefreshToken, query, status]);
+  }, [getErrorMessage, query, request, status]);
 
   return { query, setQuery, searching, error, results, search };
 }
