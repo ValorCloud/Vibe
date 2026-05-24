@@ -85,6 +85,9 @@ const TRACK_PAGE_SCHEMA = z.object({
   ),
 });
 
+type PlaylistPage = z.infer<typeof PLAYLIST_PAGE_SCHEMA>;
+type TrackPage = z.infer<typeof TRACK_PAGE_SCHEMA>;
+
 const PLAYLIST_CACHE_TTL_MS = 2 * 60_000;
 
 let playlistsCache: { value: SpotifyPlaylist[]; fetchedAt: number } | null = null;
@@ -137,7 +140,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
       let url: string | null = 'https://api.spotify.com/v1/me/playlists?limit=50';
 
       while (url) {
-        const page = await request(url, {
+        const page: PlaylistPage = await request<PlaylistPage>(url, {
           signal: ctrl.signal,
           parse: (payload) => PLAYLIST_PAGE_SCHEMA.parse(payload),
         });
@@ -192,7 +195,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
       let url: string | null = `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/tracks?limit=50`;
 
       while (url) {
-        const page = await request(url, {
+        const page: TrackPage = await request<TrackPage>(url, {
           signal: ctrl.signal,
           parse: (payload) => TRACK_PAGE_SCHEMA.parse(payload),
         });
