@@ -1,3 +1,4 @@
+import type { CloudProviderId } from '../../utils/cloudProviders';
 export type TrackSource = 'cloud' | 'local' | 'lyria' | 'spotify';
 
 export interface TrackEntry {
@@ -19,6 +20,8 @@ export interface TrackEntry {
   oneDriveSize?: number;
   /** Known media duration in seconds, populated after metadata loads */
   durationSeconds?: number;
+  /** Cloud provider used for source === 'cloud' links */
+  cloudProvider?: CloudProviderId;
   /** Spotify URI — present only for source === 'spotify' */
   spotifyUri?: string;
   /** Spotify track ID — present only for source === 'spotify' */

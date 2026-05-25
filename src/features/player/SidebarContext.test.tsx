@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { SidebarProvider, useSidebarContext } from './SidebarContext';
 import { LibraryProvider } from '../../contexts/LibraryContext';
+import { useLibraryContext } from '../../contexts/LibraryContext';
 
 function wrap(onLocalTracksAdded?: () => void) {
   return function Wrapper({ children }: { children: ReactNode }) {
@@ -25,6 +26,9 @@ describe('SidebarContext', () => {
     const { result } = renderHook(() => useSidebarContext(), { wrapper: wrap() });
     expect(result.current.scanProtocol).toEqual(['wav']);
     expect(result.current.scanPattern).toBe('');
+    expect(result.current.cloudProvider).toBe('onedrive');
+    expect(result.current.cloudUrl).toBe('');
+    expect(result.current.cloudError).toBeNull();
     expect(typeof result.current.buildAccept).toBe('function');
   });
 
@@ -99,5 +103,41 @@ describe('SidebarContext', () => {
     } as unknown as React.ChangeEvent<HTMLInputElement>;
     act(() => result.current.handleUplinkFiles(event));
     expect(onLocalTracksAdded).not.toHaveBeenCalled();
+  });
+
+  it('adds a cloud track from a provider URL and clears the input', () => {
+    const { result } = renderHook(() => {
+      const sidebar = useSidebarContext();
+      const library = useLibraryContext();
+      return { sidebar, library };
+    }, { wrapper: wrap() });
+    act(() => {
+      result.current.sidebar.setCloudProvider('dropbox');
+      result.current.sidebar.setCloudUrl('https://www.dropbox.com/s/abcd1234/song.mp3?dl=0');
+    });
+    act(() => {
+      result.current.sidebar.handleCloudTrackLink();
+    });
+    expect(result.current.sidebar.cloudError).toBeNull();
+    expect(result.current.sidebar.cloudUrl).toBe('');
+    expect(result.current.library.tracks).toHaveLength(1);
+    expect(result.current.library.tracks[0]).toMatchObject({
+      source: 'cloud',
+      cloudProvider: 'dropbox',
+      linked: true,
+      isVideo: false,
+    });
+    expect(result.current.library.tracks[0]?.url).toContain('dl=1');
+  });
+
+  it('surfaces a validation error for invalid cloud URL input', () => {
+    const { result } = renderHook(() => useSidebarContext(), { wrapper: wrap() });
+    act(() => {
+      result.current.setCloudUrl('not a url');
+    });
+    act(() => {
+      result.current.handleCloudTrackLink();
+    });
+    expect(result.current.cloudError).toMatch(/invalid/i);
   });
 });

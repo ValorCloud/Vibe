@@ -87,10 +87,13 @@ function formatDate(value?: string): string | null {
 }
 
 function OneDriveMetaLine({ track }: { track: TrackEntry }) {
+  const providerLabel = track.cloudProvider
+    ? track.cloudProvider.replace(/-/g, ' ').toUpperCase()
+    : track.source.toUpperCase();
   const items: Array<{ label: string; value: string; color: string }> = [];
   items.push({
     label: 'SOURCE',
-    value: track.source.toUpperCase(),
+    value: providerLabel,
     color: track.source === 'local' ? LCARS.orange : track.source === 'lyria' ? '#00c8a0' : LCARS.purple,
   });
   const modified = formatDate(track.oneDriveLastModified);

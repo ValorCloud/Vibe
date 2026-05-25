@@ -1,6 +1,6 @@
 import { LCARS } from './lcarsTheme';
 import { GlobeIcon, DatabaseIcon, SparkleIcon, TrashIcon, UploadIcon } from './PlayerWidgets';
-import { SCAN_PROTOCOLS, useSidebarContext } from './SidebarContext';
+import { CLOUD_PROVIDER_OPTIONS, SCAN_PROTOCOLS, useSidebarContext } from './SidebarContext';
 import type { TrackEntry, ScanProtocol } from './types';
 
 const LCARS_BOX_COLORS = [
@@ -85,6 +85,7 @@ export function PlayerSidebar({
   const {
     scanProtocol, setScanProtocol, scanPattern, setScanPattern,
     uploadInputRef, folderInputRef, buildAccept, handleUplinkFiles, handleScanFolder,
+    cloudProvider, setCloudProvider, cloudUrl, setCloudUrl, cloudError, handleCloudTrackLink,
   } = useSidebarContext();
   const visibleTracks = tracks.filter(t => t.source === view);
   const allProtocolsSelected = scanProtocol.length === SCAN_PROTOCOLS.length;
@@ -183,6 +184,83 @@ export function PlayerSidebar({
           </button>
         );})}
       </div>
+
+      {view === 'cloud' && (
+        <div
+          style={{
+            border: `1px solid ${LCARS.purple}55`,
+            borderRadius: 4,
+            padding: '10px',
+            background: 'rgba(156,140,255,0.08)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}
+        >
+          <div style={{ color: LCARS.purple, fontSize: 9, letterSpacing: 2.5, fontWeight: 700 }}>CLOUD LINK</div>
+          <select
+            value={cloudProvider}
+            onChange={e => setCloudProvider(e.target.value as typeof cloudProvider)}
+            aria-label="Cloud provider"
+            style={{
+              width: '100%',
+              background: 'rgba(0,0,0,0.45)',
+              border: `1px solid ${LCARS.purple}55`,
+              color: LCARS.text,
+              borderRadius: 3,
+              fontSize: 11,
+              padding: '6px 8px',
+              fontFamily: 'inherit',
+            }}
+          >
+            {CLOUD_PROVIDER_OPTIONS.map(option => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <input
+            value={cloudUrl}
+            onChange={e => setCloudUrl(e.target.value)}
+            placeholder="https://..."
+            aria-label="Cloud file URL"
+            style={{
+              width: '100%',
+              background: 'rgba(0,0,0,0.5)',
+              border: `1px solid ${LCARS.purple}55`,
+              borderRadius: 3,
+              color: LCARS.text,
+              fontFamily: 'monospace',
+              fontSize: 11,
+              padding: '6px 8px',
+              boxSizing: 'border-box',
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleCloudTrackLink}
+            style={{
+              border: `1px solid ${LCARS.purple}`,
+              borderRadius: 3,
+              background: `${LCARS.purple}22`,
+              color: LCARS.purple,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 2,
+              padding: '6px 8px',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            LINK CLOUD
+          </button>
+          {cloudError && (
+            <div role="alert" style={{ color: LCARS.alertRed, fontSize: 10, letterSpacing: 1 }}>
+              {cloudError}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* UPLINK button */}
       <button

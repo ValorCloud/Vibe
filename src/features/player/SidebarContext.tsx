@@ -1,6 +1,14 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useLibraryContext } from '../../contexts/LibraryContext';
 import { SCAN_PROTOCOLS, type ScanConfig, type ScanProtocol, type TrackEntry } from './types';
+import {
+  CLOUD_PROVIDER_OPTIONS,
+  cloudTrackTitle,
+  detectCloudProvider,
+  isCloudVideoUrl,
+  normalizeCloudUrl,
+  type CloudProviderId,
+} from '../../utils/cloudProviders';
 
 const VIDEO_EXT = /\.(mp4|webm|mov|mkv|avi|m4v)$/i;
 const PROTOCOL_ACCEPT: Record<ScanProtocol, string[]> = {
@@ -63,6 +71,12 @@ export interface SidebarContextValue {
   buildAccept: (p: ScanConfig['accept']) => string;
   handleUplinkFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleScanFolder: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  cloudProvider: CloudProviderId;
+  setCloudProvider: (provider: CloudProviderId) => void;
+  cloudUrl: string;
+  setCloudUrl: (url: string) => void;
+  cloudError: string | null;
+  handleCloudTrackLink: () => void;
 }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null);
@@ -85,6 +99,9 @@ export function SidebarProvider({ onLocalTracksAdded, children }: SidebarProvide
   const [scanPattern, setScanPattern] = useState('');
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const [cloudProvider, setCloudProvider] = useState<CloudProviderId>('onedrive');
+  const [cloudUrl, setCloudUrl] = useState('');
+  const [cloudError, setCloudError] = useState<string | null>(null);
 
   const handleUplinkFiles = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = filterFiles(
@@ -132,6 +149,42 @@ export function SidebarProvider({ onLocalTracksAdded, children }: SidebarProvide
     if (folderInputRef.current) folderInputRef.current.value = '';
   }, [library, scanProtocol, scanPattern, onLocalTracksAdded]);
 
+  const handleCloudTrackLink = useCallback(() => {
+    const requestedUrl = cloudUrl.trim();
+    if (!requestedUrl) {
+      setCloudError('Please enter a cloud file URL.');
+      return;
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(requestedUrl);
+      if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+        setCloudError('Cloud URL must start with http:// or https://');
+        return;
+      }
+    } catch {
+      setCloudError('Cloud URL is invalid.');
+      return;
+    }
+    const normalizedProvider = cloudProvider === 'direct-url'
+      ? detectCloudProvider(requestedUrl)
+      : cloudProvider;
+    const normalizedUrl = normalizeCloudUrl(requestedUrl, normalizedProvider);
+    const title = cloudTrackTitle(normalizedUrl);
+    library.addTracks([{
+      title,
+      source: 'cloud',
+      url: normalizedUrl,
+      memo: `[CLOUD] ${normalizedProvider.toUpperCase()} | Linked: ${parsed.hostname}`,
+      linked: true,
+      isVideo: isCloudVideoUrl(normalizedUrl),
+      cloudProvider: normalizedProvider,
+      oneDriveLastModified: new Date().toISOString(),
+    }]);
+    setCloudError(null);
+    setCloudUrl('');
+  }, [cloudProvider, cloudUrl, library]);
+
   const value = useMemo<SidebarContextValue>(() => ({
     scanProtocol,
     setScanProtocol,
@@ -142,7 +195,22 @@ export function SidebarProvider({ onLocalTracksAdded, children }: SidebarProvide
     buildAccept,
     handleUplinkFiles,
     handleScanFolder,
-  }), [scanProtocol, scanPattern, handleUplinkFiles, handleScanFolder]);
+    cloudProvider,
+    setCloudProvider,
+    cloudUrl,
+    setCloudUrl,
+    cloudError,
+    handleCloudTrackLink,
+  }), [
+    scanProtocol,
+    scanPattern,
+    handleUplinkFiles,
+    handleScanFolder,
+    cloudProvider,
+    cloudUrl,
+    cloudError,
+    handleCloudTrackLink,
+  ]);
 
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }
@@ -154,3 +222,4 @@ export function useSidebarContext(): SidebarContextValue {
 }
 
 export { buildAccept, filterFiles, SCAN_PROTOCOLS };
+export { CLOUD_PROVIDER_OPTIONS };
