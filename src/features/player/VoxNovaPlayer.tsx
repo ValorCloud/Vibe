@@ -8,7 +8,7 @@ import { useAudioEngine } from './useAudioEngine';
 import { useFrequencyAnalyser } from './useFrequencyAnalyser';
 import { useLibraryContext } from '../../contexts/LibraryContext';
 import { usePlayerNavigation } from './usePlayerNavigation';
-import { useSpotifyAuth } from '../../contexts/SpotifyAuthContext';
+import { useSpotifyAuthActions, useSpotifyAuthState } from '../../contexts/SpotifyAuthContext';
 import { useSpotifyEngine_ } from '../../contexts/SpotifyEngineContext';
 import { LCARS } from './lcarsTheme';
 import type { TrackInfo } from './useAudioEngine';
@@ -205,7 +205,8 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
 // ---------------------------------------------------------------------------
 
 function SpotifySourcePanel() {
-  const { status, login, logout, error } = useSpotifyAuth();
+  const { status, error } = useSpotifyAuthState();
+  const { login, logout } = useSpotifyAuthActions();
   const { playerState, playbackState, controls } = useSpotifyEngine_();
   const setSpotifyVolume = controls.setVolume;
   const [volume, setVolume] = useState<number>(() => getStoredSpotifyVolume());
@@ -483,7 +484,7 @@ export function VoxNovaPlayer() {
   const [audioSource, setAudioSource] = useState<AudioSource>('local');
 
   // Auto-switch to Spotify source when the user authenticates
-  const { status: spotifyStatus } = useSpotifyAuth();
+  const { status: spotifyStatus } = useSpotifyAuthState();
   const prevSpotifyStatus = useRef(spotifyStatus);
   useEffect(() => {
     if (prevSpotifyStatus.current !== 'authenticated' && spotifyStatus === 'authenticated') {

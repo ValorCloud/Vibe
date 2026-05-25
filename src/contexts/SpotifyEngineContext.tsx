@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import { useSpotifyEngine } from '../hooks/useSpotifyEngine';
-import { useSpotifyAuth } from './SpotifyAuthContext';
+import { useSpotifyAuthActions, useSpotifyAuthState } from './SpotifyAuthContext';
 import type { UseSpotifyEngineResult } from '../hooks/useSpotifyEngine';
 
 // ---------------------------------------------------------------------------
@@ -10,7 +10,8 @@ import type { UseSpotifyEngineResult } from '../hooks/useSpotifyEngine';
 const SpotifyEngineContext = createContext<UseSpotifyEngineResult | null>(null);
 
 export function SpotifyEngineProvider({ children }: { children: React.ReactNode }) {
-  const { accessToken, getValidToken } = useSpotifyAuth();
+  const { accessToken } = useSpotifyAuthState();
+  const { getValidToken } = useSpotifyAuthActions();
   const engine = useSpotifyEngine({ accessToken, getValidToken });
 
   return (
