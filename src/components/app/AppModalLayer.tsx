@@ -20,6 +20,7 @@ import { useSessionActions } from '../../hooks/useSessionActions';
 import { useSongEditor } from '../../hooks/useSongEditor';
 import { useTopicMoodSuggester } from '../../hooks/useTopicMoodSuggester';
 import { useTranslation } from '../../i18n';
+import type { CloudFile } from '../../services/cloudStorage';
 
 const AppModals = lazy(() =>
   import('./AppModals').then(m => ({ default: m.AppModals }))
@@ -106,6 +107,12 @@ export function AppModalLayer() {
     onComplete: () => setIsLeftPanelOpen(false),
   });
 
+  // Cloud storage : câblage direct sur loadFileForAnalysis
+  const handleCloudFileLoaded = useCallback((file: CloudFile) => {
+    setIsLeftPanelOpen(false);
+    loadFileForAnalysis(new File([file.content], file.name, { type: 'text/plain' }));
+  }, [loadFileForAnalysis, setIsLeftPanelOpen]);
+
   // Fold the left panel when the user confirms paste-analyze.
   const handleAnalyzePastedLyrics = useCallback(() => {
     setIsLeftPanelOpen(false);
@@ -160,6 +167,7 @@ export function AppModalLayer() {
           showTranslationFeatures={showTranslationFeatures} setShowTranslationFeatures={setShowTranslationFeatures}
           handleImportChooseFile={handleImportChooseFile}
           handleImportInputChange={handleImportInputChange}
+          onCloudFileLoaded={handleCloudFileLoaded}
           exportSong={exportSong}
           getShareUrl={getShareUrl}
           pastedText={pastedText} setPastedText={setPastedText}

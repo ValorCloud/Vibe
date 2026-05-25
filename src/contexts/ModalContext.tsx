@@ -13,7 +13,7 @@ export type ModalName =
   | 'about' | 'settings' | 'apiError' | 'export'
   | 'sectionDropdown' | 'similarity' | 'saveToLibrary'
   | 'versions' | 'reset' | 'keyboardShortcuts' | 'confirm' | 'prompt' | 'paste' | 'analysis'
-  | 'searchReplace';
+  | 'searchReplace' | 'cloudStorage';
 
 // ── Dispatch context (stable — never triggers re-renders on state changes) ────
 export interface ModalDispatchContextValue {
@@ -55,6 +55,7 @@ export function ModalProvider({ children, uiState }: ModalProviderProps) {
       case 'paste':           uiState.setIsPasteModalOpen(true); break;
       case 'analysis':        uiState.setIsAnalysisModalOpen(true); break;
       case 'searchReplace':   uiState.setIsSearchReplaceOpen(true); break;
+      case 'cloudStorage':    uiState.setIsCloudStoragePickerOpen(true); break;
       case 'apiError': {
         const msg = typeof payload === 'string' ? payload : '';
         uiState.setApiErrorModal({ open: true, message: msg });
@@ -87,6 +88,7 @@ export function ModalProvider({ children, uiState }: ModalProviderProps) {
       case 'paste':           uiState.setIsPasteModalOpen(false); break;
       case 'analysis':        uiState.setIsAnalysisModalOpen(false); break;
       case 'searchReplace':   uiState.setIsSearchReplaceOpen(false); break;
+      case 'cloudStorage':    uiState.setIsCloudStoragePickerOpen(false); break;
       case 'apiError':        uiState.setApiErrorModal({ open: false, message: '' }); break;
       case 'confirm':         uiState.setConfirmModal(null); break;
       case 'prompt':          uiState.setPromptModal(null); break;

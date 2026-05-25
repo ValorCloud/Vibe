@@ -18,6 +18,7 @@ export interface UIStateSlice {
   setIsAnalysisModalOpen: (v: boolean) => void;
   setIsSearchReplaceOpen: (v: boolean) => void;
   setIsAnalysisPanelOpen: (v: boolean) => void;
+  setIsCloudStoragePickerOpen: (v: boolean) => void;
   isAboutOpen: boolean;
   isSettingsOpen: boolean;
   apiErrorModal: { open: boolean; message: string };
@@ -34,6 +35,7 @@ export interface UIStateSlice {
   isAnalysisModalOpen: boolean;
   isSearchReplaceOpen: boolean;
   isAnalysisPanelOpen: boolean;
+  isCloudStoragePickerOpen: boolean;
   activeTab: AppTab;
   setActiveTab: (v: AppTab) => void;
   isStructureOpen: boolean;

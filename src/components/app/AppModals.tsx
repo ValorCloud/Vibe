@@ -13,6 +13,7 @@ import { ApiErrorModal } from './modals/ApiErrorModal';
 import { ConfirmModal } from './modals/ConfirmModal';
 import { PromptModal } from './modals/PromptModal';
 import { SearchReplaceModal } from './modals/SearchReplaceModal';
+import { CloudStoragePickerModal } from './modals/CloudStoragePickerModal';
 import { ErrorBoundary } from './ErrorBoundary';
 import { useModalDispatch, useModalState } from '../../contexts/ModalContext';
 import type { LibraryAsset } from '../../utils/libraryUtils';
@@ -21,6 +22,7 @@ import type { SongVersion } from '../../types';
 import type { WebSimilarityIndex } from '../../types/webSimilarity';
 import type { ExportFormat } from '../../utils/exportUtils';
 import type { VersionSnapshot } from '../../utils/songDefaults';
+import type { CloudFile } from '../../services/cloudStorage';
 import { useTranslation } from '../../i18n';
 
 /**
@@ -43,6 +45,9 @@ interface Props {
   // Import (file input only — no dialog)
   handleImportChooseFile: () => void;
   handleImportInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+
+  // Cloud storage
+  onCloudFileLoaded: (file: CloudFile) => void;
 
   // Export
   exportSong: (format: ExportFormat) => Promise<void>;
@@ -111,6 +116,7 @@ export const AppModals = React.memo(function AppModals({
   theme, setTheme, audioFeedback, setAudioFeedback, uiScale, setUiScale, defaultEditMode, setDefaultEditMode,
   showTranslationFeatures, setShowTranslationFeatures,
   handleImportChooseFile, handleImportInputChange,
+  onCloudFileLoaded,
   exportSong, getShareUrl,
   pastedText, setPastedText, isAnalyzing, isAnalyzingTheme, importProgress, analyzePastedLyrics,
   analysisReport, analysisSteps,
@@ -227,6 +233,11 @@ export const AppModals = React.memo(function AppModals({
       <SearchReplaceModal
         isOpen={ui.isSearchReplaceOpen}
         onClose={() => closeModal('searchReplace')}
+      />
+      <CloudStoragePickerModal
+        isOpen={ui.isCloudStoragePickerOpen}
+        onClose={() => closeModal('cloudStorage')}
+        onFileLoaded={onCloudFileLoaded}
       />
       <ApiErrorModal
         isOpen={ui.apiErrorModal.open} onClose={() => closeModal('apiError')}
