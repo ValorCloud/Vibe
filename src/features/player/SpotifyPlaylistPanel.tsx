@@ -171,7 +171,7 @@ function PlaylistRow({
 // ── Main panel ────────────────────────────────────────────────────────────────
 
 export function SpotifyPlaylistPanel() {
-  const { playlists, loading, error, tracks, tracksLoading, tracksError, fetchTracks, reload } =
+  const { playlists, loading, error, tracks, tracksLoading, tracksError, tracksSkipped, fetchTracks, reload } =
     useSpotifyPlaylists();
   const { controls, playbackState } = useSpotifyEngine_();
   const [openId, setOpenId] = useState<string | null>(null);
@@ -189,8 +189,6 @@ export function SpotifyPlaylistPanel() {
     fetchTracks(id);
   };
 
-  /** Play a track in the context of the currently open playlist.
-   *  This lets Spotify handle shuffle, repeat and radio natively. */
   const handlePlay = (trackUri: string) => {
     const playlist = playlists.find(pl => pl.id === openId);
     if (!playlist) {
@@ -348,7 +346,9 @@ export function SpotifyPlaylistPanel() {
 
                       {!tracksLoading[pl.id] && !tracksError[pl.id] && tracks[pl.id]?.length === 0 && (
                         <div style={{ padding: '8px', color: LCARS.subText, fontSize: 10, letterSpacing: 1 }}>
-                          This playlist is empty.
+                          {(tracksSkipped[pl.id] ?? 0) > 0
+                            ? `${tracksSkipped[pl.id]} item(s) non-playables (podcasts / fichiers locaux).`
+                            : 'This playlist is empty.'}
                         </div>
                       )}
 

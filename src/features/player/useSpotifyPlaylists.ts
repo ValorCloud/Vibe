@@ -2,13 +2,10 @@
  * useSpotifyPlaylists
  * Fetches the authenticated user's playlists and, lazily, their tracks.
  *
- * May 2026 (v1.31.0.61):
- *   - tracksCache: only cache non-empty results. An empty collected[] from a
- *     first fetch (all items were episodes/local files, all skipped) was being
- *     stored and then served as a permanent cache hit, making every subsequent
- *     tap return [] instead of re-fetching.
- *   - tracksRef guard: check length > 0 so a state entry of [] does not
- *     block a re-fetch attempt.
+ * May 2026 (v1.31.0.63):
+ *   - tracksSkipped: counts items rejected by the uri/id filter per playlist.
+ *     Exposed in PlaylistsState so the UI can distinguish "truly empty" from
+ *     "all items were episodes/local files".
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ZodError, z } from 'zod';
@@ -42,6 +39,7 @@ export interface PlaylistsState {
   tracks: Record<string, SpotifyTrackItem[]>;
   tracksLoading: Record<string, boolean>;
   tracksError: Record<string, string | null>;
+  tracksSkipped: Record<string, number>;
   fetchTracks: (playlistId: string) => void;
   reload: () => void;
 }
@@ -126,6 +124,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
   );
   const [tracksLoading, setTracksLoading] = useState<Record<string, boolean>>({});
   const [tracksError, setTracksError] = useState<Record<string, string | null>>({});
+  const [tracksSkipped, setTracksSkipped] = useState<Record<string, number>>({});
 
   const tracksRef = useRef(tracks);
   tracksRef.current = tracks;
@@ -141,6 +140,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
     setTracks({});
     setTracksLoading({});
     setTracksError({});
+    setTracksSkipped({});
     setTick((t) => t + 1);
   }, []);
 
@@ -149,6 +149,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
     setTracks(Object.fromEntries(tracksCache.entries()));
     setTracksLoading({});
     setTracksError({});
+    setTracksSkipped({});
   }, [accessToken]);
 
   useEffect(() => {
@@ -231,15 +232,10 @@ export function useSpotifyPlaylists(): PlaylistsState {
       syncCacheScope(accessToken);
 
       if (status !== 'authenticated' || !accessToken) return;
-      // Guard: skip only if tracks already loaded AND non-empty.
-      // An empty array must NOT block a re-fetch — it means all items were
-      // filtered out (episodes/local files) and Spotify may return real tracks
-      // on retry or the playlist may have changed.
       if ((tracksRef.current[playlistId]?.length ?? 0) > 0) return;
       if (tracksLoadingRef.current[playlistId]) return;
 
       const cachedTracks = tracksCache.get(playlistId);
-      // Only use cache when it contains actual tracks.
       if (cachedTracks && cachedTracks.length > 0) {
         setTracks((prev) => ({ ...prev, [playlistId]: cachedTracks }));
         return;
@@ -249,9 +245,11 @@ export function useSpotifyPlaylists(): PlaylistsState {
 
       setTracksLoading((prev) => ({ ...prev, [playlistId]: true }));
       setTracksError((prev) => ({ ...prev, [playlistId]: null }));
+      setTracksSkipped((prev) => ({ ...prev, [playlistId]: 0 }));
 
       const fetchAll = async () => {
         const collected: SpotifyTrackItem[] = [];
+        let totalSkipped = 0;
         let url: string | null =
           `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items?limit=50`;
 
@@ -262,9 +260,10 @@ export function useSpotifyPlaylists(): PlaylistsState {
           });
           for (const entry of page.items) {
             const t = entry.track;
-            if (!t) continue;
-            if (!t.uri || !t.uri.startsWith('spotify:track:')) continue;
-            if (!t.id) continue;
+            if (!t || !t.uri?.startsWith('spotify:track:') || !t.id) {
+              totalSkipped++;
+              continue;
+            }
             collected.push({
               id: t.id,
               name: t.name,
@@ -278,11 +277,10 @@ export function useSpotifyPlaylists(): PlaylistsState {
           url = page.next;
         }
 
-        // Only cache non-empty results. An empty result may be transient
-        // (Spotify 500, all items filtered) — do not poison the cache.
         if (collected.length > 0) {
           tracksCache.set(playlistId, collected);
         }
+        setTracksSkipped((prev) => ({ ...prev, [playlistId]: totalSkipped }));
         setTracks((prev) => ({ ...prev, [playlistId]: collected }));
         setTracksLoading((prev) => ({ ...prev, [playlistId]: false }));
       };
@@ -311,5 +309,5 @@ export function useSpotifyPlaylists(): PlaylistsState {
     [status, accessToken, request, getErrorMessage],
   );
 
-  return { playlists, loading, error, tracks, tracksLoading, tracksError, fetchTracks, reload };
+  return { playlists, loading, error, tracks, tracksLoading, tracksError, tracksSkipped, fetchTracks, reload };
 }
