@@ -2,10 +2,10 @@
  * useSpotifyPlaylists
  * Fetches the authenticated user's playlists and, lazily, their tracks.
  *
- * May 2026 (v1.31.0.63):
- *   - tracksSkipped: counts items rejected by the uri/id filter per playlist.
- *     Exposed in PlaylistsState so the UI can distinguish "truly empty" from
- *     "all items were episodes/local files".
+ * May 2026 (v1.31.0.64):
+ *   - skippedByType: split rejected playlist items by cause so the UI can
+ *     distinguish local files from podcast episodes and other unsupported
+ *     entries without changing playback behavior.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ZodError, z } from 'zod';
@@ -32,6 +32,12 @@ export interface SpotifyTrackItem {
   isPlayable: boolean;
 }
 
+export interface SpotifySkippedItems {
+  local: number;
+  podcast: number;
+  unsupported: number;
+}
+
 export interface PlaylistsState {
   playlists: SpotifyPlaylist[];
   loading: boolean;
@@ -40,6 +46,7 @@ export interface PlaylistsState {
   tracksLoading: Record<string, boolean>;
   tracksError: Record<string, string | null>;
   tracksSkipped: Record<string, number>;
+  tracksSkippedByType: Record<string, SpotifySkippedItems>;
   fetchTracks: (playlistId: string) => void;
   reload: () => void;
 }
@@ -109,6 +116,10 @@ function syncCacheScope(accessToken: string | null): void {
   cacheAccessToken = accessToken;
 }
 
+function emptySkippedItems(): SpotifySkippedItems {
+  return { local: 0, podcast: 0, unsupported: 0 };
+}
+
 const EXCLUDED_PLAYLIST_PATTERN =
   /^(My Shazam Tracks|Mes titres Shazam|Similaires (à|a)|Similar to|Discover Weekly|Release Radar|Daily Mix|On Repeat|Repeat Rewind)/i;
 
@@ -125,6 +136,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
   const [tracksLoading, setTracksLoading] = useState<Record<string, boolean>>({});
   const [tracksError, setTracksError] = useState<Record<string, string | null>>({});
   const [tracksSkipped, setTracksSkipped] = useState<Record<string, number>>({});
+  const [tracksSkippedByType, setTracksSkippedByType] = useState<Record<string, SpotifySkippedItems>>({});
 
   const tracksRef = useRef(tracks);
   tracksRef.current = tracks;
@@ -141,6 +153,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
     setTracksLoading({});
     setTracksError({});
     setTracksSkipped({});
+    setTracksSkippedByType({});
     setTick((t) => t + 1);
   }, []);
 
@@ -150,6 +163,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
     setTracksLoading({});
     setTracksError({});
     setTracksSkipped({});
+    setTracksSkippedByType({});
   }, [accessToken]);
 
   useEffect(() => {
@@ -246,9 +260,11 @@ export function useSpotifyPlaylists(): PlaylistsState {
       setTracksLoading((prev) => ({ ...prev, [playlistId]: true }));
       setTracksError((prev) => ({ ...prev, [playlistId]: null }));
       setTracksSkipped((prev) => ({ ...prev, [playlistId]: 0 }));
+      setTracksSkippedByType((prev) => ({ ...prev, [playlistId]: emptySkippedItems() }));
 
       const fetchAll = async () => {
         const collected: SpotifyTrackItem[] = [];
+        const skippedByType: SpotifySkippedItems = emptySkippedItems();
         let totalSkipped = 0;
         let url: string | null =
           `https://api.spotify.com/v1/playlists/${encodeURIComponent(playlistId)}/items?limit=50`;
@@ -260,7 +276,23 @@ export function useSpotifyPlaylists(): PlaylistsState {
           });
           for (const entry of page.items) {
             const t = entry.track;
-            if (!t || !t.uri?.startsWith('spotify:track:') || !t.id) {
+            if (!t) {
+              skippedByType.unsupported++;
+              totalSkipped++;
+              continue;
+            }
+            if (t.type === 'episode') {
+              skippedByType.podcast++;
+              totalSkipped++;
+              continue;
+            }
+            if (t.uri?.startsWith('spotify:local:')) {
+              skippedByType.local++;
+              totalSkipped++;
+              continue;
+            }
+            if (!t.uri?.startsWith('spotify:track:') || !t.id) {
+              skippedByType.unsupported++;
               totalSkipped++;
               continue;
             }
@@ -281,6 +313,7 @@ export function useSpotifyPlaylists(): PlaylistsState {
           tracksCache.set(playlistId, collected);
         }
         setTracksSkipped((prev) => ({ ...prev, [playlistId]: totalSkipped }));
+        setTracksSkippedByType((prev) => ({ ...prev, [playlistId]: skippedByType }));
         setTracks((prev) => ({ ...prev, [playlistId]: collected }));
         setTracksLoading((prev) => ({ ...prev, [playlistId]: false }));
       };
@@ -309,5 +342,16 @@ export function useSpotifyPlaylists(): PlaylistsState {
     [status, accessToken, request, getErrorMessage],
   );
 
-  return { playlists, loading, error, tracks, tracksLoading, tracksError, tracksSkipped, fetchTracks, reload };
+  return {
+    playlists,
+    loading,
+    error,
+    tracks,
+    tracksLoading,
+    tracksError,
+    tracksSkipped,
+    tracksSkippedByType,
+    fetchTracks,
+    reload,
+  };
 }

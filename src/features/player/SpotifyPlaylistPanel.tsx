@@ -11,8 +11,6 @@ import { LCARS } from './lcarsTheme';
 
 const SPOTIFY_GREEN = '#1DB954';
 
-// ── Skeleton ─────────────────────────────────────────────────────────────────
-
 function SkeletonRow({ width = '60%' }: { width?: string }) {
   return (
     <div style={{
@@ -24,8 +22,6 @@ function SkeletonRow({ width = '60%' }: { width?: string }) {
     }} aria-hidden="true" />
   );
 }
-
-// ── Track row ─────────────────────────────────────────────────────────────────
 
 interface TrackRowProps {
   uri: string;
@@ -88,8 +84,6 @@ function TrackRow({ uri, name, artists, durationMs, albumArtUrl, isPlayable, isA
     </button>
   );
 }
-
-// ── Playlist row (accordion header) ──────────────────────────────────────────
 
 interface PlaylistRowProps {
   name: string;
@@ -168,11 +162,26 @@ function PlaylistRow({
   );
 }
 
-// ── Main panel ────────────────────────────────────────────────────────────────
+function renderSkippedMessage(local: number, podcast: number, unsupported: number): string {
+  const parts: string[] = [];
+  if (local > 0) parts.push(`${local} fichier(s) locaux`);
+  if (podcast > 0) parts.push(`${podcast} podcast(s)`);
+  if (unsupported > 0) parts.push(`${unsupported} autre(s) item(s) non supporté(s)`);
+  return parts.length > 0 ? `${parts.join(' · ')} exclus.` : 'This playlist is empty.';
+}
 
 export function SpotifyPlaylistPanel() {
-  const { playlists, loading, error, tracks, tracksLoading, tracksError, tracksSkipped, fetchTracks, reload } =
-    useSpotifyPlaylists();
+  const {
+    playlists,
+    loading,
+    error,
+    tracks,
+    tracksLoading,
+    tracksError,
+    tracksSkippedByType,
+    fetchTracks,
+    reload,
+  } = useSpotifyPlaylists();
   const { controls, playbackState } = useSpotifyEngine_();
   const [openId, setOpenId] = useState<string | null>(null);
   const headerButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -245,7 +254,6 @@ export function SpotifyPlaylistPanel() {
         background: 'rgba(29,185,84,0.04)',
         overflow: 'hidden',
       }}>
-        {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '8px 10px 7px',
@@ -302,6 +310,7 @@ export function SpotifyPlaylistPanel() {
             {playlists.map((pl, index) => {
               const headerId = `spotify-playlist-header-${pl.id}`;
               const panelId = `spotify-playlist-panel-${pl.id}`;
+              const skipped = tracksSkippedByType[pl.id] ?? { local: 0, podcast: 0, unsupported: 0 };
               return (
                 <div key={pl.id} role="listitem">
                   <PlaylistRow
@@ -346,9 +355,7 @@ export function SpotifyPlaylistPanel() {
 
                       {!tracksLoading[pl.id] && !tracksError[pl.id] && tracks[pl.id]?.length === 0 && (
                         <div style={{ padding: '8px', color: LCARS.subText, fontSize: 10, letterSpacing: 1 }}>
-                          {(tracksSkipped[pl.id] ?? 0) > 0
-                            ? `${tracksSkipped[pl.id]} item(s) non-playables (podcasts / fichiers locaux).`
-                            : 'This playlist is empty.'}
+                          {renderSkippedMessage(skipped.local, skipped.podcast, skipped.unsupported)}
                         </div>
                       )}
 
