@@ -19,9 +19,11 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
+import { z } from 'zod';
 import type { SpotifyAuthState } from '../types/spotify';
 
 // ---------------------------------------------------------------------------
@@ -124,7 +126,7 @@ async function exchangeCode(code: string, verifier: string): Promise<{
     }),
   });
   if (!res.ok) throw new Error(`Spotify token exchange failed: ${res.status}`);
-  return res.json() as Promise<{ access_token: string; refresh_token: string; expires_in: number }>;
+  return parseTokenResponse(res, spotifyExchangeTokenSchema, 'Spotify token exchange');
 }
 
 async function doRefresh(refreshToken: string): Promise<{
@@ -142,7 +144,36 @@ async function doRefresh(refreshToken: string): Promise<{
     }),
   });
   if (!res.ok) throw new Error(`Spotify token refresh failed: ${res.status}`);
-  return res.json() as Promise<{ access_token: string; refresh_token?: string; expires_in: number }>;
+  const data = await parseTokenResponse(res, spotifyRefreshTokenSchema, 'Spotify token refresh');
+  return data.refresh_token
+    ? { access_token: data.access_token, refresh_token: data.refresh_token, expires_in: data.expires_in }
+    : { access_token: data.access_token, expires_in: data.expires_in };
+}
+
+const spotifyTokenBaseSchema = z.object({
+  access_token: z.string().min(1),
+  expires_in: z.number().positive(),
+});
+
+const spotifyExchangeTokenSchema = spotifyTokenBaseSchema.extend({
+  refresh_token: z.string().min(1),
+});
+
+const spotifyRefreshTokenSchema = spotifyTokenBaseSchema.extend({
+  refresh_token: z.string().min(1).optional(),
+});
+
+async function parseTokenResponse<T>(
+  res: Response,
+  schema: z.ZodSchema<T>,
+  label: string,
+): Promise<T> {
+  const payload: unknown = await res.json();
+  const parsed = schema.safeParse(payload);
+  if (!parsed.success) {
+    throw new Error(`${label} returned an invalid payload`);
+  }
+  return parsed.data;
 }
 
 // ---------------------------------------------------------------------------
@@ -156,7 +187,11 @@ interface SpotifyAuthContextValue extends SpotifyAuthState {
   forceRefreshToken: () => Promise<string | null>;
 }
 
+type SpotifyAuthActionsContextValue = Omit<SpotifyAuthContextValue, keyof SpotifyAuthState>;
+
 const SpotifyAuthContext = createContext<SpotifyAuthContextValue | null>(null);
+const SpotifyAuthStateContext = createContext<SpotifyAuthState | null>(null);
+const SpotifyAuthActionsContext = createContext<SpotifyAuthActionsContextValue | null>(null);
 
 export function SpotifyAuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SpotifyAuthState>(() => {
@@ -172,7 +207,7 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
   });
 
   const refreshTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refreshPromiseRef = useRef<Promise<void> | null>(null);
+  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
   const clearStorage = useCallback(() => {
     storeRemove(TOKEN_KEY);
@@ -180,13 +215,8 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
     storeRemove(EXPIRY_KEY);
   }, []);
 
-  const scheduleRefresh = useCallback((expiresAt: number) => {
-    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current);
-    const delay = Math.max(0, expiresAt - Date.now() - 60_000);
-    refreshTimerRef.current = setTimeout(async () => {
-      const refreshToken = storeGet(REFRESH_KEY);
-      if (!refreshToken) return;
-      if (refreshPromiseRef.current) return;
+  const refreshWithMutex = useCallback(async (refreshToken: string): Promise<string | null> => {
+    if (!refreshPromiseRef.current) {
       refreshPromiseRef.current = doRefresh(refreshToken)
         .then((data) => {
           const newExpiry = Date.now() + data.expires_in * 1000;
@@ -199,14 +229,17 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
             expiresAt: newExpiry,
             error: null,
           });
-          scheduleRefresh(newExpiry);
+          return data.access_token;
         })
         .catch(() => {
           clearStorage();
           setState({ status: 'error', accessToken: null, expiresAt: null, error: 'Token refresh failed. Please log in again.' });
+          return null;
         })
         .finally(() => { refreshPromiseRef.current = null; });
-    }, delay);
+    }
+
+    return refreshPromiseRef.current;
   }, [clearStorage]);
 
   // ── Re-hydration post-mount ──────────────────────────────────────────────
@@ -221,7 +254,6 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
     const expiresAt   = Number(storeGet(EXPIRY_KEY) ?? 0);
     if (accessToken && Date.now() < expiresAt) {
       setState({ status: 'authenticated', accessToken, expiresAt, error: null });
-      scheduleRefresh(expiresAt);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -264,23 +296,35 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
         storeSet(REFRESH_KEY, tokens.refresh_token);
         storeSet(EXPIRY_KEY,  String(expiresAt));
         setState({ status: 'authenticated', accessToken: tokens.access_token, expiresAt, error: null });
-        scheduleRefresh(expiresAt);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Authentication failed';
         setState({ status: 'error', accessToken: null, expiresAt: null, error: message });
       }
     };
     void run();
-  }, [scheduleRefresh]);
-
-  // Planifier le refresh au montage si déjà authentifié
-  useEffect(() => {
-    if (state.status === 'authenticated' && state.expiresAt) {
-      scheduleRefresh(state.expiresAt);
-    }
-    return () => { if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Planifier le refresh en un seul endroit dès que l'expiry authentifiée change.
+  useEffect(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+
+    if (state.status !== 'authenticated' || !state.expiresAt) return undefined;
+
+    const delay = Math.max(0, state.expiresAt - Date.now() - TOKEN_EXPIRY_BUFFER_MS);
+    const timer = setTimeout(() => {
+      const refreshToken = storeGet(REFRESH_KEY);
+      if (refreshToken) void refreshWithMutex(refreshToken);
+    }, delay);
+    refreshTimerRef.current = timer;
+
+    return () => {
+      clearTimeout(timer);
+      if (refreshTimerRef.current === timer) refreshTimerRef.current = null;
+    };
+  }, [state.status, state.expiresAt, refreshWithMutex]);
 
   const login = useCallback(async (): Promise<void> => {
     setState(prev => ({ ...prev, status: 'authenticating', error: null }));
@@ -309,37 +353,6 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
     setState({ status: 'idle', accessToken: null, expiresAt: null, error: null });
   }, [clearStorage]);
 
-  const refreshWithMutex = useCallback(async (refreshToken: string): Promise<string | null> => {
-    try {
-      if (!refreshPromiseRef.current) {
-        refreshPromiseRef.current = doRefresh(refreshToken)
-          .then((data) => {
-            const newExpiry = Date.now() + data.expires_in * 1000;
-            storeSet(TOKEN_KEY, data.access_token);
-            if (data.refresh_token) storeSet(REFRESH_KEY, data.refresh_token);
-            storeSet(EXPIRY_KEY, String(newExpiry));
-            setState({
-              status: 'authenticated',
-              accessToken: data.access_token,
-              expiresAt: newExpiry,
-              error: null,
-            });
-            scheduleRefresh(newExpiry);
-          })
-          .catch((err) => {
-            clearStorage();
-            setState({ status: 'error', accessToken: null, expiresAt: null, error: 'Token refresh failed. Please log in again.' });
-            throw err;
-          })
-          .finally(() => { refreshPromiseRef.current = null; });
-      }
-      await refreshPromiseRef.current;
-      return storeGet(TOKEN_KEY);
-    } catch {
-      return null;
-    }
-  }, [clearStorage, scheduleRefresh]);
-
   const getValidToken = useCallback(async (): Promise<string | null> => {
     const accessToken = storeGet(TOKEN_KEY);
     const expiresAt = Number(storeGet(EXPIRY_KEY) ?? 0);
@@ -356,15 +369,41 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
     return refreshWithMutex(refreshToken);
   }, [refreshWithMutex]);
 
+  const actionsValue = useMemo<SpotifyAuthActionsContextValue>(
+    () => ({ login, logout, getValidToken, forceRefreshToken }),
+    [login, logout, getValidToken, forceRefreshToken],
+  );
+
+  const contextValue = useMemo<SpotifyAuthContextValue>(
+    () => ({ ...state, ...actionsValue }),
+    [state, actionsValue],
+  );
+
   return (
-    <SpotifyAuthContext.Provider value={{ ...state, login, logout, getValidToken, forceRefreshToken }}>
-      {children}
-    </SpotifyAuthContext.Provider>
+    <SpotifyAuthStateContext.Provider value={state}>
+      <SpotifyAuthActionsContext.Provider value={actionsValue}>
+        <SpotifyAuthContext.Provider value={contextValue}>
+          {children}
+        </SpotifyAuthContext.Provider>
+      </SpotifyAuthActionsContext.Provider>
+    </SpotifyAuthStateContext.Provider>
   );
 }
 
 export function useSpotifyAuth(): SpotifyAuthContextValue {
   const ctx = useContext(SpotifyAuthContext);
   if (!ctx) throw new Error('useSpotifyAuth must be used within SpotifyAuthProvider');
+  return ctx;
+}
+
+export function useSpotifyAuthState(): SpotifyAuthState {
+  const ctx = useContext(SpotifyAuthStateContext);
+  if (!ctx) throw new Error('useSpotifyAuthState must be used within SpotifyAuthProvider');
+  return ctx;
+}
+
+export function useSpotifyAuthActions(): SpotifyAuthActionsContextValue {
+  const ctx = useContext(SpotifyAuthActionsContext);
+  if (!ctx) throw new Error('useSpotifyAuthActions must be used within SpotifyAuthProvider');
   return ctx;
 }

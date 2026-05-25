@@ -12,7 +12,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ZodError, z } from 'zod';
-import { useSpotifyAuth } from '../../contexts/SpotifyAuthContext';
+import { useSpotifyAuthState } from '../../contexts/SpotifyAuthContext';
 import { useSpotifyApiClient } from './useSpotifyApiClient';
 import { SpotifyApiError } from './spotifyApi';
 
@@ -115,7 +115,7 @@ const EXCLUDED_PLAYLIST_PATTERN =
   /^(My Shazam Tracks|Mes titres Shazam|Similaires (à|a)|Similar to|Discover Weekly|Release Radar|Daily Mix|On Repeat|Repeat Rewind)/i;
 
 export function useSpotifyPlaylists(): PlaylistsState {
-  const { status, accessToken } = useSpotifyAuth();
+  const { status, accessToken } = useSpotifyAuthState();
   const { request, getErrorMessage } = useSpotifyApiClient();
 
   const [playlists, setPlaylists] = useState<SpotifyPlaylist[]>([]);

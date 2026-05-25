@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ZodError, z } from 'zod';
-import { useSpotifyAuth } from '../../contexts/SpotifyAuthContext';
+import { useSpotifyAuthState } from '../../contexts/SpotifyAuthContext';
 import { useSpotifyApiClient } from './useSpotifyApiClient';
 
 export interface SpotifySearchTrack {
@@ -54,7 +54,7 @@ const SpotifySearchResponseSchema = z.object({
 const SEARCH_LIMIT = 10;
 
 export function useSpotifySearch(): SpotifySearchState {
-  const { status } = useSpotifyAuth();
+  const { status } = useSpotifyAuthState();
   const { request, getErrorMessage } = useSpotifyApiClient();
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);

@@ -1,10 +1,10 @@
 import { useCallback, useMemo } from 'react';
-import { useSpotifyAuth } from '../../contexts/SpotifyAuthContext';
+import { useSpotifyAuthActions } from '../../contexts/SpotifyAuthContext';
 import type { SpotifyTokenProvider } from '../../types/spotify';
 import { spotifyFetch, SpotifyApiError, type SpotifyFetchOptions } from './spotifyApi';
 
 export function useSpotifyApiClient() {
-  const { getValidToken, forceRefreshToken } = useSpotifyAuth();
+  const { getValidToken, forceRefreshToken } = useSpotifyAuthActions();
 
   const tokenProvider = useMemo<SpotifyTokenProvider>(
     () => ({ getValidToken, forceRefreshToken }),
