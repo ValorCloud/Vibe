@@ -44,6 +44,7 @@ describe('ExportModal', () => {
 
     expect(screen.getByRole('button', { name: /LRC .lrc/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /PDF .pdf/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Project JSON .vibe.json/i })).toBeInTheDocument();
   });
 
   it('exports LRC format when selected', () => {

@@ -89,6 +89,10 @@ vi.mock('./modals/SearchReplaceModal', () => ({
   SearchReplaceModal: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div>Search replace modal</div> : null),
 }));
 
+vi.mock('./modals/CloudStoragePickerModal', () => ({
+  CloudStoragePickerModal: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div>Cloud storage modal</div> : null),
+}));
+
 function createUiState(overrides: Partial<UIStateBag> = {}): UIStateBag {
   return {
     setIsAboutOpen: vi.fn(),
@@ -107,6 +111,7 @@ function createUiState(overrides: Partial<UIStateBag> = {}): UIStateBag {
     setIsAnalysisModalOpen: vi.fn(),
     setIsSearchReplaceOpen: vi.fn(),
     setIsAnalysisPanelOpen: vi.fn(),
+    setIsCloudStoragePickerOpen: vi.fn(),
     isAboutOpen: false,
     isSettingsOpen: false,
     apiErrorModal: { open: false, message: '' },
@@ -123,6 +128,7 @@ function createUiState(overrides: Partial<UIStateBag> = {}): UIStateBag {
     isAnalysisModalOpen: false,
     isSearchReplaceOpen: false,
     isAnalysisPanelOpen: false,
+    isCloudStoragePickerOpen: false,
     activeTab: 'lyrics',
     setActiveTab: vi.fn(),
     isStructureOpen: false,
@@ -148,6 +154,7 @@ function createProps(): React.ComponentProps<typeof AppModals> {
     setShowTranslationFeatures: vi.fn(),
     handleImportChooseFile: vi.fn(),
     handleImportInputChange: vi.fn(),
+    onCloudFileLoaded: vi.fn(),
     exportSong: vi.fn(async () => {}),
     pastedText: '',
     setPastedText: vi.fn(),
@@ -166,6 +173,7 @@ function createProps(): React.ComponentProps<typeof AppModals> {
     clearAppliedAnalysisItems: vi.fn(),
     versions: [],
     rollbackToVersion: vi.fn(),
+    rollbackSectionToVersion: vi.fn(),
     saveVersion: vi.fn(),
     handleRequestVersionName: vi.fn(),
     similarityMatches: [],
@@ -178,6 +186,7 @@ function createProps(): React.ComponentProps<typeof AppModals> {
     handlePurgeLibrary: vi.fn(async () => {}),
     isSavingToLibrary: false,
     title: 'Test song',
+    song: [],
     libraryAssets: [],
     hasCurrentSong: true,
     resetSong: vi.fn(),

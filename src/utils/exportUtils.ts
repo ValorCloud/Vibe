@@ -1,8 +1,8 @@
 import { strToU8, zipSync } from 'fflate';
-import type { Section } from '../types';
+import type { Section, SongVersion } from '../types';
 import { generateId } from './idUtils';
 
-export type ExportFormat = 'txt' | 'markup' | 'odt' | 'docx' | 'lrc' | 'pdf';
+export type ExportFormat = 'txt' | 'markup' | 'json' | 'odt' | 'docx' | 'lrc' | 'pdf';
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const ODT_MIME = 'application/vnd.oasis.opendocument.text';
@@ -11,9 +11,17 @@ const ODT_MIME = 'application/vnd.oasis.opendocument.text';
 type SongData = {
   song: Section[];
   title: string;
+  titleOrigin?: 'user' | 'ai';
   topic: string;
   mood: string;
   songLanguage?: string;
+  genre?: string;
+  tempo?: number;
+  instrumentation?: string;
+  rhythm?: string;
+  narrative?: string;
+  musicalPrompt?: string;
+  versions?: SongVersion[];
 };
 
 /** Parameters for file-based exports (PDF is handled separately via print). */
@@ -404,7 +412,9 @@ export const sharePayloadToSong = (
 };
 
 export const createSongExport = ({
-  song, title, topic, mood, songLanguage = '', format,
+  song, title, titleOrigin = 'user', topic, mood, songLanguage = '', genre = '', tempo = 120,
+  instrumentation = '', rhythm = '', narrative = '', musicalPrompt = '',
+  versions = [], format,
 }: SongExportParams): { blob: Blob; filename: string } => {
   const baseFileName = getBaseFileName(title);
   switch (format) {
@@ -417,6 +427,31 @@ export const createSongExport = ({
       return {
         blob: new Blob([buildMarkupContent(song, title, topic, mood)], { type: 'text/markdown;charset=utf-8' }),
         filename: `${baseFileName}.md`,
+      };
+    case 'json':
+      return {
+        blob: new Blob([JSON.stringify({
+          schemaVersion: 1,
+          savedAt: Date.now(),
+          song,
+          structure: song.map(section => section.name),
+          title,
+          titleOrigin,
+          topic,
+          mood,
+          songLanguage,
+          genre,
+          tempo,
+          instrumentation,
+          rhythm,
+          narrative,
+          musicalPrompt,
+          versions,
+          activeTab: 'lyrics',
+          isStructureOpen: false,
+          isLeftPanelOpen: true,
+        }, null, 2)], { type: 'application/json;charset=utf-8' }),
+        filename: `${baseFileName}.vibe.json`,
       };
     case 'docx':
       return { blob: buildDocxBlob(song, title, topic, mood, songLanguage), filename: `${baseFileName}.docx` };

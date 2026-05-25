@@ -11,6 +11,7 @@ interface UseVersionManagerParams {
   updateSongAndStructureWithHistory: (song: Section[], structure: string[]) => void;
   setIsVersionsModalOpen: (open: boolean) => void;
   setPromptModal: (modal: { open: boolean; onConfirm: (value: string) => void } | null) => void;
+  initialVersions?: SongVersion[] | undefined;
 }
 
 /**
@@ -92,6 +93,9 @@ const deepCloneSong = (song: Section[]): Section[] | null => {
   }
 };
 
+const shouldCreateRestorePoint = (snapshot: VersionSnapshot): boolean =>
+  snapshot.song.length > 0 || (snapshot.musicalPrompt ?? '').trim().length > 0;
+
 export function useVersionManager(params: UseVersionManagerParams) {
   const {
     updateSongAndStructureWithHistory,
@@ -104,13 +108,15 @@ export function useVersionManager(params: UseVersionManagerParams) {
     titleOrigin,
     topic,
     mood,
+    musicalPrompt,
     setTitle,
     setTitleOrigin,
     setTopic,
     setMood,
+    setMusicalPrompt,
   } = useSongContext();
 
-  const [versions, setVersions] = useState<SongVersion[]>([]);
+  const [versions, setVersions] = useState<SongVersion[]>(() => params.initialVersions?.slice(0, MAX_VERSIONS) ?? []);
   const previousLyricsSnapshotRef = useRef<VersionSnapshot | null>(null);
   const previousFingerprintRef = useRef<string | null>(null);
 
@@ -125,12 +131,14 @@ export function useVersionManager(params: UseVersionManagerParams) {
       song: snapshot.song, structure: snapshot.structure,
       title: snapshot.title, titleOrigin: snapshot.titleOrigin,
       topic: snapshot.topic, mood: snapshot.mood,
+      musicalPrompt: snapshot.musicalPrompt ?? '',
     });
     if (!options?.allowDuplicate && latestVersion) {
       const normalizedLatest = JSON.stringify({
         song: latestVersion.song, structure: latestVersion.structure,
         title: latestVersion.title, titleOrigin: latestVersion.titleOrigin,
         topic: latestVersion.topic, mood: latestVersion.mood,
+        musicalPrompt: latestVersion.musicalPrompt ?? '',
       });
       if (normalizedLatest === normalizedSnapshot) return previousVersions;
     }
@@ -147,7 +155,9 @@ export function useVersionManager(params: UseVersionManagerParams) {
         song: clonedSong,
         structure: [...snapshot.structure],
         title: snapshot.title, titleOrigin: snapshot.titleOrigin,
-        topic: snapshot.topic, mood: snapshot.mood, name,
+        topic: snapshot.topic, mood: snapshot.mood,
+        musicalPrompt: snapshot.musicalPrompt ?? '',
+        name,
       },
       ...previousVersions,
     ];
@@ -156,9 +166,9 @@ export function useVersionManager(params: UseVersionManagerParams) {
   }, []);
 
   const saveVersion = useCallback((name: string, snapshot?: VersionSnapshot) => {
-    const versionSnapshot = snapshot || { song, structure, title, titleOrigin, topic, mood };
+    const versionSnapshot = snapshot || { song, structure, title, titleOrigin, topic, mood, musicalPrompt };
     setVersions(prev => createVersion(versionSnapshot, name || `Version ${prev.length + 1}`, prev, { allowDuplicate: true }));
-  }, [createVersion, song, structure, title, titleOrigin, topic, mood]);
+  }, [createVersion, song, structure, title, titleOrigin, topic, mood, musicalPrompt]);
 
   const rollbackToVersion = useCallback((version: SongVersion) => {
     updateSongAndStructureWithHistory(version.song, version.structure);
@@ -166,8 +176,28 @@ export function useVersionManager(params: UseVersionManagerParams) {
     setTitleOrigin(version.titleOrigin);
     setTopic(version.topic);
     setMood(version.mood);
+    setMusicalPrompt(version.musicalPrompt ?? '');
     setIsVersionsModalOpen(false);
-  }, [updateSongAndStructureWithHistory, setTitle, setTitleOrigin, setTopic, setMood, setIsVersionsModalOpen]);
+  }, [updateSongAndStructureWithHistory, setTitle, setTitleOrigin, setTopic, setMood, setMusicalPrompt, setIsVersionsModalOpen]);
+
+  const rollbackSectionToVersion = useCallback((version: SongVersion, sectionId: string) => {
+    const versionSection = version.song.find(section => section.id === sectionId);
+    if (!versionSection) return;
+    const currentIndexById = song.findIndex(section => section.id === sectionId);
+    const currentIndex = currentIndexById >= 0
+      ? currentIndexById
+      : song.findIndex(section => section.name === versionSection.name);
+    const clonedSection = deepCloneSong([versionSection])?.[0];
+    if (!clonedSection) return;
+    const nextSong = currentIndex >= 0
+      ? song.map((section, index) => (index === currentIndex ? clonedSection : section))
+      : [...song, clonedSection];
+    updateSongAndStructureWithHistory(nextSong, nextSong.map(section => section.name));
+  }, [song, updateSongAndStructureWithHistory]);
+
+  const replaceVersions = useCallback((nextVersions: SongVersion[]) => {
+    setVersions(nextVersions.slice(0, MAX_VERSIONS));
+  }, []);
 
   const handleRequestVersionName = useCallback((callback: (name: string) => void) => {
     setPromptModal({
@@ -178,8 +208,8 @@ export function useVersionManager(params: UseVersionManagerParams) {
 
   // Auto-restore-point: captures the snapshot *before* each lyrics/structure change.
   useEffect(() => {
-    const currentSnapshot = { song, structure, title, titleOrigin, topic, mood };
-    const currentFingerprint = fingerprintSnapshot(song, structure);
+    const currentSnapshot = { song, structure, title, titleOrigin, topic, mood, musicalPrompt };
+    const currentFingerprint = `${fingerprintSnapshot(song, structure)}__prompt:${djb2(musicalPrompt)}`;
 
     if (!previousLyricsSnapshotRef.current) {
       previousLyricsSnapshotRef.current = currentSnapshot;
@@ -188,14 +218,14 @@ export function useVersionManager(params: UseVersionManagerParams) {
     }
 
     const previousSnapshot = previousLyricsSnapshotRef.current;
-    const lyricsChanged = previousFingerprintRef.current !== currentFingerprint;
+    const snapshotChanged = previousFingerprintRef.current !== currentFingerprint;
 
-    if (lyricsChanged && previousSnapshot.song.length > 0) {
+    if (snapshotChanged && shouldCreateRestorePoint(previousSnapshot)) {
       setVersions(prev => createVersion(previousSnapshot, 'Auto Restore Point', prev));
     }
     previousLyricsSnapshotRef.current = currentSnapshot;
     previousFingerprintRef.current = currentFingerprint;
-  }, [createVersion, song, structure, title, titleOrigin, topic, mood]);
+  }, [createVersion, song, structure, title, titleOrigin, topic, mood, musicalPrompt]);
 
-  return { versions, saveVersion, rollbackToVersion, handleRequestVersionName };
+  return { versions, saveVersion, rollbackToVersion, rollbackSectionToVersion, replaceVersions, handleRequestVersionName };
 }

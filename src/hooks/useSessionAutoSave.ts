@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { saveSession } from '../lib/sessionPersistence';
 import type { SessionSnapshot } from '../lib/sessionPersistence';
-import type { Section } from '../types';
+import type { Section, SongVersion } from '../types';
 import type { AppTab } from './useUIState';
 
 export type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error';
@@ -33,6 +33,7 @@ interface AutoSavePayload {
   rhythm: string;
   narrative: string;
   musicalPrompt: string;
+  versions: SongVersion[];
   activeTab: AppTab;
   isStructureOpen: boolean;
   isLeftPanelOpen: boolean;
@@ -88,6 +89,7 @@ export function useSessionAutoSave(payload: AutoSavePayload): SessionAutoSaveRes
         rhythm: p.rhythm,
         narrative: p.narrative,
         musicalPrompt: p.musicalPrompt,
+        versions: p.versions,
         activeTab: p.activeTab,
         isStructureOpen: p.isStructureOpen,
         isLeftPanelOpen: p.isLeftPanelOpen,
@@ -125,6 +127,7 @@ export function useSessionAutoSave(payload: AutoSavePayload): SessionAutoSaveRes
     payload.rhythm,
     payload.narrative,
     payload.musicalPrompt,
+    payload.versions,
     payload.activeTab,
     payload.isStructureOpen,
     payload.isLeftPanelOpen,

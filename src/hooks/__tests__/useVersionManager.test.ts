@@ -22,6 +22,8 @@ const mockSongCtx = {
   setTitleOrigin: vi.fn(),
   setTopic: vi.fn(),
   setMood: vi.fn(),
+  musicalPrompt: '',
+  setMusicalPrompt: vi.fn(),
 };
 
 vi.mock('../../contexts/SongContext', () => ({
@@ -63,6 +65,7 @@ describe('useVersionManager', () => {
     mockSongCtx.titleOrigin = 'user';
     mockSongCtx.topic = '';
     mockSongCtx.mood = '';
+    mockSongCtx.musicalPrompt = '';
   });
 
   it('starts with an empty versions list', () => {
@@ -87,7 +90,7 @@ describe('useVersionManager', () => {
 
   it('rollbackToVersion calls updateSongAndStructureWithHistory with versioned data', () => {
     const params = makeParams();
-    const { result } = renderHook(() => useVersionManager(params));
+    const { result, rerender } = renderHook(() => useVersionManager(params));
     const section = makeSection('s1', ['Hello world']);
     act(() => {
       result.current.saveVersion('before', {
@@ -97,6 +100,7 @@ describe('useVersionManager', () => {
         titleOrigin: 'user',
         topic: 'love',
         mood: 'sad',
+        musicalPrompt: 'warm piano ballad',
       });
     });
     const saved = result.current.versions[0]!;
@@ -107,7 +111,34 @@ describe('useVersionManager', () => {
     expect(mockSongCtx.setTitle).toHaveBeenCalledWith('Draft');
     expect(mockSongCtx.setTopic).toHaveBeenCalledWith('love');
     expect(mockSongCtx.setMood).toHaveBeenCalledWith('sad');
+    expect(mockSongCtx.setMusicalPrompt).toHaveBeenCalledWith('warm piano ballad');
     expect(params.setIsVersionsModalOpen).toHaveBeenCalledWith(false);
+  });
+
+  it('restores one section from a saved version without replacing the full song', () => {
+    const params = makeParams();
+    const verse = makeSection('verse', ['Old verse']);
+    const chorus = makeSection('chorus', ['Old chorus']);
+    const { result, rerender } = renderHook(() => useVersionManager(params));
+    act(() => {
+      result.current.saveVersion('section snapshot', {
+        song: [verse, chorus],
+        structure: ['Verse', 'Chorus'],
+        title: 'Draft',
+        titleOrigin: 'user',
+        topic: '',
+        mood: '',
+      });
+    });
+    mockSongCtx.song = [makeSection('verse', ['New verse']), makeSection('chorus', ['New chorus'])];
+    rerender();
+    act(() => {
+      result.current.rollbackSectionToVersion(result.current.versions[0]!, 'chorus');
+    });
+    expect(params.updateSongAndStructureWithHistory).toHaveBeenCalledWith(
+      [mockSongCtx.song[0], chorus],
+      ['Verse', 'Verse'],
+    );
   });
 
   it('auto-restore-point is created when song content changes', () => {
@@ -129,6 +160,17 @@ describe('useVersionManager', () => {
     rerender();
     expect(result.current.versions).toHaveLength(1);
     expect(result.current.versions[0]?.name).toBe('Auto Restore Point');
+  });
+
+  it('auto-restore-point is created when the musical prompt changes', () => {
+    mockSongCtx.musicalPrompt = 'STYLE: acoustic';
+    const { result, rerender } = renderHook(() => useVersionManager(makeParams()));
+
+    mockSongCtx.musicalPrompt = 'STYLE: synthwave';
+    rerender();
+
+    expect(result.current.versions).toHaveLength(1);
+    expect(result.current.versions[0]?.musicalPrompt).toBe('STYLE: acoustic');
   });
 
   it('handleRequestVersionName calls setPromptModal with open:true', () => {

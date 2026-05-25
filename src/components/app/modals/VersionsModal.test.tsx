@@ -31,7 +31,9 @@ describe('VersionsModal', () => {
     onClose: vi.fn(),
     onSaveCurrent: vi.fn(),
     onRollback: vi.fn(),
+    onRollbackSection: vi.fn(),
     onRequestVersionName: vi.fn(),
+    currentSong: [] as SongVersion['song'],
   });
 
   it('renders nothing when the modal is closed', () => {
@@ -79,5 +81,20 @@ describe('VersionsModal', () => {
 
     expect(props.onRollback).toHaveBeenCalledWith(version);
     expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('exposes changed section restore actions and a diff summary', () => {
+    const props = createProps();
+    const currentSong: SongVersion['song'] = [{
+      id: 'section-1',
+      name: 'Verse',
+      lines: [{ id: 'line-1', text: 'Changed', rhymingSyllables: '', rhyme: '', syllables: 0, concept: '' }],
+    }];
+
+    render(<VersionsModal {...props} versions={[version]} currentSong={currentSong} />);
+
+    expect(screen.getByText(/Δ 0 changed · \+1 · -0/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Restore Verse' }));
+    expect(props.onRollbackSection).toHaveBeenCalledWith(version, 'section-1');
   });
 });

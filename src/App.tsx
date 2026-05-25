@@ -296,6 +296,7 @@ function AppInner() {
         rhythm: '',
         narrative: '',
         musicalPrompt: '',
+        versions: [],
         activeTab: 'lyrics',
         isStructureOpen: false,
         isLeftPanelOpen: true,
@@ -328,7 +329,7 @@ function AppInner() {
           <SongProvider initialSession={initialSession}>
             <SongMutationProvider>
               <ComposerProvider>
-                <VersionProvider>
+              <VersionProvider initialVersions={initialSession?.versions}>
                   <SimilarityProvider>
                     <AppProviders initialSession={initialSession} />
                   </SimilarityProvider>

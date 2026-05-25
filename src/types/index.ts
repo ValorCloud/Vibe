@@ -38,5 +38,6 @@ export interface SongVersion {
   titleOrigin: 'user' | 'ai';
   topic: string;
   mood: string;
+  musicalPrompt?: string;
   name: string;
 }

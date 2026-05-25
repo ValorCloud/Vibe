@@ -1,4 +1,4 @@
-import type { Section } from '../types';
+import type { Section, SongVersion } from '../types';
 import type { SimilarityMatch } from './similarityUtils';
 import { calculateSimilarityWithMetadata } from './rhymeDetection';
 import { DEFAULT_MOOD, DEFAULT_TOPIC } from './songDefaults';
@@ -14,6 +14,7 @@ export type LibraryAsset = {
   timestamp: number;
   type: 'song' | 'poem' | 'lyrics';
   sections: Section[];
+  versions?: SongVersion[];
   metadata?: {
     album?: string;
     year?: number;
@@ -100,6 +101,7 @@ export type LoadedLibraryAssetState = {
   rhythm: string;
   narrative: string;
   musicalPrompt: string;
+  versions: SongVersion[];
 };
 
 const toRecord = (value: unknown): Record<string, unknown> =>
@@ -131,6 +133,7 @@ export const loadAssetIntoEditor = (asset: LibraryAsset): LoadedLibraryAssetStat
     rhythm: typeof metadata?.rhythm === 'string' ? metadata.rhythm : '',
     narrative: typeof metadata?.narrative === 'string' ? metadata.narrative : '',
     musicalPrompt: typeof metadata?.musicalPrompt === 'string' ? metadata.musicalPrompt : '',
+    versions: Array.isArray(asset.versions) ? asset.versions : [],
   };
 };
 

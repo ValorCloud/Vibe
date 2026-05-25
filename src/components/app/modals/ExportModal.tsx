@@ -68,6 +68,15 @@ export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport, getShare
         border: 'rgba(168, 85, 247, 0.28)',
       },
       {
+        value: 'json' as const,
+        label: exportFormats.json ?? 'JSON',
+        extension: '.vibe.json',
+        icon: <FileCode2 className="w-5 h-5" />,
+        accent: '#22c55e',
+        surface: 'rgba(34, 197, 94, 0.14)',
+        border: 'rgba(34, 197, 94, 0.28)',
+      },
+      {
         value: 'lrc' as const,
         label: exportFormats.lrc ?? 'LRC',
         extension: '.lrc',

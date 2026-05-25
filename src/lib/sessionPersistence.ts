@@ -9,6 +9,7 @@
  * Schema version: 1
  */
 import type { Section } from '../types';
+import type { SongVersion } from '../types';
 import type { AppTab } from '../hooks/useUIState';
 
 export const SESSION_SCHEMA_VERSION = 1;
@@ -36,6 +37,7 @@ export interface SessionSnapshot {
   rhythm: string;
   narrative: string;
   musicalPrompt: string;
+  versions?: SongVersion[];
   // UI navigation
   activeTab: AppTab;
   isStructureOpen: boolean;

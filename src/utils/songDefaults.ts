@@ -11,6 +11,7 @@ export type VersionSnapshot = {
   titleOrigin: 'user' | 'ai';
   topic: string;
   mood: string;
+  musicalPrompt?: string;
 };
 
 export const getDefaultLineCount = (name: string) =>

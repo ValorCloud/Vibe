@@ -62,6 +62,34 @@ describe('createSongExport', () => {
     await expect(blob.text()).resolves.toContain('[meta] \\[drop\\]');
   });
 
+  it('builds a project JSON export with musical prompt and versions', async () => {
+    const { blob, filename } = createSongExport({
+      song,
+      title: 'Test Song',
+      topic: 'night drive',
+      mood: 'moody',
+      musicalPrompt: 'STYLE: synthwave',
+      versions: [{
+        id: 'v1',
+        timestamp: 1,
+        song,
+        structure: ['Chorus'],
+        title: 'Test Song',
+        titleOrigin: 'user',
+        topic: 'night drive',
+        mood: 'moody',
+        musicalPrompt: 'STYLE: acoustic',
+        name: 'Draft',
+      }],
+      format: 'json',
+    });
+
+    const payload = JSON.parse(await blob.text()) as { musicalPrompt: string; versions: unknown[] };
+    expect(filename).toBe('Test_Song.vibe.json');
+    expect(payload.musicalPrompt).toBe('STYLE: synthwave');
+    expect(payload.versions).toHaveLength(1);
+  });
+
   it.each([
     ['docx', 'Test_Song.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
     ['odt', 'Test_Song.odt', 'application/vnd.oasis.opendocument.text'],

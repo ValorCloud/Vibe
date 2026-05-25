@@ -285,6 +285,14 @@ async function pickBox(): Promise<CloudFile | null> {
 async function pickGoogleDrive(): Promise<CloudFile | null> {
   if (!GDRIVE_API_KEY || !GDRIVE_CLIENT_ID) return null;
 
+  type PickerBuilderInstance = {
+    addView: (view: unknown) => PickerBuilderInstance;
+    setOAuthToken: (token: string) => PickerBuilderInstance;
+    setDeveloperKey: (key: string) => PickerBuilderInstance;
+    setCallback: (cb: (data: { action: string; docs: Array<{ name: string; id: string }> }) => void) => PickerBuilderInstance;
+    build: () => { setVisible: (v: boolean) => void };
+  };
+
   // Charge gapi lazy
   const gapiWindow = window as Window & {
     gapi?: {
@@ -292,13 +300,7 @@ async function pickGoogleDrive(): Promise<CloudFile | null> {
       auth2?: { getAuthInstance: () => { signIn: () => Promise<void>; currentUser: { get: () => { getAuthResponse: () => { access_token: string } } } } };
       client?: { init: (opts: { apiKey: string; clientId: string; scope: string }) => Promise<void> };
       picker?: {
-        PickerBuilder: new () => {
-          addView: (v: unknown) => unknown;
-          setOAuthToken: (t: string) => unknown;
-          setDeveloperKey: (k: string) => unknown;
-          setCallback: (cb: (data: { action: string; docs: Array<{ name: string; id: string }> }) => void) => unknown;
-          build: () => { setVisible: (v: boolean) => void };
-        };
+        PickerBuilder: new () => PickerBuilderInstance;
         DocsView: new () => unknown;
         Action: { PICKED: string; CANCEL: string };
       };
@@ -326,12 +328,13 @@ async function pickGoogleDrive(): Promise<CloudFile | null> {
         });
         await gapi.auth2!.getAuthInstance().signIn();
         const token = gapi.auth2!.getAuthInstance().currentUser.get().getAuthResponse().access_token;
-        const picker = new gapi.picker!.PickerBuilder()
-          .addView(new gapi.picker!.DocsView())
+        const pickerApi = gapi.picker!;
+        const picker = new pickerApi.PickerBuilder()
+          .addView(new pickerApi.DocsView())
           .setOAuthToken(token)
           .setDeveloperKey(GDRIVE_API_KEY)
           .setCallback(async (data: { action: string; docs: Array<{ name: string; id: string }> }) => {
-            if (data.action === gapi.picker!.Action.PICKED) {
+            if (data.action === pickerApi.Action.PICKED) {
               const doc = data.docs[0];
               if (!doc || !isAcceptedFile(doc.name)) { resolve(null); return; }
               try {
@@ -344,7 +347,7 @@ async function pickGoogleDrive(): Promise<CloudFile | null> {
               } catch {
                 resolve(null);
               }
-            } else if (data.action === gapi.picker!.Action.CANCEL) {
+            } else if (data.action === pickerApi.Action.CANCEL) {
               resolve(null);
             }
           })

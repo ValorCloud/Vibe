@@ -44,6 +44,7 @@ export const useImportHandlers = (params: UseImportHandlersParams) => {
           multiple: false,
           types: [{ description: 'Lyrics files', accept: {
             'text/plain': ['.txt', '.md'], 'text/markdown': ['.md'],
+            'application/json': ['.json'],
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
             'application/vnd.oasis.opendocument.text': ['.odt'],
           } }],

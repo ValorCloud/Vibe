@@ -21,6 +21,19 @@
 import { z } from 'zod';
 import { SectionSchema } from './sessionSchema';
 
+const SongVersionSchema = z.object({
+  id:          z.string(),
+  timestamp:   z.number(),
+  song:        z.array(SectionSchema),
+  structure:   z.array(z.string()),
+  title:       z.string(),
+  titleOrigin: z.enum(['user', 'ai']),
+  topic:       z.string(),
+  mood:        z.string(),
+  musicalPrompt: z.string().optional(),
+  name:        z.string(),
+});
+
 export const LibraryAsset_MetadataSchema = z
   .object({
     album:           z.string().optional(),
@@ -44,6 +57,7 @@ export const LibraryAssetSchema = z.object({
   timestamp: z.number(),
   type:      z.enum(['song', 'poem', 'lyrics']),
   sections:  z.array(SectionSchema),
+  versions:  z.array(SongVersionSchema).optional(),
   metadata:  LibraryAsset_MetadataSchema.optional(),
 });
 

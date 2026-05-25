@@ -86,7 +86,7 @@ export function AppModalLayer() {
     clearAppliedAnalysisItems, analyzePastedLyrics,
   } = useAnalysisContext();
 
-  const { versions, saveVersion, rollbackToVersion, handleRequestVersionName } = useVersionContext();
+  const { versions, saveVersion, rollbackToVersion, rollbackSectionToVersion, handleRequestVersionName } = useVersionContext();
 
   const { index: webSimilarityIndex, triggerNow: triggerWebSimilarity, resetIndex: resetWebSimilarityIndex } = useSimilarityContext();
 
@@ -183,13 +183,13 @@ export function AppModalLayer() {
           applyAnalysisItem={applyAnalysisItem}
           applySelectedAnalysisItems={applySelectedAnalysisItems}
           clearAppliedAnalysisItems={clearAppliedAnalysisItems}
-          versions={versions} rollbackToVersion={rollbackToVersion}
+          versions={versions} rollbackToVersion={rollbackToVersion} rollbackSectionToVersion={rollbackSectionToVersion}
           similarityMatches={similarityMatches} libraryCount={libraryCount}
           webSimilarityIndex={webSimilarityIndex} triggerWebSimilarity={triggerWebSimilarity}
           handleDeleteLibraryAsset={handleDeleteLibraryAsset}
           handleSaveToLibrary={handleSaveToLibrary} isSavingToLibrary={isSavingToLibrary}
           saveLibraryError={saveLibraryError} clearSaveLibraryError={clearSaveLibraryError}
-          title={title} libraryAssets={libraryAssets} hasCurrentSong={song.length > 0}
+          title={title} song={song} libraryAssets={libraryAssets} hasCurrentSong={song.length > 0}
           handleLoadLibraryAsset={handleLoadLibraryAsset}
           handlePurgeLibrary={handlePurgeLibrary}
           saveVersion={saveVersion}

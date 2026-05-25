@@ -357,6 +357,7 @@
     "formats": {
       "txt": "TXT",
       "markup": "Markup",
+      "json": "Projet JSON",
       "odt": "ODT",
       "docx": "DOCX",
       "lrc": "LRC",

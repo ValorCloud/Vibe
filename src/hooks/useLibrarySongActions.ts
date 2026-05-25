@@ -18,6 +18,7 @@ import {
   type LibraryAsset,
 } from '../utils/libraryUtils';
 import { useSongContext } from '../contexts/SongContext';
+import { useOptionalVersionContext } from '../contexts/VersionContext';
 
 type UseLibrarySongActionsParams = {
   setIsSavingToLibrary: (v: boolean) => void;
@@ -60,6 +61,7 @@ export const useLibrarySongActions = ({
     setNarrative,
     setMusicalPrompt,
   } = useSongContext();
+  const versionContext = useOptionalVersionContext();
 
   const handleSaveToLibrary = useCallback(async () => {
     if (song.length === 0) return;
@@ -70,6 +72,7 @@ export const useLibrarySongActions = ({
         title: title || 'Untitled Song',
         type: 'song',
         sections: song,
+        ...(versionContext?.versions ? { versions: versionContext.versions } : {}),
         metadata: {
           topic,
           mood,
@@ -105,6 +108,7 @@ export const useLibrarySongActions = ({
     tempo,
     title,
     topic,
+    versionContext?.versions,
   ]);
 
   const handleLoadLibraryAsset = useCallback((asset: LibraryAsset) => {
@@ -123,6 +127,7 @@ export const useLibrarySongActions = ({
     setRhythm(loadedAsset.rhythm);
     setNarrative(loadedAsset.narrative);
     setMusicalPrompt(loadedAsset.musicalPrompt);
+    versionContext?.replaceVersions(loadedAsset.versions);
     setIsSaveToLibraryModalOpen(false);
   }, [
     clearHistory,
@@ -140,6 +145,7 @@ export const useLibrarySongActions = ({
     setTitle,
     setTitleOrigin,
     setTopic,
+    versionContext,
   ]);
 
   return { handleSaveToLibrary, handleLoadLibraryAsset };

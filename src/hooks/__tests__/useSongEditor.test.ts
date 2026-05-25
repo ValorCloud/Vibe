@@ -296,6 +296,55 @@ describe('useSongEditor', () => {
       expect(openPasteModalWithText).toHaveBeenCalledWith('Verse text here');
     });
 
+    it('loads Vibe project JSON directly into the editor without opening paste modal', async () => {
+      const song = [makeSection('s1', 'Verse 1')];
+      const openPasteModalWithText = vi.fn();
+
+      const { result } = renderHook(
+        () => ({
+          editor: useSongEditor({ openPasteModalWithText }),
+          context: useSongContext(),
+        }),
+        {
+          wrapper: ({ children }: { children: React.ReactNode }) => React.createElement(
+            SongProvider,
+            null,
+            React.createElement(
+              DragProvider,
+              null,
+              React.createElement(
+                SongContextInitializer,
+                { song, structure: ['Verse 1'], title: 'Test Song', topic: 'test', mood: 'neutral', songLanguage: '' },
+                children,
+              ),
+            ),
+          ),
+        },
+      );
+
+      const fileContent = JSON.stringify({
+        song: [makeSection('json-section', 'Bridge', [makeLine('json-line', 'Loaded from JSON')])],
+        structure: ['Bridge'],
+        title: 'JSON Song',
+        titleOrigin: 'user',
+        topic: 'archive',
+        mood: 'focused',
+        songLanguage: 'en',
+        musicalPrompt: 'STYLE: piano',
+      });
+      const file = new File([fileContent], 'song.vibe.json', { type: 'application/json' });
+      (file as any).text = vi.fn().mockResolvedValue(fileContent);
+
+      await act(async () => {
+        const payload = await result.current.editor.loadFileForAnalysis(file);
+        expect(payload.songTitle).toBe('JSON Song');
+      });
+
+      expect(openPasteModalWithText).not.toHaveBeenCalled();
+      expect(result.current.context.song[0]?.name).toBe('Bridge');
+      expect(result.current.context.musicalPrompt).toBe('STYLE: piano');
+    });
+
     it('does not open paste modal when file has no text', async () => {
       const song = [makeSection('s1', 'Verse 1')];
       const openPasteModalWithText = vi.fn();

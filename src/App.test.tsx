@@ -107,7 +107,8 @@ vi.mock('./contexts/ComposerContext', () => ({
 
 vi.mock('./contexts/VersionContext', () => ({
   VersionProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  useVersionContext: () => ({ saveVersion: mockAppState.noop }),
+  useVersionContext: () => ({ versions: [], saveVersion: mockAppState.noop, replaceVersions: mockAppState.noop }),
+  useOptionalVersionContext: () => ({ versions: [], saveVersion: mockAppState.noop, replaceVersions: mockAppState.noop }),
 }));
 
 vi.mock('./contexts/SimilarityContext', () => ({

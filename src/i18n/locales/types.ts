@@ -477,6 +477,7 @@ export interface Translations {
     formats: {
       txt: string;
       markup: string;
+      json?: string;
       odt: string;
       docx: string;
       /** LRC synchronized lyrics format label */

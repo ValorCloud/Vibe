@@ -46,6 +46,7 @@ export function useUIState(initial?: NavInitial) {
   const [isAnalysisModalOpen, setIsAnalysisModalOpen] = useState(false);
   const [isSearchReplaceOpen, setIsSearchReplaceOpen] = useState(false);
   const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(false);
+  const [isCloudStoragePickerOpen, setIsCloudStoragePickerOpen] = useState(false);
 
   // ── Navigation ───────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<AppTab>(initial?.activeTab ?? 'lyrics');
@@ -87,6 +88,7 @@ export function useUIState(initial?: NavInitial) {
     isAnalysisModalOpen, setIsAnalysisModalOpen,
     isSearchReplaceOpen, setIsSearchReplaceOpen,
     isAnalysisPanelOpen, setIsAnalysisPanelOpen,
+    isCloudStoragePickerOpen, setIsCloudStoragePickerOpen,
     activeTab, setActiveTab,
     isStructureOpen, setIsStructureOpen,
     isLeftPanelOpen, setIsLeftPanelOpen,

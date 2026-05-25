@@ -1,7 +1,7 @@
 import React from 'react';
 import { History, Layout, Plus, Sparkles, Undo2, X } from '../../ui/icons';
 import { Button } from '../../ui/Button';
-import type { SongVersion } from '../../../types';
+import type { Section, SongVersion } from '../../../types';
 
 type VersionsModalProps = {
   isOpen: boolean;
@@ -9,10 +9,48 @@ type VersionsModalProps = {
   onClose: () => void;
   onSaveCurrent: (name: string) => void;
   onRollback: (version: SongVersion) => void;
+  onRollbackSection: (version: SongVersion, sectionId: string) => void;
   onRequestVersionName: (callback: (name: string) => void) => void;
+  currentSong: Section[];
 };
 
-export const VersionsModal = ({ isOpen, versions, onClose, onSaveCurrent, onRollback, onRequestVersionName }: VersionsModalProps) => {
+const sectionText = (section: Section) => section.lines.map(line => line.text).join('\n');
+
+const getVersionDiff = (currentSong: Section[], version: SongVersion) => {
+  let added = 0;
+  let removed = 0;
+  let changed = 0;
+  const changedSections = version.song.filter(versionSection => {
+    const currentSection = currentSong.find(section => section.id === versionSection.id || section.name === versionSection.name);
+    if (!currentSection) {
+      removed += versionSection.lines.length;
+      return true;
+    }
+    const currentLines = currentSection.lines.map(line => line.text);
+    const versionLines = versionSection.lines.map(line => line.text);
+    added += Math.max(0, currentLines.length - versionLines.length);
+    removed += Math.max(0, versionLines.length - currentLines.length);
+    const overlap = Math.min(currentLines.length, versionLines.length);
+    for (let i = 0; i < overlap; i++) {
+      if (currentLines[i] !== versionLines[i]) changed++;
+    }
+    return sectionText(currentSection) !== sectionText(versionSection);
+  });
+  added += currentSong.filter(section => !version.song.some(versionSection => versionSection.id === section.id || versionSection.name === section.name))
+    .reduce((total, section) => total + section.lines.length, 0);
+  return { added, removed, changed, changedSections };
+};
+
+export const VersionsModal = ({
+  isOpen,
+  versions,
+  onClose,
+  onSaveCurrent,
+  onRollback,
+  onRollbackSection,
+  onRequestVersionName,
+  currentSong,
+}: VersionsModalProps) => {
   const handleOpenSaveDialog = () => {
     onRequestVersionName((name) => {
       if (name) onSaveCurrent(name);
@@ -75,7 +113,9 @@ export const VersionsModal = ({ isOpen, versions, onClose, onSaveCurrent, onRoll
               </div>
             ) : (
               <div className="space-y-3">
-                {versions.map((version) => (
+                {versions.map((version) => {
+                  const diff = getVersionDiff(currentSong, version);
+                  return (
                   <div key={version.id} className="group p-4 bg-[var(--bg-app)] hover:bg-[var(--bg-sidebar)] border border-[var(--border-color)] hover:border-[var(--accent-color)]/30 rounded-xl transition-all">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
@@ -102,9 +142,35 @@ export const VersionsModal = ({ isOpen, versions, onClose, onSaveCurrent, onRoll
                         <Sparkles className="w-3 h-3" />
                         {version.topic || 'No topic'}
                       </div>
+                      <div aria-label={`${diff.changed} changed lines, ${diff.added} added lines, ${diff.removed} removed lines`}>
+                        Δ {diff.changed} changed · +{diff.added} · -{diff.removed}
+                      </div>
+                      {version.musicalPrompt && (
+                        <div title={version.musicalPrompt}>
+                          Musical prompt: {version.musicalPrompt.slice(0, 48)}{version.musicalPrompt.length > 48 ? '…' : ''}
+                        </div>
+                      )}
                     </div>
+                    {diff.changedSections.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">Section versions</p>
+                        <div className="flex flex-wrap gap-2">
+                          {diff.changedSections.map(section => (
+                            <button
+                              key={section.id}
+                              type="button"
+                              onClick={() => onRollbackSection(version, section.id)}
+                              className="ux-interactive rounded-[10px_3px_10px_3px] border border-[var(--border-color)] px-2.5 py-1 text-[10px] text-[var(--text-secondary)] hover:border-[var(--accent-color)] hover:text-[var(--accent-color)]"
+                            >
+                              Restore {section.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

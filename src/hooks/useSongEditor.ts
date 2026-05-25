@@ -4,6 +4,10 @@ import { useSectionManager } from './useSectionManager';
 import { buildPrintHtml, buildShareUrl, createSongExport, type ExportFormat } from '../utils/exportUtils';
 import { extractImportPayloadFromDocx, extractImportPayloadFromOdt, extractImportPayloadFromText } from '../utils/libraryUtils';
 import { useSongContext } from '../contexts/SongContext';
+import { useOptionalVersionContext } from '../contexts/VersionContext';
+import { SessionSchema } from '../schemas/sessionSchema';
+import { normalizeLoadedSection } from '../utils/songUtils';
+import type { SongVersion } from '../types';
 
 type SaveFilePickerOptions = {
   suggestedName: string;
@@ -29,11 +33,30 @@ export const useSongEditor = ({
   const {
     song,
     title,
+    titleOrigin,
     topic,
     mood,
     songLanguage,
+    genre,
+    tempo,
+    instrumentation,
+    rhythm,
+    narrative,
+    musicalPrompt,
     updateSongAndStructureWithHistory,
+    setTitle,
+    setTitleOrigin,
+    setTopic,
+    setMood,
+    setSongLanguage,
+    setGenre,
+    setTempo,
+    setInstrumentation,
+    setRhythm,
+    setNarrative,
+    setMusicalPrompt,
   } = useSongContext();
+  const versionContext = useOptionalVersionContext();
   const { removeStructureItem, addStructureItem, normalizeStructure } = useSectionManager();
 
   // ── File operations ────────────────────────────────────────────────────────
@@ -50,7 +73,22 @@ export const useSongEditor = ({
       return;
     }
 
-    const { blob, filename } = createSongExport({ song, title, topic, mood, songLanguage, format });
+    const { blob, filename } = createSongExport({
+      song,
+      title,
+      titleOrigin,
+      topic,
+      mood,
+      songLanguage,
+      genre,
+      tempo,
+      instrumentation,
+      rhythm,
+      narrative,
+      musicalPrompt,
+      versions: versionContext?.versions ?? [],
+      format,
+    });
     const saveWithPicker = async () => {
       const filePicker = (window as WindowWithSaveFilePicker).showSaveFilePicker;
       if (!filePicker) return false;
@@ -78,7 +116,7 @@ export const useSongEditor = ({
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  }, [song, title, topic, mood, songLanguage]);
+  }, [song, title, topic, mood, songLanguage, genre, tempo, instrumentation, rhythm, narrative, musicalPrompt, versionContext?.versions]);
 
   const loadFileForAnalysis = useCallback(async (file: File): Promise<{ songLanguage?: string; songTitle?: string }> => {
     let payload: { text: string; songLanguage: string; songTitle?: string } = { text: '', songLanguage: '' };
@@ -86,6 +124,41 @@ export const useSongEditor = ({
       payload = await extractImportPayloadFromDocx(file);
     } else if (file.name.endsWith('.odt')) {
       payload = await extractImportPayloadFromOdt(file);
+    } else if (file.name.endsWith('.json')) {
+      const text = await file.text();
+      try {
+        const parsed = JSON.parse(text) as unknown;
+        const result = SessionSchema.safeParse(parsed);
+        if (result.success && result.data.song?.length) {
+          const importedSong = result.data.song.map(section => normalizeLoadedSection(section));
+          const importedStructure = result.data.structure?.length
+            ? result.data.structure
+            : importedSong.map(section => section.name);
+          updateSongAndStructureWithHistory(importedSong, importedStructure);
+          setTitle(result.data.title ?? 'Untitled Song');
+          setTitleOrigin(result.data.titleOrigin ?? titleOrigin);
+          setTopic(result.data.topic ?? '');
+          setMood(result.data.mood ?? '');
+          if (result.data.songLanguage) setSongLanguage(result.data.songLanguage);
+          setGenre(result.data.genre ?? '');
+          setTempo(Number(result.data.tempo) || 120);
+          setInstrumentation(result.data.instrumentation ?? '');
+          setRhythm(result.data.rhythm ?? '');
+          setNarrative(result.data.narrative ?? '');
+          setMusicalPrompt(result.data.musicalPrompt ?? '');
+          const importedVersions = Array.isArray((parsed as { versions?: unknown }).versions)
+            ? (parsed as { versions: SongVersion[] }).versions
+            : [];
+          versionContext?.replaceVersions(importedVersions);
+          return {
+            ...(result.data.songLanguage ? { songLanguage: result.data.songLanguage } : {}),
+            ...(result.data.title ? { songTitle: result.data.title } : {}),
+          };
+        }
+      } catch {
+        // Fall through and expose the raw JSON as text for analysis.
+      }
+      payload = { text, songLanguage: '' };
     } else {
       payload = extractImportPayloadFromText(await file.text());
     }
@@ -94,7 +167,23 @@ export const useSongEditor = ({
       ...(payload.songLanguage ? { songLanguage: payload.songLanguage } : {}),
       ...(payload.songTitle !== undefined ? { songTitle: payload.songTitle } : {}),
     };
-  }, [openPasteModalWithText]);
+  }, [
+    openPasteModalWithText,
+    setGenre,
+    setInstrumentation,
+    setMood,
+    setMusicalPrompt,
+    setNarrative,
+    setRhythm,
+    setSongLanguage,
+    setTempo,
+    setTitle,
+    setTitleOrigin,
+    setTopic,
+    titleOrigin,
+    updateSongAndStructureWithHistory,
+    versionContext,
+  ]);
 
   const introOutroSortedRef = useRef<string | null>(null);
   useEffect(() => {

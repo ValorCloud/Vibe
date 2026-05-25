@@ -87,6 +87,7 @@ interface Props {
   // Versions
   versions: SongVersion[];
   rollbackToVersion: (version: SongVersion) => void;
+  rollbackSectionToVersion: (version: SongVersion, sectionId: string) => void;
   saveVersion: (name: string, snapshot?: VersionSnapshot) => void;
   handleRequestVersionName: (callback: (name: string) => void) => void;
 
@@ -105,6 +106,7 @@ interface Props {
   saveLibraryError: string | null;
   clearSaveLibraryError: () => void;
   title: string;
+  song: SongVersion['song'];
   libraryAssets: LibraryAsset[];
   hasCurrentSong: boolean;
 
@@ -122,11 +124,11 @@ export const AppModals = React.memo(function AppModals({
   analysisReport, analysisSteps,
   appliedAnalysisItems, selectedAnalysisItems, isApplyingAnalysis,
   toggleAnalysisItemSelection, applyAnalysisItem, applySelectedAnalysisItems, clearAppliedAnalysisItems,
-  versions, rollbackToVersion, saveVersion, handleRequestVersionName,
+  versions, rollbackToVersion, rollbackSectionToVersion, saveVersion, handleRequestVersionName,
   similarityMatches, libraryCount, webSimilarityIndex, triggerWebSimilarity, handleDeleteLibraryAsset,
   handleSaveToLibrary, handleLoadLibraryAsset, handlePurgeLibrary, isSavingToLibrary,
   saveLibraryError, clearSaveLibraryError,
-  title, libraryAssets, hasCurrentSong,
+  title, song, libraryAssets, hasCurrentSong,
   resetSong,
 }: Props) {
   const { t } = useTranslation();
@@ -223,7 +225,8 @@ export const AppModals = React.memo(function AppModals({
       <VersionsModal
         isOpen={ui.isVersionsModalOpen} versions={versions}
         onClose={() => closeModal('versions')} onSaveCurrent={saveVersion}
-        onRollback={rollbackToVersion} onRequestVersionName={handleRequestVersionName}
+        onRollback={rollbackToVersion} onRollbackSection={rollbackSectionToVersion}
+        onRequestVersionName={handleRequestVersionName} currentSong={song}
       />
       <ResetModal isOpen={ui.isResetModalOpen} onClose={() => closeModal('reset')} onConfirm={resetSong} />
       <KeyboardShortcutsModal
