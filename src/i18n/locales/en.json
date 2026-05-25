@@ -359,7 +359,15 @@
       "txt": "TXT",
       "markup": "Markup",
       "odt": "ODT",
-      "docx": "DOCX"
+      "docx": "DOCX",
+      "lrc": "LRC",
+      "pdf": "PDF"
+    },
+    "share": {
+      "label": "Share",
+      "description": "Copy a public link to share this song.",
+      "copyLink": "Copy link",
+      "copied": "Copied!"
     }
   },
   "keyboardShortcuts": {

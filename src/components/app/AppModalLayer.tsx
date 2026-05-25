@@ -91,7 +91,7 @@ export function AppModalLayer() {
 
   const { resetSuggestionCycle } = useTopicMoodSuggester({ hasApiKey });
 
-  const { exportSong, loadFileForAnalysis } = useSongEditor({
+  const { exportSong, loadFileForAnalysis, getShareUrl } = useSongEditor({
     openPasteModalWithText: (text: string) => { setPastedText(text); setIsPasteModalOpen(true); },
   });
 
@@ -161,6 +161,7 @@ export function AppModalLayer() {
           handleImportChooseFile={handleImportChooseFile}
           handleImportInputChange={handleImportInputChange}
           exportSong={exportSong}
+          getShareUrl={getShareUrl}
           pastedText={pastedText} setPastedText={setPastedText}
           isAnalyzing={isAnalyzing}
           isAnalyzingTheme={isAnalyzingTheme}

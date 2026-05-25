@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { isAnchoredEndSection, isAnchoredStartSection } from '../constants/sections';
 import { useSectionManager } from './useSectionManager';
-import { createSongExport, type ExportFormat } from '../utils/exportUtils';
+import { buildPrintHtml, buildShareUrl, createSongExport, type ExportFormat } from '../utils/exportUtils';
 import { extractImportPayloadFromDocx, extractImportPayloadFromOdt, extractImportPayloadFromText } from '../utils/libraryUtils';
 import { useSongContext } from '../contexts/SongContext';
 
@@ -39,6 +39,17 @@ export const useSongEditor = ({
   // ── File operations ────────────────────────────────────────────────────────
   const exportSong = useCallback(async (format: ExportFormat) => {
     if (song.length === 0) return;
+
+    // PDF: open a styled print window — the browser handles PDF generation
+    if (format === 'pdf') {
+      const html = buildPrintHtml({ song, title, topic, mood, songLanguage });
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) return;
+      printWindow.document.write(html);
+      printWindow.document.close();
+      return;
+    }
+
     const { blob, filename } = createSongExport({ song, title, topic, mood, songLanguage, format });
     const saveWithPicker = async () => {
       const filePicker = (window as WindowWithSaveFilePicker).showSaveFilePicker;
@@ -99,11 +110,17 @@ export const useSongEditor = ({
     updateSongAndStructureWithHistory(sorted, sorted.map(s => s.name));
   }, [song, updateSongAndStructureWithHistory]);
 
+  const getShareUrl = useCallback(
+    () => buildShareUrl({ song, title, topic, mood, songLanguage }),
+    [song, title, topic, mood, songLanguage],
+  );
+
   return {
     removeStructureItem,
     addStructureItem,
     normalizeStructure,
     exportSong,
     loadFileForAnalysis,
+    getShareUrl,
   };
 };

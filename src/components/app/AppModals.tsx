@@ -46,6 +46,7 @@ interface Props {
 
   // Export
   exportSong: (format: ExportFormat) => Promise<void>;
+  getShareUrl: () => string;
 
   // Paste / analysis (data props only)
   pastedText: string;
@@ -110,7 +111,7 @@ export const AppModals = React.memo(function AppModals({
   theme, setTheme, audioFeedback, setAudioFeedback, uiScale, setUiScale, defaultEditMode, setDefaultEditMode,
   showTranslationFeatures, setShowTranslationFeatures,
   handleImportChooseFile, handleImportInputChange,
-  exportSong,
+  exportSong, getShareUrl,
   pastedText, setPastedText, isAnalyzing, isAnalyzingTheme, importProgress, analyzePastedLyrics,
   analysisReport, analysisSteps,
   appliedAnalysisItems, selectedAnalysisItems, isApplyingAnalysis,
@@ -175,6 +176,7 @@ export const AppModals = React.memo(function AppModals({
         onClose={() => closeModal('export')}
         onOpenLibrary={openLibraryFromExport}
         onExport={exportSong}
+        getShareUrl={getShareUrl}
       />
       <ErrorBoundary label="AI analysis">
         <>

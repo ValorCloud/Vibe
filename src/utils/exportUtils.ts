@@ -1,19 +1,23 @@
 import { strToU8, zipSync } from 'fflate';
 import type { Section } from '../types';
+import { generateId } from './idUtils';
 
-export type ExportFormat = 'txt' | 'markup' | 'odt' | 'docx';
+export type ExportFormat = 'txt' | 'markup' | 'odt' | 'docx' | 'lrc' | 'pdf';
 
 const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const ODT_MIME = 'application/vnd.oasis.opendocument.text';
 
-type SongExportParams = {
+/** Shared song data fields (no format). Used for print/share utilities. */
+type SongData = {
   song: Section[];
   title: string;
   topic: string;
   mood: string;
   songLanguage?: string;
-  format: ExportFormat;
 };
+
+/** Parameters for file-based exports (PDF is handled separately via print). */
+type SongExportParams = SongData & { format: Exclude<ExportFormat, 'pdf'> };
 
 const escapeXml = (value: string) => value
   .replace(/&/g, '&amp;')
@@ -219,6 +223,186 @@ const buildOdtBlob = (song: Section[], title: string, topic: string, mood: strin
   return new Blob([zipSync(files, { level: 0 }) as Uint8Array<ArrayBuffer>], { type: ODT_MIME });
 };
 
+// ---------------------------------------------------------------------------
+// LRC — synchronized lyrics with evenly-spaced placeholder timestamps
+// ---------------------------------------------------------------------------
+const LRC_LINE_INTERVAL_S = 5;
+
+const buildLrcContent = (song: Section[], title: string, songLanguage = ''): string => {
+  const pad2 = (n: number) => String(Math.floor(n)).padStart(2, '0');
+  const formatTimestamp = (totalSecs: number): string => {
+    const m = Math.floor(totalSecs / 60);
+    const s = totalSecs - m * 60;
+    const ss = String(Math.floor(s)).padStart(2, '0');
+    const cs = String(Math.round((s % 1) * 100)).padStart(2, '0');
+    return `[${pad2(m)}:${ss}.${cs}]`;
+  };
+
+  let content = `[ti:${title.trim() || 'Untitled Song'}]\n`;
+  if (songLanguage.trim()) content += `[la:${songLanguage.trim()}]\n`;
+  content += '[by:Vibe]\n\n';
+
+  let currentSec = 0;
+  song.forEach(section => {
+    content += `${formatTimestamp(currentSec)}▶ ${section.name}\n`;
+    currentSec += LRC_LINE_INTERVAL_S;
+    section.lines
+      .filter(line => !isArtifactLine(line.text) && !line.isMeta)
+      .forEach(line => {
+        content += `${formatTimestamp(currentSec)}${line.text}\n`;
+        currentSec += LRC_LINE_INTERVAL_S;
+      });
+    currentSec += LRC_LINE_INTERVAL_S;
+  });
+
+  return content;
+};
+
+// ---------------------------------------------------------------------------
+// Print HTML — styled page that triggers window.print() for PDF export
+// ---------------------------------------------------------------------------
+const escapeHtml = (str: string): string =>
+  str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+export const buildPrintHtml = ({
+  song, title, topic, mood, songLanguage = '',
+}: SongData): string => {
+  const escapedTitle = escapeHtml(title.trim() || 'Untitled Song');
+  const metaParts = [topic, mood].filter(Boolean).map(escapeHtml);
+  const metaLine = metaParts.join(' · ');
+
+  const sectionsHtml = song
+    .map(section => {
+      const linesHtml = section.lines
+        .filter(line => !isArtifactLine(line.text))
+        .map(line =>
+          `<p class="${line.isMeta ? 'meta-line' : 'lyric-line'}">${escapeHtml(line.text)}</p>`,
+        )
+        .join('');
+      return `<section><h2>${escapeHtml(section.name)}</h2>${linesHtml}</section>`;
+    })
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="${escapeHtml(songLanguage || 'en')}">
+<head>
+<meta charset="UTF-8">
+<title>${escapedTitle}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Georgia,'Times New Roman',serif;font-size:12pt;line-height:1.6;color:#111;background:#fff;padding:2.5cm;max-width:none}
+h1{font-size:22pt;font-weight:700;margin-bottom:.4em}
+.meta{font-size:10pt;color:#555;margin-bottom:1.6em}
+section{margin-bottom:1.5em;break-inside:avoid}
+h2{font-size:12pt;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5em;color:#333}
+.lyric-line{font-size:12pt;margin-bottom:.2em}
+.meta-line{font-size:10pt;color:#666;font-style:italic;margin-bottom:.2em}
+@media print{body{padding:0}@page{margin:2cm}}
+</style>
+</head>
+<body>
+<h1>${escapedTitle}</h1>${metaLine ? `\n<p class="meta">${metaLine}</p>` : ''}
+${sectionsHtml}
+<script>window.addEventListener('load',function(){window.print();});<\/script>
+</body>
+</html>`;
+};
+
+// ---------------------------------------------------------------------------
+// Share link — compact base64-URL encoding of song + metadata
+// ---------------------------------------------------------------------------
+
+/** Compact payload stored in the share URL hash. Schema v1. */
+export type SharePayload = {
+  v: 1;
+  t: string;                           // title
+  p: string;                           // topic
+  m: string;                           // mood
+  l: string;                           // language
+  s: Array<{ n: string; ls: string[] }>; // sections (lines prefixed "[meta]" when isMeta)
+};
+
+const SHARE_PREFIX = 'share=';
+
+/** Encodes the current song + metadata as a shareable URL. */
+export const buildShareUrl = ({
+  song, title, topic, mood, songLanguage = '',
+}: SongData): string => {
+  const payload: SharePayload = {
+    v: 1,
+    t: title,
+    p: topic,
+    m: mood,
+    l: songLanguage,
+    s: song.map(section => ({
+      n: section.name,
+      ls: section.lines
+        .filter(line => !isArtifactLine(line.text))
+        .map(line => (line.isMeta ? `[meta]${line.text}` : line.text)),
+    })),
+  };
+
+  const json = JSON.stringify(payload);
+  const bytes = new TextEncoder().encode(json);
+  const binary = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+  const base64 = btoa(binary);
+
+  const base = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}`
+    : '';
+  return `${base}#${SHARE_PREFIX}${base64}`;
+};
+
+/** Parses a `#share=…` hash fragment; returns null if malformed or wrong version. */
+export const parseShareHash = (hash: string): SharePayload | null => {
+  try {
+    const param = hash.startsWith('#') ? hash.slice(1) : hash;
+    if (!param.startsWith(SHARE_PREFIX)) return null;
+    const base64 = param.slice(SHARE_PREFIX.length);
+    const bytes = new Uint8Array(atob(base64).split('').map(c => c.charCodeAt(0)));
+    const json = new TextDecoder().decode(bytes);
+    const payload = JSON.parse(json) as SharePayload;
+    return payload.v === 1 ? payload : null;
+  } catch {
+    return null;
+  }
+};
+
+/** Converts a decoded share payload back to a Section[] + metadata bundle. */
+export const sharePayloadToSong = (
+  payload: SharePayload,
+): { song: Section[]; structure: string[]; title: string; topic: string; mood: string; songLanguage: string } => {
+  const song: Section[] = payload.s.map(s => ({
+    id: generateId(),
+    name: s.n,
+    lines: s.ls.map(text => {
+      const isMeta = text.startsWith('[meta]');
+      return {
+        id: generateId(),
+        text: isMeta ? text.slice(6) : text,
+        rhymingSyllables: '',
+        rhyme: '',
+        syllables: 0,
+        concept: '',
+        ...(isMeta ? { isMeta: true as const } : {}),
+      };
+    }),
+  }));
+  return {
+    song,
+    structure: song.map(s => s.name),
+    title: payload.t,
+    topic: payload.p,
+    mood: payload.m,
+    songLanguage: payload.l,
+  };
+};
+
 export const createSongExport = ({
   song, title, topic, mood, songLanguage = '', format,
 }: SongExportParams): { blob: Blob; filename: string } => {
@@ -238,5 +422,10 @@ export const createSongExport = ({
       return { blob: buildDocxBlob(song, title, topic, mood, songLanguage), filename: `${baseFileName}.docx` };
     case 'odt':
       return { blob: buildOdtBlob(song, title, topic, mood, songLanguage), filename: `${baseFileName}.odt` };
+    case 'lrc':
+      return {
+        blob: new Blob([buildLrcContent(song, title, songLanguage)], { type: 'text/plain;charset=utf-8' }),
+        filename: `${baseFileName}.lrc`,
+      };
   }
 };

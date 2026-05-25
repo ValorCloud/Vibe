@@ -479,6 +479,17 @@ export interface Translations {
       markup: string;
       odt: string;
       docx: string;
+      /** LRC synchronized lyrics format label */
+      lrc?: string;
+      /** PDF print format label */
+      pdf?: string;
+    };
+    /** Share link section */
+    share?: {
+      label?: string;
+      description?: string;
+      copyLink?: string;
+      copied?: string;
     };
   };
 

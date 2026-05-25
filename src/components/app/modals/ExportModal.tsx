@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Download, FileCode2, FileText, Library, X } from '../../ui/icons';
+import { Check, Copy, Download, FileCode2, FileText, Library, Link2, X } from '../../ui/icons';
 import { Button } from '../../ui/Button';
 import { useTranslation } from '../../../i18n';
 import type { ExportFormat } from '../../../utils/exportUtils';
@@ -9,6 +9,8 @@ interface Props {
   onClose: () => void;
   onOpenLibrary: () => void;
   onExport: (format: ExportFormat) => void;
+  /** If provided, a "Share link" section will appear in the modal. */
+  getShareUrl?: () => string;
 }
 
 /** Minimal SVG badge used as a format icon when lucide has no suitable equivalent. */
@@ -32,15 +34,16 @@ function FormatBadge({ label, color }: { label: string; color: string }) {
   );
 }
 
-export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport }: Props) {
+export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport, getShareUrl }: Props) {
   const { t } = useTranslation();
   const exportDialog = t.exportDialog ?? ({} as NonNullable<typeof t.exportDialog>);
   const saveToLibrary = t.saveToLibrary ?? ({} as NonNullable<typeof t.saveToLibrary>);
   const actions = (t as { actions?: { cancel?: string } }).actions;
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('txt');
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
-    if (isOpen) setSelectedFormat('txt');
+    if (isOpen) { setSelectedFormat('txt'); setLinkCopied(false); }
   }, [isOpen]);
 
   const formats = useMemo(() => {
@@ -65,6 +68,24 @@ export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport }: Props)
         border: 'rgba(168, 85, 247, 0.28)',
       },
       {
+        value: 'lrc' as const,
+        label: exportFormats.lrc ?? 'LRC',
+        extension: '.lrc',
+        icon: <FormatBadge label="LRC" color="#f59e0b" />,
+        accent: '#f59e0b',
+        surface: 'rgba(245, 158, 11, 0.14)',
+        border: 'rgba(245, 158, 11, 0.28)',
+      },
+      {
+        value: 'pdf' as const,
+        label: exportFormats.pdf ?? 'PDF',
+        extension: '.pdf',
+        icon: <FormatBadge label="PDF" color="#ef4444" />,
+        accent: '#ef4444',
+        surface: 'rgba(239, 68, 68, 0.14)',
+        border: 'rgba(239, 68, 68, 0.28)',
+      },
+      {
         value: 'odt' as const,
         label: exportFormats.odt ?? 'ODT',
         extension: '.odt',
@@ -86,6 +107,30 @@ export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport }: Props)
   }, [t]);
 
   if (!isOpen) return null;
+
+  const shareSection = exportDialog.share ?? ({} as NonNullable<NonNullable<typeof exportDialog>['share']>);
+
+  const handleCopyLink = async () => {
+    if (!getShareUrl) return;
+    const url = getShareUrl();
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      // Fallback: create a temporary input and copy from it
+      const el = document.createElement('textarea');
+      el.value = url;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4">
@@ -132,7 +177,7 @@ export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport }: Props)
           </button>
         </div>
 
-        <div className="p-6 bg-[var(--bg-app)]">
+        <div className="p-6 bg-[var(--bg-app)] overflow-y-auto flex-1">
           <p className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] mb-3">
             {exportDialog.formatLabel ?? 'Format'}
           </p>
@@ -188,6 +233,46 @@ export function ExportModal({ isOpen, onClose, onOpenLibrary, onExport }: Props)
               );
             })}
           </div>
+
+          {getShareUrl && (
+            <div className="mt-5 pt-5 border-t border-[var(--border-color)]">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Link2 className="w-4 h-4 text-[var(--accent-color)]" />
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--text-primary)]">
+                      {shareSection.label ?? 'Share'}
+                    </p>
+                    <p className="text-[11px] text-[var(--text-secondary)]">
+                      {shareSection.description ?? 'Copy a link to share this song.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  aria-label={linkCopied ? (shareSection.copied ?? 'Copied!') : (shareSection.copyLink ?? 'Copy link')}
+                  className="ux-interactive shrink-0 inline-flex items-center gap-1.5 rounded-[12px_4px_12px_4px] border px-3 py-2 text-xs font-semibold transition-colors"
+                  style={linkCopied
+                    ? {
+                        borderColor: '#22c55e',
+                        background: 'rgba(34, 197, 94, 0.12)',
+                        color: '#22c55e',
+                      }
+                    : {
+                        borderColor: 'var(--accent-color)',
+                        background: 'transparent',
+                        color: 'var(--accent-color)',
+                      }}
+                >
+                  {linkCopied
+                    ? <><Check className="w-3.5 h-3.5" />{shareSection.copied ?? 'Copied!'}</>
+                    : <><Copy className="w-3.5 h-3.5" />{shareSection.copyLink ?? 'Copy link'}</>
+                  }
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="px-6 py-4 border-t border-[var(--border-color)] bg-[var(--bg-sidebar)] flex items-center justify-between gap-3 flex-wrap">

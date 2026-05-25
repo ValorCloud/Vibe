@@ -25,8 +25,10 @@ import { useLanguage, useTranslation } from './i18n';
 import { SongProvider, useSongContext } from './contexts/SongContext';
 import { SongMutationProvider } from './contexts/SongMutationContext';
 import { ComposerProvider, useComposerContext } from './contexts/ComposerContext';
-import { loadSession } from './lib/sessionPersistence';
+import { loadSession, SESSION_SCHEMA_VERSION } from './lib/sessionPersistence';
 import type { SessionSnapshot } from './lib/sessionPersistence';
+import { parseShareHash, sharePayloadToSong } from './utils/exportUtils';
+import { DEFAULT_RHYME_SCHEME } from './constants/editor';
 
 // ── Lazy-loaded heavy panels (conditionally visible — keep out of initial bundle) ──
 const AppEditorLayout = lazy(() =>
@@ -274,6 +276,34 @@ function AppInner() {
     const safetyTimer = setTimeout(() => {
       if (!cancelled) setInitialSession(null);
     }, 3000);
+
+    // Detect a shared song in the URL hash before loading the local OPFS session.
+    const sharePayload = parseShareHash(window.location.hash);
+    if (sharePayload) {
+      // Remove the hash so the shared song isn't re-loaded on refresh.
+      window.history.replaceState({}, '', window.location.pathname + window.location.search);
+      const songData = sharePayloadToSong(sharePayload);
+      const session: SessionSnapshot = {
+        schemaVersion: SESSION_SCHEMA_VERSION,
+        savedAt: Date.now(),
+        ...songData,
+        titleOrigin: 'user',
+        rhymeScheme: DEFAULT_RHYME_SCHEME,
+        targetSyllables: 0,
+        genre: '',
+        tempo: 120,
+        instrumentation: '',
+        rhythm: '',
+        narrative: '',
+        musicalPrompt: '',
+        activeTab: 'lyrics',
+        isStructureOpen: false,
+        isLeftPanelOpen: true,
+      };
+      clearTimeout(safetyTimer);
+      setInitialSession(session);
+      return;
+    }
 
     loadSession()
       .then(data => { if (!cancelled) setInitialSession(data); })
