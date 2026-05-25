@@ -57,13 +57,19 @@ export function isCloudVideoUrl(url: string): boolean {
 }
 
 export function detectCloudProvider(url: string): CloudProviderId {
-  const lower = url.trim().toLowerCase();
-  if (!lower) return 'direct-url';
-  if (lower.includes('dropbox.com')) return 'dropbox';
-  if (lower.includes('box.com')) return 'box';
-  if (lower.includes('drive.google.com')) return 'google-drive';
-  if (lower.includes('1drv.ms') || lower.includes('onedrive.live.com')) return 'onedrive';
-  if (lower.includes('.sharepoint.com') || lower.includes('-my.sharepoint.com')) return 'onedrive-business';
+  const trimmed = url.trim();
+  if (!trimmed) return 'direct-url';
+  let hostname = '';
+  try {
+    hostname = new URL(trimmed).hostname.toLowerCase();
+  } catch {
+    return 'direct-url';
+  }
+  if (hostname === '1drv.ms' || hostname === 'onedrive.live.com') return 'onedrive';
+  if (hostname === 'drive.google.com') return 'google-drive';
+  if (hostname.endsWith('.dropbox.com') || hostname === 'dropbox.com') return 'dropbox';
+  if (hostname.endsWith('.box.com') || hostname === 'box.com') return 'box';
+  if (hostname.endsWith('.sharepoint.com')) return 'onedrive-business';
   return 'direct-url';
 }
 

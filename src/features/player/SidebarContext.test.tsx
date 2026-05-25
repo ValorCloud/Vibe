@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { SidebarProvider, useSidebarContext } from './SidebarContext';
-import { LibraryProvider } from '../../contexts/LibraryContext';
-import { useLibraryContext } from '../../contexts/LibraryContext';
+import { LibraryProvider, useLibraryContext } from '../../contexts/LibraryContext';
 
 function wrap(onLocalTracksAdded?: () => void) {
   return function Wrapper({ children }: { children: ReactNode }) {
