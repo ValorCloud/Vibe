@@ -11,6 +11,7 @@ const ODT_MIME = 'application/vnd.oasis.opendocument.text';
 type SongData = {
   song: Section[];
   title: string;
+  titleOrigin?: 'user' | 'ai';
   topic: string;
   mood: string;
   songLanguage?: string;
@@ -411,7 +412,7 @@ export const sharePayloadToSong = (
 };
 
 export const createSongExport = ({
-  song, title, topic, mood, songLanguage = '', genre = '', tempo = 120,
+  song, title, titleOrigin = 'user', topic, mood, songLanguage = '', genre = '', tempo = 120,
   instrumentation = '', rhythm = '', narrative = '', musicalPrompt = '',
   versions = [], format,
 }: SongExportParams): { blob: Blob; filename: string } => {
@@ -435,7 +436,7 @@ export const createSongExport = ({
           song,
           structure: song.map(section => section.name),
           title,
-          titleOrigin: 'user',
+          titleOrigin,
           topic,
           mood,
           songLanguage,

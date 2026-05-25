@@ -76,6 +76,7 @@ export const useSongEditor = ({
     const { blob, filename } = createSongExport({
       song,
       title,
+      titleOrigin,
       topic,
       mood,
       songLanguage,
