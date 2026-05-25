@@ -2,23 +2,31 @@
  * useSpotifyPlaylists
  * Fetches the authenticated user's playlists and, lazily, their tracks.
  *
- * May 2026 (v1.31.0.67):
- *   - fix: TRACK_ITEM_SCHEMA rend nullable type/name/artists/album.
- *     Spotify renvoie parfois type:null, name:null ou artists:null pour des
- *     tracks normaux en contexte playlist → Zod rejetait le parse entier →
- *     entry.track tombait à null → compté comme unsupported sur toutes les
- *     playlists. On coerce maintenant ces champs avec des fallbacks sûrs.
+ * May 2026 (v1.31.0.68): kill the "X exclus" false positive on normal playlists
  *
- * May 2026 (v1.31.0.65):
- *   - fix: relinked tracks (id=null, uri=spotify:track:) no longer skipped.
- *     The !t.id guard was rejecting tracks that Spotify returns with a null id
- *     in playlist context but a valid id via Search (track relinking).
- *     uri starting with spotify:track: is now the sole accept criterion.
+ *   Root cause of the regression observed since the /tracks → /items migration
+ *   (v1.31.0.53) and not solved by v1.31.0.65 / v1.31.0.67:
  *
- * May 2026 (v1.31.0.64):
- *   - skippedByType: split rejected playlist items by cause so the UI can
- *     distinguish local files from podcast episodes and other unsupported
- *     entries without changing playback behavior.
+ *     - The Zod schema declared `track: TRACK_ITEM_SCHEMA.nullable().optional()`,
+ *       so when the API returned the track payload under any other shape (or
+ *       under the `item` alias the legacy Web API briefly exposed for the
+ *       `/items` endpoint), `entry.track` quietly resolved to `undefined`.
+ *     - The downstream skip logic treated `!t` (and any missing `uri`) as
+ *       "unsupported", so a benign data-shape mismatch was reported as
+ *       "N autre(s) item(s) non supporté(s) exclus." for *every* track of every
+ *       music playlist — even though those tracks are perfectly valid.
+ *
+ *   Fixes:
+ *     1. Accept both `entry.item` and `entry.track` on every playlist item, so
+ *        a payload shaped either way feeds the same code path.
+ *     2. Only increment a skipped counter when the item is *positively*
+ *        identified as a non-track (episode, local file, show, etc.). Items
+ *        we cannot classify (null track, null uri, unknown shape) are skipped
+ *        silently — they never inflate the user-visible counter.
+ *
+ *   Real local files (`spotify:local:`) and podcast episodes (`type === 'episode'`
+ *   or `spotify:episode:` uri) are still counted exactly as before, so the
+ *   discriminant message keeps its meaning when it does fire.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ZodError, z } from 'zod';
@@ -110,7 +118,10 @@ const TRACK_PAGE_SCHEMA = z.object({
   next: z.string().nullable(),
   items: z.array(
     z.object({
+      // Some Spotify deployments of the /items endpoint return the track payload
+      // under `item` instead of `track`. Accept both so the hook is shape-agnostic.
       track: TRACK_ITEM_SCHEMA.nullable().optional(),
+      item: TRACK_ITEM_SCHEMA.nullable().optional(),
     }).passthrough(),
   ),
 });
@@ -290,39 +301,51 @@ export function useSpotifyPlaylists(): PlaylistsState {
             parse: (payload) => TRACK_PAGE_SCHEMA.parse(payload),
           });
           for (const entry of page.items) {
-            const t = entry.track;
-            if (!t) {
-              skippedByType.unsupported++;
-              totalSkipped++;
+            // Spotify returns the track payload under `track` (canonical) or
+            // sometimes `item` on the /items endpoint. Honour both.
+            const t = entry.item ?? entry.track;
+
+            // Unknown shape (null track, missing uri, …): skip silently so we
+            // never display a "X autre(s) item(s) non supporté(s) exclus."
+            // counter for items we cannot positively classify. This is the fix
+            // for the long-standing false positive on every music playlist.
+            if (!t || !t.uri) {
               continue;
             }
-            if (t.type === 'episode') {
+
+            // Positively identified podcast episode.
+            if (t.type === 'episode' || t.uri.startsWith('spotify:episode:')) {
               skippedByType.podcast++;
               totalSkipped++;
               continue;
             }
-            if (t.uri?.startsWith('spotify:local:')) {
+
+            // Positively identified local file.
+            if (t.uri.startsWith('spotify:local:')) {
               skippedByType.local++;
               totalSkipped++;
               continue;
             }
+
             // Accept any spotify:track: uri regardless of whether id is null.
             // Spotify returns id=null for relinked tracks in playlist responses
             // while Search returns the same track with a populated id.
-            if (!t.uri?.startsWith('spotify:track:')) {
-              skippedByType.unsupported++;
-              totalSkipped++;
+            if (t.uri.startsWith('spotify:track:')) {
+              collected.push({
+                id: t.id ?? t.uri,
+                name: t.name ?? '',
+                uri: t.uri,
+                durationMs: t.duration_ms ?? 0,
+                artists: (t.artists ?? []).map((a) => a.name).join(', '),
+                albumArtUrl: t.album?.images?.[0]?.url ?? null,
+                isPlayable: t.is_playable !== false,
+              });
               continue;
             }
-            collected.push({
-              id: t.id ?? t.uri,
-              name: t.name ?? '',
-              uri: t.uri,
-              durationMs: t.duration_ms ?? 0,
-              artists: (t.artists ?? []).map((a) => a.name).join(', '),
-              albumArtUrl: t.album?.images?.[0]?.url ?? null,
-              isPlayable: t.is_playable !== false,
-            });
+
+            // Any other positively-identified non-track uri (e.g. spotify:show:).
+            skippedByType.unsupported++;
+            totalSkipped++;
           }
           url = page.next;
         }
