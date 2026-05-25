@@ -95,7 +95,9 @@ async function getMsalToken(scopes: string[]): Promise<string | null> {
   try {
     let result: AuthenticationResult;
     if (accounts.length > 0) {
-      result = await app.acquireTokenSilent({ scopes, account: accounts[0] });
+      // exactOptionalPropertyTypes: account must be AccountInfo, not undefined
+      const account = accounts[0]!;
+      result = await app.acquireTokenSilent({ scopes, account });
     } else {
       result = await app.acquireTokenPopup({ scopes });
     }
@@ -141,7 +143,7 @@ async function pickOneDrive(business: boolean): Promise<CloudFile | null> {
         window.removeEventListener('message', messageHandler);
         pickerWindow.close();
         const item = data.items[0];
-        if (!isAcceptedFile(item.name)) { resolve(null); return; }
+        if (!item || !isAcceptedFile(item.name)) { resolve(null); return; }
         try {
           const downloadUrl = item['@microsoft.graph.downloadUrl'];
           if (downloadUrl) {
@@ -182,11 +184,24 @@ async function pickOneDrive(business: boolean): Promise<CloudFile | null> {
 
 // ─── Dropbox ─────────────────────────────────────────────────────────────────
 
+interface DropboxWindow {
+  Dropbox: {
+    choose: (opts: {
+      success: (files: Array<{ name: string; link: string }>) => void;
+      cancel: () => void;
+      linkType: string;
+      multiselect: boolean;
+      extensions: string[];
+    }) => void;
+  };
+}
+
 async function pickDropbox(): Promise<CloudFile | null> {
   if (!DROPBOX_APP_KEY) return null;
 
   // Charge le SDK Dropbox Chooser de façon lazy
-  if (!(window as Window & { Dropbox?: { choose: (opts: unknown) => void } }).Dropbox) {
+  const winWithDropbox = window as unknown as Partial<DropboxWindow>;
+  if (!winWithDropbox.Dropbox) {
     await new Promise<void>((res, rej) => {
       const s = document.createElement('script');
       s.src = 'https://www.dropbox.com/static/api/2/dropins.js';
@@ -199,13 +214,7 @@ async function pickDropbox(): Promise<CloudFile | null> {
   }
 
   return new Promise(resolve => {
-    const dbx = (window as Window & { Dropbox: { choose: (opts: {
-      success: (files: Array<{ name: string; link: string }>) => void;
-      cancel: () => void;
-      linkType: string;
-      multiselect: boolean;
-      extensions: string[];
-    }) => void } }).Dropbox;
+    const dbx = (window as unknown as DropboxWindow).Dropbox;
 
     dbx.choose({
       success: async (files) => {
@@ -341,7 +350,9 @@ async function pickGoogleDrive(): Promise<CloudFile | null> {
           })
           .build();
         (picker as { setVisible: (v: boolean) => void }).setVisible(true);
-      } catch {
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn('[cloudStorage] Google Drive picker error:', msg);
         resolve(null);
       }
     });

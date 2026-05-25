@@ -16,6 +16,7 @@ import {
   ChevronUpRegular,
   ClipboardPasteRegular,
   ClockRegular,
+  CloudRegular,
   CodeRegular,
   CompassNorthwestRegular,
   CopyRegular,
@@ -145,6 +146,7 @@ export const ExternalLink = createIcon(OpenRegular, 'ExternalLink');
 export const RefreshCw = createIcon(ArrowClockwiseRegular, 'RefreshCw');
 export const AlertCircle = createIcon(AlertRegular, 'AlertCircle');
 export const Clock = createIcon(ClockRegular, 'Clock');
+export const Cloud = createIcon(CloudRegular, 'Cloud');
 export const Save = createIcon(SaveRegular, 'Save');
 export const BookOpen = createIcon(BookOpenRegular, 'BookOpen');
 export const Library = createIcon(LibraryRegular, 'Library');
