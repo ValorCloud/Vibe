@@ -16,6 +16,9 @@
  *     Was preserved by .passthrough() but absent from the inferred
  *     SessionLine type, causing silent type gaps.
  *
+ * P7: Added SongVersionSchema + SessionSchema.versions — eliminates the
+ *     unsafe double-cast (as { versions: SongVersion[] }) in useSongEditor.
+ *
  * Usage:
  *   const result = SessionSchema.safeParse(JSON.parse(raw));
  *   if (result.success) { // use result.data }
@@ -48,6 +51,20 @@ export const SectionSchema = z.object({
   postInstructions: z.array(z.string()).optional(),
 }).passthrough();
 
+// P7: mirrors SongVersion interface (src/types/index.ts)
+export const SongVersionSchema = z.object({
+  id:           z.string(),
+  timestamp:    z.number(),
+  song:         z.array(SectionSchema),
+  structure:    z.array(z.string()),
+  title:        z.string(),
+  titleOrigin:  z.enum(['user', 'ai']),
+  topic:        z.string(),
+  mood:         z.string(),
+  musicalPrompt: z.string().optional(),
+  name:         z.string(),
+});
+
 export const SessionSchema = z.object({
   song:             z.array(SectionSchema).optional(),
   structure:        z.array(z.string()).optional(),
@@ -64,8 +81,11 @@ export const SessionSchema = z.object({
   narrative:        z.string().optional(),
   musicalPrompt:    z.string().optional(),
   songLanguage:     z.string().optional(),
+  // P7: versions — previously absent, causing unsafe cast in useSongEditor
+  versions:         z.array(SongVersionSchema).optional(),
 });
 
 export type SessionData    = z.infer<typeof SessionSchema>;
 export type SessionSection = z.infer<typeof SectionSchema>;
 export type SessionLine    = z.infer<typeof SectionLineSchema>;
+export type SessionVersion = z.infer<typeof SongVersionSchema>;
