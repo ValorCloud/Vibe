@@ -277,6 +277,7 @@ export async function listRecentLyricsFiles(token: string): Promise<GDriveFile[]
 /**
  * List the 50 most recent audio files from Drive.
  * Uses drive.readonly scope — works with any file in the user's Drive.
+ * Only includes files that have a webContentLink (downloadable).
  * Returns GDriveFile[] with webContentLink for direct download.
  */
 export async function listRecentAudioFiles(token: string): Promise<GDriveFile[]> {
@@ -287,15 +288,17 @@ export async function listRecentAudioFiles(token: string): Promise<GDriveFile[]>
     `/files?q=${q}&fields=${fields}&pageSize=50&orderBy=modifiedTime desc`,
     token,
   );
-  return (data.files ?? []).filter(f =>
-    GDRIVE_AUDIO_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext))
-  ).map(f => ({
-    id:             f.id,
-    name:           f.name,
-    mimeType:       f.mimeType,
-    webContentLink: f.webContentLink,
-    size:           f.size,
-  }));
+  return (data.files ?? [])
+    .filter(f =>
+      GDRIVE_AUDIO_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext)) &&
+      f.webContentLink !== undefined
+    )
+    .map(f => {
+      const file: GDriveFile = { id: f.id, name: f.name, mimeType: f.mimeType };
+      if (f.webContentLink !== undefined) file.webContentLink = f.webContentLink;
+      if (f.size !== undefined) file.size = f.size;
+      return file;
+    });
 }
 
 // ---------------------------------------------------------------------------
