@@ -1,14 +1,16 @@
 import React, { createContext, useContext, useCallback, useMemo, type ReactNode } from 'react';
 import type { UIStateSlice } from './UIStateSlice';
+import type { PickMode } from '../services/cloudStorage';
 
-// ── Minimal UIState interface ─────────────────────────────────────────────────
+// ── Minimal UIState interface ───────────────────────────────────────────────
 // NOTE: editMode / setEditMode / markupText / setMarkupText / markupTextareaRef
 // have been moved to EditorContext (src/contexts/EditorContext.tsx).
 // They no longer belong here — they caused ModalStateContext to invalidate on
 // every keystroke.
 export interface UIStateBag extends UIStateSlice {}
 
-// ── Modal names union ─────────────────────────────────────────────────────────
+// ── Modal names union ────────────────────────────────────────────────
+
 export type ModalName =
   | 'about' | 'settings' | 'apiError' | 'export'
   | 'sectionDropdown' | 'similarity' | 'saveToLibrary'
@@ -34,7 +36,8 @@ export interface ModalContextValue extends ModalDispatchContextValue {
 const ModalDispatchContext = createContext<ModalDispatchContextValue | null>(null);
 const ModalStateContext = createContext<ModalStateContextValue | null>(null);
 
-// ── Provider ──────────────────────────────────────────────────────────────────
+// ── Provider ──────────────────────────────────────────────────────────
+
 export interface ModalProviderProps {
   children: ReactNode;
   uiState: UIStateBag;
@@ -55,7 +58,12 @@ export function ModalProvider({ children, uiState }: ModalProviderProps) {
       case 'paste':           uiState.setIsPasteModalOpen(true); break;
       case 'analysis':        uiState.setIsAnalysisModalOpen(true); break;
       case 'searchReplace':   uiState.setIsSearchReplaceOpen(true); break;
-      case 'cloudStorage':    uiState.setIsCloudStoragePickerOpen(true); break;
+      case 'cloudStorage': {
+        const p = payload as { mode?: PickMode } | undefined;
+        uiState.setCloudStoragePickerMode(p?.mode ?? 'lyrics');
+        uiState.setIsCloudStoragePickerOpen(true);
+        break;
+      }
       case 'apiError': {
         const msg = typeof payload === 'string' ? payload : '';
         uiState.setApiErrorModal({ open: true, message: msg });
@@ -114,7 +122,7 @@ export function ModalProvider({ children, uiState }: ModalProviderProps) {
   );
 }
 
-// ── Hooks ─────────────────────────────────────────────────────────────────────
+// ── Hooks ─────────────────────────────────────────────────────────────
 
 export function useModalDispatch(): ModalDispatchContextValue {
   const ctx = useContext(ModalDispatchContext);

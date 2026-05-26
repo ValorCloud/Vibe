@@ -7,6 +7,7 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import type { EditMode } from '../types';
+import type { PickMode } from '../services/cloudStorage';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 
 const SPLASH_SHOWN_KEY = 'vibe_splash_shown';
@@ -29,7 +30,7 @@ export interface NavInitial {
 }
 
 export function useUIState(initial?: NavInitial) {
-  // ── Modals ───────────────────────────────────────────────────────────────
+  // ── Modals ──────────────────────────────────────────────────────────
   const [isAboutOpen, setIsAboutOpen] = useState<boolean>(() => shouldShowSplash());
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [apiErrorModal, setApiErrorModal] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
@@ -47,21 +48,22 @@ export function useUIState(initial?: NavInitial) {
   const [isSearchReplaceOpen, setIsSearchReplaceOpen] = useState(false);
   const [isAnalysisPanelOpen, setIsAnalysisPanelOpen] = useState(false);
   const [isCloudStoragePickerOpen, setIsCloudStoragePickerOpen] = useState(false);
+  const [cloudStoragePickerMode, setCloudStoragePickerMode] = useState<PickMode>('lyrics');
 
-  // ── Navigation ───────────────────────────────────────────────────────────
+  // ── Navigation ────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<AppTab>(initial?.activeTab ?? 'lyrics');
   const [isStructureOpen, setIsStructureOpen] = useState(initial?.isStructureOpen ?? false);
   const [isLeftPanelOpen, setIsLeftPanelOpen] = useState(initial?.isLeftPanelOpen ?? true);
 
-  // ── Edit mode ──────────────────────────────────────────────────────────
+  // ── Edit mode ───────────────────────────────────────────────────────
   const [editMode, setEditMode] = useState<EditMode>('markdown');
   const [markupText, setMarkupText] = useState('');
   const markupTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // ── Import ref ─────────────────────────────────────────────────────────
+  // ── Import ref ───────────────────────────────────────────────────────
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Global error event ─────────────────────────────────────────────────
+  // ── Global error event ───────────────────────────────────────────────
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ message: string }>).detail;
@@ -89,6 +91,7 @@ export function useUIState(initial?: NavInitial) {
     isSearchReplaceOpen, setIsSearchReplaceOpen,
     isAnalysisPanelOpen, setIsAnalysisPanelOpen,
     isCloudStoragePickerOpen, setIsCloudStoragePickerOpen,
+    cloudStoragePickerMode, setCloudStoragePickerMode,
     activeTab, setActiveTab,
     isStructureOpen, setIsStructureOpen,
     isLeftPanelOpen, setIsLeftPanelOpen,

@@ -1,5 +1,6 @@
 import type { RefObject } from 'react';
 import type { AppTab } from '../hooks/useUIState';
+import type { PickMode } from '../services/cloudStorage';
 
 export interface UIStateSlice {
   setIsAboutOpen: (v: boolean) => void;
@@ -19,6 +20,7 @@ export interface UIStateSlice {
   setIsSearchReplaceOpen: (v: boolean) => void;
   setIsAnalysisPanelOpen: (v: boolean) => void;
   setIsCloudStoragePickerOpen: (v: boolean) => void;
+  setCloudStoragePickerMode: (v: PickMode) => void;
   isAboutOpen: boolean;
   isSettingsOpen: boolean;
   apiErrorModal: { open: boolean; message: string };
@@ -36,6 +38,7 @@ export interface UIStateSlice {
   isSearchReplaceOpen: boolean;
   isAnalysisPanelOpen: boolean;
   isCloudStoragePickerOpen: boolean;
+  cloudStoragePickerMode: PickMode;
   activeTab: AppTab;
   setActiveTab: (v: AppTab) => void;
   isStructureOpen: boolean;

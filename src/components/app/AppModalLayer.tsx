@@ -73,6 +73,7 @@ export function AppModalLayer() {
     setIsLeftPanelOpen,
     editMode, markupText,
     hasApiKey,
+    cloudStoragePickerMode,
   } = appState;
 
   const {
@@ -103,15 +104,20 @@ export function AppModalLayer() {
     setPastedText,
     setSongLanguage,
     setSongTitle: setTitle,
-    // Fold the left panel as soon as a file is loaded.
     onComplete: () => setIsLeftPanelOpen(false),
   });
 
-  // Cloud storage : câblage direct sur loadFileForAnalysis
+  // Cloud storage — brânche selon le mode
   const handleCloudFileLoaded = useCallback((file: CloudFile) => {
     setIsLeftPanelOpen(false);
+    if (cloudStoragePickerMode === 'player') {
+      // Mode player : émettre un événement custom pour que le PlayerTab le consomme
+      window.dispatchEvent(new CustomEvent('vibe:playerfolderloaded', { detail: file }));
+      return;
+    }
+    // Mode lyrics : comportement original
     loadFileForAnalysis(new File([file.content], file.name, { type: 'text/plain' }));
-  }, [loadFileForAnalysis, setIsLeftPanelOpen]);
+  }, [loadFileForAnalysis, setIsLeftPanelOpen, cloudStoragePickerMode]);
 
   // Fold the left panel when the user confirms paste-analyze.
   const handleAnalyzePastedLyrics = useCallback(() => {
@@ -168,6 +174,7 @@ export function AppModalLayer() {
           handleImportChooseFile={handleImportChooseFile}
           handleImportInputChange={handleImportInputChange}
           onCloudFileLoaded={handleCloudFileLoaded}
+          cloudPickerMode={cloudStoragePickerMode}
           exportSong={exportSong}
           getShareUrl={getShareUrl}
           pastedText={pastedText} setPastedText={setPastedText}
