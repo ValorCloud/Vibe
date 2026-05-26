@@ -22,7 +22,7 @@ import type { SongVersion } from '../../types';
 import type { WebSimilarityIndex } from '../../types/webSimilarity';
 import type { ExportFormat } from '../../utils/exportUtils';
 import type { VersionSnapshot } from '../../utils/songDefaults';
-import type { CloudFile } from '../../services/cloudStorage';
+import type { CloudFile, PickMode } from '../../services/cloudStorage';
 import { useTranslation } from '../../i18n';
 
 /**
@@ -48,6 +48,8 @@ interface Props {
 
   // Cloud storage
   onCloudFileLoaded: (file: CloudFile) => void;
+  /** Mode passé au picker cloud — dérivé du contexte d'ouverture. */
+  cloudPickerMode?: PickMode;
 
   // Export
   exportSong: (format: ExportFormat) => Promise<void>;
@@ -118,7 +120,7 @@ export const AppModals = React.memo(function AppModals({
   theme, setTheme, audioFeedback, setAudioFeedback, uiScale, setUiScale, defaultEditMode, setDefaultEditMode,
   showTranslationFeatures, setShowTranslationFeatures,
   handleImportChooseFile, handleImportInputChange,
-  onCloudFileLoaded,
+  onCloudFileLoaded, cloudPickerMode,
   exportSong, getShareUrl,
   pastedText, setPastedText, isAnalyzing, isAnalyzingTheme, importProgress, analyzePastedLyrics,
   analysisReport, analysisSteps,
@@ -241,6 +243,7 @@ export const AppModals = React.memo(function AppModals({
         isOpen={ui.isCloudStoragePickerOpen}
         onClose={() => closeModal('cloudStorage')}
         onFileLoaded={onCloudFileLoaded}
+        mode={cloudPickerMode ?? 'lyrics'}
       />
       <ApiErrorModal
         isOpen={ui.apiErrorModal.open} onClose={() => closeModal('apiError')}

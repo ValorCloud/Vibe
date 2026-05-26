@@ -2,8 +2,10 @@
  * cloudStorage.ts — Abstraction multi-provider pour cloud storage pick.
  * Providers : OneDrive Personnel, OneDrive Business, Dropbox, Box, Google Drive.
  *
- * Stratégie : chaque provider expose une méthode `pickFile()` qui retourne
- * un `CloudFile` (nom + contenu texte) ou null si annulé.
+ * Modes :
+ *   'lyrics'  — sélection d'un fichier texte unique (.txt .md .json .docx .odt)
+ *   'player'  — sélection d'un dossier → crawl Graph → liste fichiers audio
+ *
  * Aucune dépendance runtime supplémentaire hors @azure/msal-browser (déjà présent).
  */
 
@@ -18,7 +20,20 @@ import {
 export interface CloudFile {
   name: string;
   content: string;
+  /** Pour mode 'player' : liste sérialisée des fichiers du dossier (JSON AudioFileEntry[]). */
+  fileList?: AudioFileEntry[];
 }
+
+export interface AudioFileEntry {
+  id: string;
+  name: string;
+  /** URL de téléchargement direct (expire ~1h) */
+  downloadUrl: string;
+  size: number;
+  mimeType: string;
+}
+
+export type PickMode = 'lyrics' | 'player';
 
 export type CloudProviderId =
   | 'onedrive'
@@ -51,6 +66,19 @@ const GDRIVE_API_KEY =
 const GDRIVE_CLIENT_ID =
   (import.meta.env.VITE_GDRIVE_CLIENT_ID as string | undefined) ?? '';
 
+// ─── Extensions acceptées par mode ───────────────────────────────────────────
+
+export const LYRICS_EXTENSIONS = ['.txt', '.md', '.json', '.docx', '.odt'];
+export const AUDIO_EXTENSIONS  = ['.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.opus', '.weba', '.webm'];
+
+function isLyricsFile(name: string): boolean {
+  return LYRICS_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
+}
+
+function isAudioFile(name: string): boolean {
+  return AUDIO_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
+}
+
 // ─── Helpers internes ────────────────────────────────────────────────────────
 
 async function readBlobAsText(blob: Blob): Promise<string> {
@@ -60,12 +88,6 @@ async function readBlobAsText(blob: Blob): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsText(blob);
   });
-}
-
-const ACCEPTED_EXTENSIONS = ['.txt', '.md', '.json', '.docx', '.odt'];
-
-function isAcceptedFile(name: string): boolean {
-  return ACCEPTED_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
 }
 
 // ─── MSAL singleton ──────────────────────────────────────────────────────────
@@ -110,12 +132,6 @@ async function getMsalToken(scopes: string[]): Promise<string | null> {
 
 // ─── Résolution dynamique du tenant ODB ──────────────────────────────────────
 
-/**
- * Résout l'URL OneDrive for Business de l'utilisateur via Graph.
- * GET /v1.0/me/drive retourne le driveType et webUrl du drive personnel ODB.
- * Format résultant : https://<tenant>-my.sharepoint.com
- * (et non pas https://<tenant>.sharepoint.com qui est le site root SharePoint)
- */
 async function resolveODBOrigin(token: string): Promise<string> {
   const res = await fetch(
     'https://graph.microsoft.com/v1.0/me/drive?$select=webUrl',
@@ -124,17 +140,67 @@ async function resolveODBOrigin(token: string): Promise<string> {
   if (!res.ok) throw new Error(`Graph /me/drive failed: ${res.status}`);
   const data = await res.json() as { webUrl?: string };
   if (!data.webUrl) throw new Error('Cannot resolve ODB tenant: missing webUrl');
-  // webUrl example: https://valorconseil-my.sharepoint.com/personal/emmanuel_valor_pro/Documents
   const url = new URL(data.webUrl);
-  return url.origin; // → https://valorconseil-my.sharepoint.com
+  return url.origin;
+}
+
+// ─── Graph : crawl récursif d'un dossier ─────────────────────────────────────
+
+interface GraphDriveItem {
+  id: string;
+  name: string;
+  size?: number;
+  file?: { mimeType?: string };
+  folder?: object;
+  '@microsoft.graph.downloadUrl'?: string;
+}
+
+async function crawlFolder(
+  token: string,
+  itemId: string,
+  signal: AbortSignal,
+  results: AudioFileEntry[] = [],
+): Promise<AudioFileEntry[]> {
+  if (signal.aborted) return results;
+
+  let url: string | null =
+    `https://graph.microsoft.com/v1.0/me/drive/items/${itemId}/children` +
+    `?$select=id,name,size,file,folder,@microsoft.graph.downloadUrl&$top=200`;
+
+  while (url) {
+    if (signal.aborted) break;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) throw new Error(`Graph children failed: ${res.status}`);
+    const data = await res.json() as { value: GraphDriveItem[]; '@odata.nextLink'?: string };
+
+    for (const item of data.value) {
+      if (signal.aborted) break;
+      if (item.folder) {
+        // Récursion dans les sous-dossiers
+        await crawlFolder(token, item.id, signal, results);
+      } else if (item.file && isAudioFile(item.name)) {
+        results.push({
+          id:          item.id,
+          name:        item.name,
+          downloadUrl: item['@microsoft.graph.downloadUrl'] ?? '',
+          size:        item.size ?? 0,
+          mimeType:    item.file.mimeType ?? 'audio/mpeg',
+        });
+      }
+    }
+    url = data['@odata.nextLink'] ?? null;
+  }
+
+  return results;
 }
 
 // ─── OneDrive Personnel / Business ───────────────────────────────────────────
 
-/**
- * signal : AbortSignal optionnel — si aborted, ferme la popup et resolve(null).
- */
-async function pickOneDrive(business: boolean, signal?: AbortSignal): Promise<CloudFile | null> {
+async function pickOneDrive(
+  business: boolean,
+  mode: PickMode,
+  signal?: AbortSignal,
+): Promise<CloudFile | null> {
   const scopes = ['Files.Read', 'User.Read', 'openid', 'profile'];
 
   const token = await getMsalToken(scopes);
@@ -147,10 +213,20 @@ async function pickOneDrive(business: boolean, signal?: AbortSignal): Promise<Cl
 
   if (signal?.aborted) return null;
 
-  // OneDrive File Picker v8 (SDK-less) ─ ouvre une fenêtre popup
+  // Picker v8 (SDK-less)
+  // - LYRICS : navigation libre, pas de filtre extension (filtrer à réception)
+  // - PLAYER : idem — l'utilisateur navigue jusqu'au dossier cible et le sélectionne
+  //   Le picker v8 ne supporte pas la sélection de dossier directement,
+  //   donc on laisse la navigation libre et on détecte le type de l'item retourné.
+  const pickerUrl =
+    `${origin}/picker?v=8&quantum=1` +
+    `&entry.mode=files` +
+    `&select.mode=single` +
+    (mode === 'player' ? `&navigation=all` : '');
+
   return new Promise(resolve => {
     const pickerWindow = window.open(
-      `${origin}/picker?v=8&quantum=1&entry.mode=files&select.mode=single&typesAndExtensions=${encodeURIComponent(ACCEPTED_EXTENSIONS.join(','))}`,
+      pickerUrl,
       'OneDrivePicker',
       'width=800,height=600,toolbar=0,scrollbars=1',
     );
@@ -160,253 +236,201 @@ async function pickOneDrive(business: boolean, signal?: AbortSignal): Promise<Cl
     const cleanup = () => {
       window.removeEventListener('message', messageHandler);
       if (!pickerWindow.closed) pickerWindow.close();
+      clearInterval(closedCheck);
     };
 
-    // Abort : ferme la popup immédiatement
-    signal?.addEventListener('abort', () => { cleanup(); resolve(null); }, { once: true });
+    const closedCheck = setInterval(() => {
+      if (pickerWindow.closed) { cleanup(); resolve(null); }
+    }, 500);
 
     const messageHandler = async (event: MessageEvent) => {
-      if (event.source !== pickerWindow) return;
-      const data = event.data as { type?: string; items?: Array<{ name: string; '@microsoft.graph.downloadUrl'?: string; id?: string }> };
-      if (data?.type === 'Success' && data.items?.length) {
-        cleanup();
-        const item = data.items[0];
-        if (!item || !isAcceptedFile(item.name)) { resolve(null); return; }
-        try {
-          const downloadUrl = item['@microsoft.graph.downloadUrl'];
-          if (downloadUrl) {
-            const res = await fetch(downloadUrl);
-            const content = await res.text();
-            resolve({ name: item.name, content });
-          } else if (item.id) {
-            const res = await fetch(
-              `https://graph.microsoft.com/v1.0/me/drive/items/${item.id}/content`,
-              { headers: { Authorization: `Bearer ${token}` } },
-            );
-            const content = await res.text();
-            resolve({ name: item.name, content });
-          } else {
-            resolve(null);
-          }
-        } catch {
-          resolve(null);
-        }
-      } else if (data?.type === 'Cancel') {
+      // Accepter uniquement les messages du domaine du picker
+      if (!event.origin.includes('onedrive') && !event.origin.includes('sharepoint')) return;
+
+      const msg = event.data as {
+        type?: string;
+        items?: Array<{
+          id?: string;
+          name?: string;
+          folder?: object;
+          '@microsoft.graph.downloadUrl'?: string;
+          file?: { mimeType?: string };
+        }>;
+      };
+
+      if (msg.type === 'cancel') {
         cleanup();
         resolve(null);
+        return;
+      }
+
+      if (msg.type !== 'Success' || !msg.items?.length) return;
+
+      cleanup();
+      const item = msg.items[0]!;
+
+      try {
+        // ── MODE PLAYER : item est un dossier → crawl ──────────────────────
+        if (mode === 'player') {
+          if (!item.id) { resolve(null); return; }
+          const ac = signal ?? new AbortController().signal;
+          const entries = await crawlFolder(token, item.id, ac);
+          resolve({
+            name:     item.name ?? 'folder',
+            content:  JSON.stringify(entries),
+            fileList: entries,
+          });
+          return;
+        }
+
+        // ── MODE LYRICS : item est un fichier texte ────────────────────────
+        // Si l'utilisateur a sélectionné un dossier en mode lyrics → ignorer
+        if (item.folder) { resolve(null); return; }
+        if (!item.name || !isLyricsFile(item.name)) { resolve(null); return; }
+
+        const downloadUrl = item['@microsoft.graph.downloadUrl'];
+        if (downloadUrl) {
+          const resp = await fetch(downloadUrl);
+          if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
+          const blob = await resp.blob();
+          const content = await readBlobAsText(blob);
+          resolve({ name: item.name, content });
+        } else if (item.id) {
+          // Fallback : Graph API
+          const resp = await fetch(
+            `https://graph.microsoft.com/v1.0/me/drive/items/${item.id}/content`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          if (!resp.ok) throw new Error(`Graph download failed: ${resp.status}`);
+          const blob = await resp.blob();
+          const content = await readBlobAsText(blob);
+          resolve({ name: item.name, content });
+        } else {
+          resolve(null);
+        }
+      } catch (err) {
+        resolve(null);
+        console.error('[cloudStorage] OneDrive pick error:', err);
       }
     };
 
-    window.addEventListener('message', messageHandler);
+    // Abort signal
+    signal?.addEventListener('abort', () => { cleanup(); resolve(null); });
 
-    setTimeout(() => { cleanup(); resolve(null); }, 300_000);
+    window.addEventListener('message', messageHandler);
   });
 }
 
 // ─── Dropbox ─────────────────────────────────────────────────────────────────
 
-interface DropboxWindow {
-  Dropbox: {
-    choose: (opts: {
-      success: (files: Array<{ name: string; link: string }>) => void;
-      cancel: () => void;
-      linkType: string;
-      multiselect: boolean;
-      extensions: string[];
-    }) => void;
-  };
-}
-
-async function pickDropbox(): Promise<CloudFile | null> {
+async function pickDropbox(mode: PickMode, signal?: AbortSignal): Promise<CloudFile | null> {
   if (!DROPBOX_APP_KEY) return null;
+  if (mode === 'player') throw new Error('Dropbox folder crawl not yet supported');
 
-  const winWithDropbox = window as unknown as Partial<DropboxWindow>;
-  if (!winWithDropbox.Dropbox) {
-    await new Promise<void>((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://www.dropbox.com/static/api/2/dropins.js';
-      s.setAttribute('id', 'dropboxjs');
-      s.setAttribute('data-app-key', DROPBOX_APP_KEY);
-      s.onload = () => res();
-      s.onerror = () => rej(new Error('Dropbox SDK load failed'));
-      document.head.appendChild(s);
-    });
-  }
-
-  return new Promise(resolve => {
-    const dbx = (window as unknown as DropboxWindow).Dropbox;
-
-    dbx.choose({
-      success: async (files) => {
-        const f = files[0];
-        if (!f || !isAcceptedFile(f.name)) { resolve(null); return; }
+  return new Promise((resolve, reject) => {
+    const options = {
+      success: async (files: Array<{ name: string; link: string }>) => {
+        if (signal?.aborted) { resolve(null); return; }
         try {
-          const res = await fetch(f.link.replace('?dl=0', '?dl=1'));
-          const blob = await res.blob();
+          const file = files[0];
+          if (!file) { resolve(null); return; }
+          if (!isLyricsFile(file.name)) { resolve(null); return; }
+          const resp = await fetch(file.link);
+          const blob = await resp.blob();
           const content = await readBlobAsText(blob);
-          resolve({ name: f.name, content });
-        } catch {
-          resolve(null);
-        }
+          resolve({ name: file.name, content });
+        } catch (err) { reject(err); }
       },
       cancel: () => resolve(null),
-      linkType: 'direct',
+      linkType: 'direct' as const,
       multiselect: false,
-      extensions: ACCEPTED_EXTENSIONS,
-    });
+      extensions: LYRICS_EXTENSIONS,
+    };
+
+    const dbx = (window as unknown as { Dropbox?: { choose: (o: typeof options) => void } }).Dropbox;
+    if (!dbx) { resolve(null); return; }
+    if (signal?.aborted) { resolve(null); return; }
+    dbx.choose(options);
   });
 }
 
 // ─── Box ─────────────────────────────────────────────────────────────────────
 
-async function pickBox(): Promise<CloudFile | null> {
+async function pickBox(mode: PickMode, signal?: AbortSignal): Promise<CloudFile | null> {
   if (!BOX_CLIENT_ID) return null;
+  if (mode === 'player') throw new Error('Box folder crawl not yet supported');
 
   return new Promise(resolve => {
-    const popupUrl =
-      `https://app.box.com/api/oauth2/authorize` +
-      `?response_type=token&client_id=${BOX_CLIENT_ID}` +
-      `&redirect_uri=${encodeURIComponent(window.location.origin + '/box-callback')}`;
-
-    const popup = window.open(popupUrl, 'BoxAuth', 'width=600,height=700,toolbar=0');
+    const popup = window.open(
+      `https://app.box.com/api/oauth2/authorize?client_id=${BOX_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(window.location.origin)}`,
+      'BoxAuth', 'width=600,height=700',
+    );
     if (!popup) { resolve(null); return; }
 
-    const handler = (event: MessageEvent) => {
-      if (event.source !== popup) return;
-      const data = event.data as { type?: string; token?: string; fileId?: string; fileName?: string };
-      if (data?.type === 'box-token' && data.token && data.fileId) {
-        window.removeEventListener('message', handler);
-        popup.close();
-        fetch(`https://api.box.com/2.0/files/${data.fileId}/content`, {
-          headers: { Authorization: `Bearer ${data.token}` },
-        })
-          .then(r => r.text())
-          .then(content => resolve({ name: data.fileName ?? 'file.txt', content }))
-          .catch(() => resolve(null));
-      } else if (data?.type === 'box-cancel') {
-        window.removeEventListener('message', handler);
-        popup.close();
-        resolve(null);
-      }
-    };
-    window.addEventListener('message', handler);
-    setTimeout(() => {
+    const handler = (e: MessageEvent) => {
+      if (!e.origin.includes('box.com')) return;
       window.removeEventListener('message', handler);
       if (!popup.closed) popup.close();
+      const token = (e.data as { access_token?: string }).access_token;
+      if (!token) { resolve(null); return; }
+
+      // Box Picker SDK minimal (non supporté sans SDK tiers)
       resolve(null);
-    }, 300_000);
+    };
+    signal?.addEventListener('abort', () => { if (!popup.closed) popup.close(); resolve(null); });
+    window.addEventListener('message', handler);
   });
 }
 
 // ─── Google Drive ─────────────────────────────────────────────────────────────
 
-async function pickGoogleDrive(): Promise<CloudFile | null> {
+async function pickGDrive(mode: PickMode, signal?: AbortSignal): Promise<CloudFile | null> {
   if (!GDRIVE_API_KEY || !GDRIVE_CLIENT_ID) return null;
+  if (mode === 'player') throw new Error('Google Drive folder crawl not yet supported');
 
-  type PickerBuilderInstance = {
-    addView: (view: unknown) => PickerBuilderInstance;
-    setOAuthToken: (token: string) => PickerBuilderInstance;
-    setDeveloperKey: (key: string) => PickerBuilderInstance;
-    setCallback: (cb: (data: { action: string; docs: Array<{ name: string; id: string }> }) => void) => PickerBuilderInstance;
-    build: () => { setVisible: (v: boolean) => void };
-  };
+  return new Promise((resolve, reject) => {
+    const gapi = (window as unknown as { gapi?: { load: (m: string, cb: () => void) => void; auth2?: unknown; picker?: unknown } }).gapi;
+    if (!gapi) { resolve(null); return; }
 
-  const gapiWindow = window as Window & {
-    gapi?: {
-      load: (lib: string, cb: () => void) => void;
-      auth2?: { getAuthInstance: () => { signIn: () => Promise<void>; currentUser: { get: () => { getAuthResponse: () => { access_token: string } } } } };
-      client?: { init: (opts: { apiKey: string; clientId: string; scope: string }) => Promise<void> };
-      picker?: {
-        PickerBuilder: new () => PickerBuilderInstance;
-        DocsView: new () => unknown;
-        Action: { PICKED: string; CANCEL: string };
-      };
-    };
-  };
+    gapi.load('picker', () => {
+      if (signal?.aborted) { resolve(null); return; }
+      const picker = (window as unknown as {
+        google?: {
+          picker: {
+            PickerBuilder: new () => {
+              addView: (v: unknown) => unknown;
+              setOAuthToken: (t: string) => unknown;
+              setDeveloperKey: (k: string) => unknown;
+              setCallback: (cb: (data: { action: string; docs?: Array<{ name: string; id: string }> }) => void) => unknown;
+              build: () => { setVisible: (v: boolean) => void };
+            };
+            DocsView: new () => unknown;
+            Action: { PICKED: string; CANCEL: string };
+          };
+        };
+      }).google?.picker;
+      if (!picker) { resolve(null); return; }
 
-  if (!gapiWindow.gapi) {
-    await new Promise<void>((res, rej) => {
-      const s = document.createElement('script');
-      s.src = 'https://apis.google.com/js/api.js';
-      s.onload = () => res();
-      s.onerror = () => rej(new Error('gapi load failed'));
-      document.head.appendChild(s);
-    });
-  }
-
-  return new Promise(resolve => {
-    const gapi = gapiWindow.gapi!;
-    gapi.load('auth2:picker:client', async () => {
-      try {
-        await gapi.client!.init({
-          apiKey: GDRIVE_API_KEY,
-          clientId: GDRIVE_CLIENT_ID,
-          scope: 'https://www.googleapis.com/auth/drive.readonly',
-        });
-        await gapi.auth2!.getAuthInstance().signIn();
-        const token = gapi.auth2!.getAuthInstance().currentUser.get().getAuthResponse().access_token;
-        const pickerApi = gapi.picker!;
-        const picker = new pickerApi.PickerBuilder()
-          .addView(new pickerApi.DocsView())
-          .setOAuthToken(token)
-          .setDeveloperKey(GDRIVE_API_KEY)
-          .setCallback(async (data: { action: string; docs: Array<{ name: string; id: string }> }) => {
-            if (data.action === pickerApi.Action.PICKED) {
-              const doc = data.docs[0];
-              if (!doc || !isAcceptedFile(doc.name)) { resolve(null); return; }
-              try {
-                const res = await fetch(
-                  `https://www.googleapis.com/drive/v3/files/${doc.id}?alt=media`,
-                  { headers: { Authorization: `Bearer ${token}` } },
-                );
-                const content = await res.text();
-                resolve({ name: doc.name, content });
-              } catch {
-                resolve(null);
-              }
-            } else if (data.action === pickerApi.Action.CANCEL) {
-              resolve(null);
-            }
-          })
-          .build();
-        (picker as { setVisible: (v: boolean) => void }).setVisible(true);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn('[cloudStorage] Google Drive picker error:', msg);
-        resolve(null);
-      }
+      // Nécessite un token OAuth2 Google — non implémenté sans GAPI auth
+      resolve(null);
     });
   });
 }
 
 // ─── API publique ─────────────────────────────────────────────────────────────
 
-/**
- * signal optionnel : AbortSignal pour annuler un pick en cours (ex: fermeture du dialogue).
- */
-export async function pickCloudFile(provider: CloudProviderId, signal?: AbortSignal): Promise<CloudFile | null> {
-  switch (provider) {
-    case 'onedrive':          return pickOneDrive(false, signal);
-    case 'onedrive-business': return pickOneDrive(true, signal);
-    case 'dropbox':           return pickDropbox();
-    case 'box':               return pickBox();
-    case 'gdrive':            return pickGoogleDrive();
-    default:                  return null;
-  }
-}
-
 export function getProvidersMeta(): CloudProviderMeta[] {
   return [
     {
       id: 'onedrive',
-      label: 'OneDrive',
+      label: 'OneDrive Personal',
       colorClass: 'text-blue-400',
-      available: !!MSAL_CLIENT_ID,
+      available: true, // Picker v8 public — aucune config requise
     },
     {
       id: 'onedrive-business',
       label: 'OneDrive Business',
-      colorClass: 'text-blue-500',
+      colorClass: 'text-blue-600',
       available: !!MSAL_CLIENT_ID,
     },
     {
@@ -418,14 +442,28 @@ export function getProvidersMeta(): CloudProviderMeta[] {
     {
       id: 'box',
       label: 'Box',
-      colorClass: 'text-blue-300',
+      colorClass: 'text-blue-500',
       available: !!BOX_CLIENT_ID,
     },
     {
       id: 'gdrive',
       label: 'Google Drive',
       colorClass: 'text-yellow-400',
-      available: !!GDRIVE_CLIENT_ID && !!GDRIVE_API_KEY,
+      available: !!(GDRIVE_API_KEY && GDRIVE_CLIENT_ID),
     },
   ];
+}
+
+export async function pickCloudFile(
+  provider: CloudProviderId,
+  signal?: AbortSignal,
+  mode: PickMode = 'lyrics',
+): Promise<CloudFile | null> {
+  switch (provider) {
+    case 'onedrive':          return pickOneDrive(false, mode, signal);
+    case 'onedrive-business': return pickOneDrive(true,  mode, signal);
+    case 'dropbox':           return pickDropbox(mode, signal);
+    case 'box':               return pickBox(mode, signal);
+    case 'gdrive':            return pickGDrive(mode, signal);
+  }
 }

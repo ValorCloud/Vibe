@@ -1,7 +1,8 @@
 /**
- * CloudStoragePickerModal — Sélecteur de fichier cloud multi-provider.
- * Providers supportés : OneDrive, OneDrive Business, Dropbox, Box, Google Drive.
- * S'intègre au pattern modal existant (lcars-gradient-outline, dialog-surface, etc.).
+ * CloudStoragePickerModal — Sélecteur de fichier/dossier cloud multi-provider.
+ *
+ * mode 'lyrics'  → sélection d'un fichier texte unique
+ * mode 'player'  → sélection d'un dossier ; l'app crawle les fichiers audio
  */
 import React, { useState, useCallback, useRef } from 'react';
 import { Cloud, X, Upload } from '../../ui/icons';
@@ -12,12 +13,15 @@ import {
   getProvidersMeta,
   type CloudProviderId,
   type CloudFile,
+  type PickMode,
 } from '../../../services/cloudStorage';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   onFileLoaded: (file: CloudFile) => void;
+  /** Détermine le comportement du picker : 'lyrics' (défaut) ou 'player'. */
+  mode?: PickMode;
 }
 
 type PickState = 'idle' | 'picking' | 'error';
@@ -30,7 +34,7 @@ const PROVIDER_ICONS: Record<CloudProviderId, string> = {
   'gdrive':            '\u{1F4C1}',
 };
 
-export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded }: Props) {
+export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded, mode = 'lyrics' }: Props) {
   const { t } = useTranslation();
   const [pickState, setPickState] = useState<PickState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -40,7 +44,6 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded }: Props
   const providers = getProvidersMeta();
 
   const handlePick = useCallback(async (id: CloudProviderId) => {
-    // Annule tout pick précédent
     abortRef.current?.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -49,7 +52,7 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded }: Props
     setPickState('picking');
     setErrorMsg('');
     try {
-      const file = await pickCloudFile(id, ac.signal);
+      const file = await pickCloudFile(id, ac.signal, mode);
       if (!file) {
         setPickState('idle');
         setActiveProvider(null);
@@ -70,9 +73,8 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded }: Props
       setActiveProvider(null);
       abortRef.current = null;
     }
-  }, [onFileLoaded, onClose]);
+  }, [onFileLoaded, onClose, mode]);
 
-  // Toujours fermable — abort le pick en cours si nécessaire
   const handleClose = useCallback(() => {
     abortRef.current?.abort();
     abortRef.current = null;
@@ -87,17 +89,28 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded }: Props
   const cloud = (t as { cloudStorage?: {
     title?: string;
     subtitle?: string;
+    subtitlePlayer?: string;
     pickButton?: string;
+    pickButtonPlayer?: string;
     notConfigured?: string;
     picking?: string;
+    pickingPlayer?: string;
     errorPrefix?: string;
   } }).cloudStorage ?? {};
 
+  const isPlayer = mode === 'player';
+
   const title         = cloud.title         ?? 'Cloud Storage';
-  const subtitle      = cloud.subtitle      ?? 'Import a file from your cloud provider';
-  const pickButton    = cloud.pickButton    ?? 'Open';
+  const subtitle      = isPlayer
+    ? (cloud.subtitlePlayer  ?? 'Select a folder to enumerate audio files')
+    : (cloud.subtitle        ?? 'Import a file from your cloud provider');
+  const pickButton    = isPlayer
+    ? (cloud.pickButtonPlayer ?? 'Select folder')
+    : (cloud.pickButton       ?? 'Open');
   const notConfigured = cloud.notConfigured ?? 'Not configured';
-  const picking       = cloud.picking       ?? 'Opening…';
+  const picking       = isPlayer
+    ? (cloud.pickingPlayer ?? 'Scanning…')
+    : (cloud.picking       ?? 'Opening…');
   const errorPrefix   = cloud.errorPrefix   ?? 'Error:';
 
   return (
@@ -134,6 +147,11 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded }: Props
               <div>
                 <h3 className="text-sm font-bold tracking-widest text-[var(--text-primary)] uppercase">
                   {title}
+                  {isPlayer && (
+                    <span className="ml-2 text-[10px] tracking-widest px-1.5 py-0.5 rounded bg-[var(--accent-color)]/15 text-[var(--accent-color)] uppercase">
+                      Player
+                    </span>
+                  )}
                 </h3>
                 <p className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mt-0.5">
                   {subtitle}
@@ -152,15 +170,20 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded }: Props
           {/* Body — liste des providers */}
           <div className="p-6 space-y-3 bg-[var(--bg-app)] flex-1">
             {providers.map(p => {
+              // Dropbox/Box/GDrive : folder crawl non supporté → désactiver en mode player
+              const availableForMode =
+                p.available &&
+                (mode === 'lyrics' || p.id === 'onedrive' || p.id === 'onedrive-business');
+
               const isActive = activeProvider === p.id && pickState === 'picking';
               return (
                 <button
                   key={p.id}
-                  disabled={!p.available || pickState === 'picking'}
+                  disabled={!availableForMode || pickState === 'picking'}
                   onClick={() => handlePick(p.id)}
                   className={
                     `w-full flex items-center justify-between gap-3 px-4 py-3 rounded-lg border transition-colors ` +
-                    (p.available
+                    (availableForMode
                       ? `border-[var(--border-color)] hover:border-[var(--accent-color)]/50 hover:bg-[var(--accent-color)]/5 cursor-pointer`
                       : `border-[var(--border-color)] opacity-40 cursor-not-allowed`)
                   }
@@ -176,12 +199,14 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded }: Props
                   <div className="flex items-center gap-2">
                     {isActive ? (
                       <span className="text-xs text-[var(--accent-color)] animate-pulse">{picking}</span>
-                    ) : !p.available ? (
-                      <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{notConfigured}</span>
+                    ) : !availableForMode ? (
+                      <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
+                        {p.available ? 'N/A in player mode' : notConfigured}
+                      </span>
                     ) : (
                       <span className="text-xs text-[var(--text-secondary)]">{pickButton}</span>
                     )}
-                    {p.available && !isActive && (
+                    {availableForMode && !isActive && (
                       <Upload className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                     )}
                   </div>
