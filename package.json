@@ -1,6 +1,6 @@
 {
   "name": "vibe",
-  "version": "1.31.0.35",
+  "version": "1.31.0.36",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
+    "@azure/msal-browser": "^3.27.0",
     "@fluentui/react-components": "^9.54.6",
     "@fluentui/react-icons": "^2.0.226",
     "motion": "^11.11.7",
