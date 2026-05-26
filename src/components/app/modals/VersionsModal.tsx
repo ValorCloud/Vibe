@@ -84,9 +84,12 @@ export const VersionsModal = ({
             </h3>
             <button
               onClick={onClose}
+              aria-label="Close Song Versions"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
+              autoFocus
               className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-app)] rounded-md transition-colors"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden="true" />
             </button>
           </div>
 
@@ -107,7 +110,7 @@ export const VersionsModal = ({
             {versions.length === 0 ? (
               <div className="h-64 flex flex-col items-center justify-center text-center space-y-4 border border-dashed border-[var(--border-color)] rounded-2xl">
                 <div className="w-12 h-12 rounded-full bg-[var(--bg-app)] flex items-center justify-center">
-                  <History className="w-6 h-6 text-[var(--text-secondary)]" />
+                  <History className="w-6 h-6 text-[var(--text-secondary)]" aria-hidden="true" />
                 </div>
                 <p className="text-sm text-[var(--text-secondary)]">No versions saved yet.</p>
               </div>
@@ -135,11 +138,11 @@ export const VersionsModal = ({
                     </div>
                     <div className="flex items-center gap-4 text-[10px] text-[var(--text-secondary)]">
                       <div className="flex items-center gap-1">
-                        <Layout className="w-3 h-3" />
+                        <Layout className="w-3 h-3" aria-hidden="true" />
                         {version.song.length} Sections
                       </div>
                       <div className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
+                        <Sparkles className="w-3 h-3" aria-hidden="true" />
                         {version.topic || 'No topic'}
                       </div>
                       <div aria-label={`${diff.changed} changed lines, ${diff.added} added lines, ${diff.removed} removed lines`}>

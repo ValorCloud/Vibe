@@ -156,8 +156,9 @@ export const useSongEditor = ({
             ...(result.data.title ? { songTitle: result.data.title } : {}),
           };
         }
-      } catch {
-        // Fall through and expose the raw JSON as text for analysis.
+      } catch (error) {
+        // JSON.parse failed — not a valid JSON file; fall through to plain-text analysis.
+        console.warn('[useSongEditor] JSON import: parse error, falling back to text analysis', error);
       }
       payload = { text, songLanguage: '' };
     } else {
