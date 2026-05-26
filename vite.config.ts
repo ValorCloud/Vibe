@@ -24,7 +24,7 @@ function emojiToCodepoints(emoji: string): string {
     .join('-');
 }
 
-const UI_FLAGS = ['🇺🇸', '🇫🇷', '🇪🇸', '🇩🇪', '🇵🇹', '🇸🇦', '🇨🇳', '🇰🇷'];
+const UI_FLAGS = ['\uD83C\uDDFA\uD83C\uDDF8', '\uD83C\uDDEB\uD83C\uDDF7', '\uD83C\uDDEA\uD83C\uDDF8', '\uD83C\uDDE9\uD83C\uDDEA', '\uD83C\uDDF5\uD83C\uDDF9', '\uD83C\uDDF8\uD83C\uDDE6', '\uD83C\uDDE8\uD83C\uDDF3', '\uD83C\uDDF0\uD83C\uDDF7'];
 
 function twemojiPreloadPlugin(): Plugin {
   return {
@@ -55,9 +55,10 @@ export default defineConfig(({ mode }) => ({
       updateViaCache: 'none',
       includeAssets: ['icons/*.png', 'icons/*.svg'],
       manifest: {
-        name: 'VIBE — Lyricist Pro',
+        name: 'VIBE \u2014 Lyricist Pro',
         short_name: 'VIBE',
         description: 'AI-powered lyric writing assistant with Star Trek LCARS interface',
+        version: pkg.version,
         theme_color: '#0a0a1a',
         background_color: '#0a0a1a',
         display: 'standalone',
