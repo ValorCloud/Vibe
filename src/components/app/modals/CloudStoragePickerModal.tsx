@@ -1,8 +1,14 @@
 /**
  * CloudStoragePickerModal — Sélecteur de fichier/dossier cloud multi-provider.
  *
- * mode 'lyrics'  → sélection d'un fichier texte unique
- * mode 'player'  → sélection d'un dossier ; l'app crawle les fichiers audio
+ * mode 'lyrics'       → sélection d'un fichier texte unique
+ * mode 'player'       → sélection d'un dossier ; l'app crawle les fichiers audio
+ * mode 'player-files' → sélection multiple de fichiers audio individuels
+ *
+ * Provider availability per mode:
+ *   lyrics       : all configured providers
+ *   player       : onedrive, onedrive-business only (folder crawl via Graph)
+ *   player-files : onedrive, onedrive-business, dropbox (multi-select audio)
  */
 import React, { useState, useCallback, useRef } from 'react';
 import { Cloud, X, Upload } from '../../ui/icons';
@@ -20,7 +26,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onFileLoaded: (file: CloudFile) => void;
-  /** Détermine le comportement du picker : 'lyrics' (défaut) ou 'player'. */
+  /** Détermine le comportement du picker : 'lyrics' (défaut), 'player', ou 'player-files'. */
   mode?: PickMode;
 }
 
@@ -34,6 +40,19 @@ const PROVIDER_ICONS: Record<CloudProviderId, string> = {
   'gdrive':            '\u{1F4C1}',
 };
 
+/** Providers supporting each mode. */
+const MODE_SUPPORTED_PROVIDERS: Record<PickMode, ReadonlySet<CloudProviderId>> = {
+  'lyrics':       new Set(['onedrive', 'onedrive-business', 'dropbox', 'box', 'gdrive']),
+  'player':       new Set(['onedrive', 'onedrive-business']),
+  'player-files': new Set(['onedrive', 'onedrive-business', 'dropbox']),
+};
+
+function getModeUnavailableLabel(mode: PickMode): string {
+  if (mode === 'player')       return 'N/A (player)';
+  if (mode === 'player-files') return 'N/A (audio files)';
+  return 'N/A';
+}
+
 export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded, mode = 'lyrics' }: Props) {
   const { t } = useTranslation();
   const [pickState, setPickState] = useState<PickState>('idle');
@@ -42,6 +61,7 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded, mode = 
   const abortRef = useRef<AbortController | null>(null);
 
   const providers = getProvidersMeta();
+  const supportedForMode = MODE_SUPPORTED_PROVIDERS[mode];
 
   const handlePick = useCallback(async (id: CloudProviderId) => {
     abortRef.current?.abort();
@@ -90,28 +110,38 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded, mode = 
     title?: string;
     subtitle?: string;
     subtitlePlayer?: string;
+    subtitlePlayerFiles?: string;
     pickButton?: string;
     pickButtonPlayer?: string;
+    pickButtonPlayerFiles?: string;
     notConfigured?: string;
     picking?: string;
     pickingPlayer?: string;
+    pickingPlayerFiles?: string;
     errorPrefix?: string;
   } }).cloudStorage ?? {};
 
-  const isPlayer = mode === 'player';
+  const isPlayer      = mode === 'player';
+  const isPlayerFiles = mode === 'player-files';
 
-  const title         = cloud.title         ?? 'Cloud Storage';
-  const subtitle      = isPlayer
-    ? (cloud.subtitlePlayer  ?? 'Select a folder to enumerate audio files')
-    : (cloud.subtitle        ?? 'Import a file from your cloud provider');
-  const pickButton    = isPlayer
-    ? (cloud.pickButtonPlayer ?? 'Select folder')
-    : (cloud.pickButton       ?? 'Open');
+  const title = cloud.title ?? 'Cloud Storage';
+  const subtitle = isPlayerFiles
+    ? (cloud.subtitlePlayerFiles ?? 'Select audio files to add to the player')
+    : isPlayer
+      ? (cloud.subtitlePlayer ?? 'Select a folder to enumerate audio files')
+      : (cloud.subtitle ?? 'Import a file from your cloud provider');
+  const pickButton = isPlayerFiles
+    ? (cloud.pickButtonPlayerFiles ?? 'Select files')
+    : isPlayer
+      ? (cloud.pickButtonPlayer ?? 'Select folder')
+      : (cloud.pickButton ?? 'Open');
   const notConfigured = cloud.notConfigured ?? 'Not configured';
-  const picking       = isPlayer
-    ? (cloud.pickingPlayer ?? 'Scanning…')
-    : (cloud.picking       ?? 'Opening…');
-  const errorPrefix   = cloud.errorPrefix   ?? 'Error:';
+  const picking = isPlayerFiles
+    ? (cloud.pickingPlayerFiles ?? 'Selecting…')
+    : isPlayer
+      ? (cloud.pickingPlayer ?? 'Scanning…')
+      : (cloud.picking ?? 'Opening…');
+  const errorPrefix = cloud.errorPrefix ?? 'Error:';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4">
@@ -147,9 +177,9 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded, mode = 
               <div>
                 <h3 className="text-sm font-bold tracking-widest text-[var(--text-primary)] uppercase">
                   {title}
-                  {isPlayer && (
+                  {(isPlayer || isPlayerFiles) && (
                     <span className="ml-2 text-[10px] tracking-widest px-1.5 py-0.5 rounded bg-[var(--accent-color)]/15 text-[var(--accent-color)] uppercase">
-                      Player
+                      {isPlayerFiles ? 'Audio Files' : 'Player'}
                     </span>
                   )}
                 </h3>
@@ -170,12 +200,17 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded, mode = 
           {/* Body — liste des providers */}
           <div className="p-6 space-y-3 bg-[var(--bg-app)] flex-1">
             {providers.map(p => {
-              // Dropbox/Box/GDrive : folder crawl non supporté → désactiver en mode player
-              const availableForMode =
-                p.available &&
-                (mode === 'lyrics' || p.id === 'onedrive' || p.id === 'onedrive-business');
-
+              // A provider is available if:
+              // 1. its credentials are configured (p.available)
+              // 2. it supports the current mode
+              const availableForMode = p.available && supportedForMode.has(p.id);
               const isActive = activeProvider === p.id && pickState === 'picking';
+
+              // Badge label: credential missing vs mode unsupported
+              const unavailableLabel = !p.available
+                ? notConfigured
+                : getModeUnavailableLabel(mode);
+
               return (
                 <button
                   key={p.id}
@@ -201,7 +236,7 @@ export function CloudStoragePickerModal({ isOpen, onClose, onFileLoaded, mode = 
                       <span className="text-xs text-[var(--accent-color)] animate-pulse">{picking}</span>
                     ) : !availableForMode ? (
                       <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
-                        {p.available ? 'N/A in player mode' : notConfigured}
+                        {unavailableLabel}
                       </span>
                     ) : (
                       <span className="text-xs text-[var(--text-secondary)]">{pickButton}</span>
