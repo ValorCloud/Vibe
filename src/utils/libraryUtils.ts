@@ -223,10 +223,12 @@ export const updateAssetInLibrary = async (
     }
 
     // --- 3. Build updated asset ---
+    // exactOptionalPropertyTypes: use conditional spread to avoid assigning
+    // `undefined` to `promptSnapshots` — TS2375.
     const updatedMetadata: LibraryAsset_Metadata = {
       ...existing.metadata,
       ...patch.metadata,
-      promptSnapshots: updatedSnapshots.length > 0 ? updatedSnapshots : undefined,
+      ...(updatedSnapshots.length > 0 && { promptSnapshots: updatedSnapshots }),
     };
 
     const updatedAsset: LibraryAsset = {
@@ -606,7 +608,7 @@ export const parseTextToSections = (text: string): Section[] => {
     let contentLines = lines;
     const firstLine = (lines[0] ?? '').trim();
     if ((firstLine.startsWith('[') && firstLine.endsWith(']')) || (firstLine.startsWith('**[') && firstLine.endsWith(']**'))) {
-      const headerMatch = firstLine.match(/^(?:\*\*)?\[(.+?)\](?:\*\*)?$/);
+      const headerMatch = firstLine.match(/^(?:\*\*)?\\[(.+?)\\](?:\*\*)?$/);
       sectionName = headerMatch?.[1] ?? sectionName;
       contentLines = lines.slice(1);
     } else if (firstLine.match(/^#{1,3}\s+.+/)) {
