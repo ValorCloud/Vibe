@@ -52,7 +52,8 @@ export function RibbonMenuPanel({
   const {
     openVersionsModal, openResetModal, openImport, openExport,
     openLibrary, openSettings, openAbout, openKeyboardShortcuts,
-    openPasteModal, openCloudStorageLyrics, openCloudStoragePlayer, canPasteLyrics,
+    openPasteModal, openCloudStorageLyrics, openCloudStoragePlayer,
+    openCloudStoragePlayerFiles, canPasteLyrics,
   } = useTopRibbonActions();
   const { t } = useTranslation();
 
@@ -142,6 +143,12 @@ export function RibbonMenuPanel({
         <button onClick={() => run(openCloudStoragePlayer)} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
           <FolderMusic className="w-4 h-4 text-[var(--accent-color)]" />
           {(t as { menu?: { openAudioFolder?: string } }).menu?.openAudioFolder ?? 'Open Audio Folder from Cloud'}
+        </button>
+      </Tooltip>
+      <Tooltip title={(t as { tooltips?: { addAudioFiles?: string } }).tooltips?.addAudioFiles ?? 'Select individual audio files from OneDrive (multi-select)'}>
+        <button onClick={() => run(openCloudStoragePlayerFiles)} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
+          <Music className="w-4 h-4 text-[var(--accent-color)]" />
+          {(t as { menu?: { addAudioFiles?: string } }).menu?.addAudioFiles ?? 'Add Audio Files from Cloud'}
         </button>
       </Tooltip>
       <Tooltip title={t.tooltips.export}>
