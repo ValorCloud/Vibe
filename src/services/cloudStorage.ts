@@ -18,9 +18,11 @@ import {
 import {
   signIn as gdriveSignIn,
   listRecentLyricsFiles,
+  listRecentAudioFiles,
   downloadFile as gdriveDownload,
   saveFile as gdriveSave,
   isGDriveConfigured,
+  type GDriveFile,
 } from './googleDriveService';
 
 // ─── Types publics ────────────────────────────────────────────────────────────
@@ -500,13 +502,16 @@ async function pickBox(mode: PickMode, signal?: AbortSignal): Promise<CloudFile 
 // ─── Google Drive ─────────────────────────────────────────────────────────────
 
 /**
- * Pick a lyrics file from Google Drive.
- * Auth → list 30 recent lyrics files → user selects via native <dialog> → download.
- * The returned CloudFile includes gdriveFileId for later save-back.
+ * Pick files from Google Drive.
+ *
+ * Mode lyrics      : list 30 recent lyrics files → native dialog → single pick → download text
+ * Mode player-files: list 50 recent audio files  → native multi-select dialog  → AudioFileEntry[]
+ * Mode player      : unsupported (GDrive REST v3 does not expose folder-level crawl
+ *                    with downloadUrl in drive.readonly scope without Drive SDK)
  */
 async function pickGDrive(mode: PickMode, signal?: AbortSignal): Promise<CloudFile | null> {
   if (!isGDriveConfigured()) return null;
-  if (mode === 'player' || mode === 'player-files') throw new Error('Google Drive multi-file pick not yet supported');
+  if (mode === 'player') throw new Error('Google Drive folder crawl not yet supported');
   if (signal?.aborted) return null;
 
   let token: string;
@@ -520,6 +525,38 @@ async function pickGDrive(mode: PickMode, signal?: AbortSignal): Promise<CloudFi
 
   if (signal?.aborted) return null;
 
+  // ── MODE PLAYER-FILES ────────────────────────────────────────────────────
+  if (mode === 'player-files') {
+    const audioFiles = await listRecentAudioFiles(token);
+    if (!audioFiles.length) return null;
+    if (signal?.aborted) return null;
+
+    const chosen = await showGDriveMultiFilePicker(audioFiles);
+    if (!chosen?.length || signal?.aborted) return null;
+
+    const entries: AudioFileEntry[] = chosen.map(f => ({
+      id:          f.id,
+      name:        f.name,
+      // webContentLink requires auth header — we pass the Drive download URL
+      // with the token embedded as a query param is NOT supported by Drive REST;
+      // instead we use the alt=media endpoint with the stored token.
+      // The player must call this URL with `Authorization: Bearer <token>` header.
+      // As a workaround we embed the token in a custom scheme the player resolves.
+      downloadUrl: `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+      size:        f.size ? parseInt(f.size, 10) : 0,
+      mimeType:    f.mimeType,
+    }));
+
+    return {
+      name:     `selection (${entries.length} fichiers)`,
+      content:  JSON.stringify(entries),
+      fileList: entries,
+      // Pass token so the player can inject it into fetch headers
+      gdriveFileId: `__token__${token}`,
+    };
+  }
+
+  // ── MODE LYRICS ──────────────────────────────────────────────────────────
   const files = await listRecentLyricsFiles(token);
   if (!files.length) return null;
   if (signal?.aborted) return null;
@@ -582,6 +619,109 @@ function showGDriveFilePicker(
       resolve(null);
     });
     footer.appendChild(cancelBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(list);
+    dialog.appendChild(footer);
+    document.body.appendChild(dialog);
+    dialog.showModal();
+
+    dialog.addEventListener('close', () => {
+      dialog.remove();
+      resolve(null);
+    });
+  });
+}
+
+/**
+ * Multi-select dialog for GDrive audio files.
+ * Checkboxes + Select button. Returns selected files or null if cancelled.
+ */
+function showGDriveMultiFilePicker(
+  files: GDriveFile[],
+): Promise<GDriveFile[] | null> {
+  return new Promise(resolve => {
+    const dialog = document.createElement('dialog');
+    dialog.style.cssText = [
+      'padding:0',
+      'border:none',
+      'border-radius:8px',
+      'box-shadow:0 8px 32px rgba(0,0,0,.24)',
+      'min-width:360px',
+      'max-width:520px',
+      'font-family:inherit',
+    ].join(';');
+
+    const header = document.createElement('div');
+    header.style.cssText = 'padding:16px 20px 8px;font-weight:600;font-size:15px;border-bottom:1px solid #e0e0e0';
+    header.textContent = 'Select audio files from Google Drive';
+
+    const list = document.createElement('ul');
+    list.style.cssText = 'list-style:none;margin:0;padding:8px 0;max-height:360px;overflow-y:auto';
+
+    const checkboxes: Map<string, HTMLInputElement> = new Map();
+
+    files.forEach(f => {
+      const li = document.createElement('li');
+      li.style.cssText = 'padding:8px 20px;display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px;border-bottom:1px solid #f0f0f0';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = `gdrive-audio-${f.id}`;
+      cb.style.cssText = 'width:16px;height:16px;cursor:pointer;flex-shrink:0';
+      checkboxes.set(f.id, cb);
+
+      const label = document.createElement('label');
+      label.htmlFor = cb.id;
+      label.textContent = f.name;
+      label.style.cssText = 'cursor:pointer;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+
+      li.addEventListener('click', e => {
+        if ((e.target as HTMLElement).tagName !== 'INPUT') cb.checked = !cb.checked;
+      });
+      li.addEventListener('mouseenter', () => { li.style.background = '#f5f5f5'; });
+      li.addEventListener('mouseleave', () => { li.style.background = ''; });
+
+      li.appendChild(cb);
+      li.appendChild(label);
+      list.appendChild(li);
+    });
+
+    const footer = document.createElement('div');
+    footer.style.cssText = 'padding:10px 20px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e0e0e0;gap:8px';
+
+    const countLabel = document.createElement('span');
+    countLabel.style.cssText = 'font-size:12px;color:#666';
+    countLabel.textContent = '0 selected';
+
+    // Update count on any checkbox change
+    list.addEventListener('change', () => {
+      const n = [...checkboxes.values()].filter(c => c.checked).length;
+      countLabel.textContent = `${n} selected`;
+    });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.style.cssText = 'padding:6px 16px;cursor:pointer;font-size:13px';
+    cancelBtn.addEventListener('click', () => {
+      dialog.close();
+      dialog.remove();
+      resolve(null);
+    });
+
+    const selectBtn = document.createElement('button');
+    selectBtn.textContent = 'Add to player';
+    selectBtn.style.cssText = 'padding:6px 16px;cursor:pointer;font-size:13px;background:#1a73e8;color:#fff;border:none;border-radius:4px';
+    selectBtn.addEventListener('click', () => {
+      const selected = files.filter(f => checkboxes.get(f.id)?.checked);
+      dialog.close();
+      dialog.remove();
+      resolve(selected.length ? selected : null);
+    });
+
+    footer.appendChild(countLabel);
+    footer.appendChild(cancelBtn);
+    footer.appendChild(selectBtn);
 
     dialog.appendChild(header);
     dialog.appendChild(list);

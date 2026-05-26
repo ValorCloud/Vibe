@@ -36,6 +36,20 @@ const LYRICS_MIME_TYPES = [
 
 const LYRICS_EXTENSIONS = ['.txt', '.md', '.json', '.docx', '.odt'];
 
+export const AUDIO_MIME_TYPES = [
+  'audio/mpeg',
+  'audio/flac',
+  'audio/wav',
+  'audio/ogg',
+  'audio/mp4',
+  'audio/aac',
+  'audio/opus',
+  'audio/webm',
+  'video/webm',
+];
+
+export const GDRIVE_AUDIO_EXTENSIONS = ['.mp3', '.flac', '.wav', '.ogg', '.m4a', '.aac', '.opus', '.weba', '.webm'];
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -44,6 +58,9 @@ export interface GDriveFile {
   id: string;
   name: string;
   mimeType: string;
+  /** Direct download link (requires auth header) */
+  webContentLink?: string;
+  size?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +253,7 @@ async function driveGet<T>(path: string, token: string): Promise<T> {
 // ---------------------------------------------------------------------------
 
 interface DriveFileListResponse {
-  files: Array<{ id: string; name: string; mimeType: string }>;
+  files: Array<{ id: string; name: string; mimeType: string; webContentLink?: string; size?: string }>;
   nextPageToken?: string;
 }
 
@@ -255,6 +272,30 @@ export async function listRecentLyricsFiles(token: string): Promise<GDriveFile[]
   return (data.files ?? []).filter(f =>
     LYRICS_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext))
   );
+}
+
+/**
+ * List the 50 most recent audio files from Drive.
+ * Uses drive.readonly scope — works with any file in the user's Drive.
+ * Returns GDriveFile[] with webContentLink for direct download.
+ */
+export async function listRecentAudioFiles(token: string): Promise<GDriveFile[]> {
+  const mimeQuery = AUDIO_MIME_TYPES.map(m => `mimeType='${m}'`).join(' or ');
+  const q = encodeURIComponent(`(${mimeQuery}) and trashed=false`);
+  const fields = encodeURIComponent('files(id,name,mimeType,webContentLink,size)');
+  const data = await driveGet<DriveFileListResponse>(
+    `/files?q=${q}&fields=${fields}&pageSize=50&orderBy=modifiedTime desc`,
+    token,
+  );
+  return (data.files ?? []).filter(f =>
+    GDRIVE_AUDIO_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext))
+  ).map(f => ({
+    id:             f.id,
+    name:           f.name,
+    mimeType:       f.mimeType,
+    webContentLink: f.webContentLink,
+    size:           f.size,
+  }));
 }
 
 // ---------------------------------------------------------------------------
