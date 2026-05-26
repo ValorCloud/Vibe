@@ -204,14 +204,6 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
   );
 }
 
-// ---------------------------------------------------------------------------
-// Spotify-specific slot components
-// These slot **into** the canonical player layout (memo log, video stage,
-// browser tail-section) instead of replacing it. Transport, seek and volume
-// are driven by the standard PlayerControls / SeekBar / VolumeControl widgets
-// via the `useSpotifyAsEngine` adapter.
-// ---------------------------------------------------------------------------
-
 function SpotifyAuthBlock() {
   const { status, error } = useSpotifyAuthState();
   const { login, logout } = useSpotifyAuthActions();
@@ -409,10 +401,6 @@ function SpotifyBrowserSection({ contentWidth }: { contentWidth: string }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Source toggle pill
-// ---------------------------------------------------------------------------
-
 function SourceToggle({ source, onChange }: { source: AudioSource; onChange: (s: AudioSource) => void }) {
   return (
     <div role="group" aria-label="Audio source" style={{ display: 'flex', alignItems: 'center', gap: 2,
@@ -443,10 +431,6 @@ function SourceToggle({ source, onChange }: { source: AudioSource; onChange: (s:
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main player
-// ---------------------------------------------------------------------------
-
 export function VoxNovaPlayer() {
   const engine = useAudioEngine();
   const spotifyEngine = useSpotifyAsEngine();
@@ -456,14 +440,12 @@ export function VoxNovaPlayer() {
 
   const [audioSource, setAudioSource] = useState<AudioSource>('local');
 
-  // Auto-switch to Spotify source when the user authenticates
   const { status: spotifyStatus } = useSpotifyAuthState();
   const prevSpotifyStatus = useRef(spotifyStatus);
   useEffect(() => {
     if (prevSpotifyStatus.current !== 'authenticated' && spotifyStatus === 'authenticated') {
       setAudioSource('spotify');
     }
-    // Revert to local when user disconnects
     if (prevSpotifyStatus.current === 'authenticated' && spotifyStatus !== 'authenticated') {
       setAudioSource('local');
     }
@@ -499,10 +481,6 @@ export function VoxNovaPlayer() {
     library.purgeAll(); setSelectedId(null); engine.pause();
   };
 
-  // ── Source-aware mappings ───────────────────────────────────────────────
-  // The active engine drives the shared player widgets (SeekBar, PlayerControls,
-  // VolumeControl). For Spotify, it's the adapter that maps Spotify state and
-  // controls onto the AudioEngineState contract.
   const isSpotify = audioSource === 'spotify';
   const activeEngine = isSpotify ? spotifyEngine : engine;
 
@@ -510,8 +488,10 @@ export function VoxNovaPlayer() {
   const spotifyArtists = (spotifyTrack?.artists ?? []).map(a => a.name).join(', ');
   const spotifyAlbumArt = spotifyTrack?.album?.images?.[0]?.url ?? null;
 
-  // The player UI uses a single "has track" gate; resolve it per source.
   const hasActiveTrack = isSpotify ? !!spotifyTrack : !!selectedTrack;
+
+  // Sidebar is hidden while the player is active (playing)
+  const sidebarHidden = activeEngine.isPlaying;
 
   const handleSpacePlayPause = useCallback((event: KeyboardEvent) => {
     if (event.defaultPrevented || event.code !== 'Space' || isEditableSpaceTarget(event.target)) return;
@@ -560,10 +540,19 @@ export function VoxNovaPlayer() {
     <div className="lcars-lyrics-area" style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', backgroundColor: LCARS.void, color: LCARS.text, fontFamily: '"Antonio", "Eurostile", "Helvetica Neue", Arial, sans-serif', overflow: 'hidden' }}>
       <LCARSBackground />
       <SidebarProvider onLocalTracksAdded={() => setView('local')}>
-        <PlayerSidebar
-          view={view} setView={setView} tracks={library.tracks}
-          selectedId={selectedId} onSelect={handleSelect} onPurge={handlePurge}
-        />
+        {/* Sidebar hidden (not unmounted) while player is active — preserves refs and state */}
+        <div
+          aria-hidden={sidebarHidden}
+          style={{
+            display: sidebarHidden ? 'none' : 'contents',
+            transition: 'width 280ms cubic-bezier(0.16,1,0.3,1)',
+          }}
+        >
+          <PlayerSidebar
+            view={view} setView={setView} tracks={library.tracks}
+            selectedId={selectedId} onSelect={handleSelect} onPurge={handlePurge}
+          />
+        </div>
       </SidebarProvider>
 
       <main style={{ position: 'relative', zIndex: 1, flex: 1, minWidth: 0, padding: '12px 16px 16px 4px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -572,7 +561,6 @@ export function VoxNovaPlayer() {
           <div style={{ flex: 1, height: 36, background: LCARS.peach, color: '#000', display: 'flex', alignItems: 'center', padding: '0 16px', fontSize: 12, fontWeight: 700, letterSpacing: 2, borderTopLeftRadius: 18, borderBottomLeftRadius: 18, justifyContent: 'space-between' }}>
             <span>USS VOX NOVA // REGISTRY {registry}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-              {/* Source toggle — lives in the header bar */}
               <SourceToggle source={audioSource} onChange={setAudioSource} />
               <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <span style={{ width: 8, height: 8, borderRadius: '50%', background: LCARS.alertRed, boxShadow: `0 0 6px ${LCARS.alertRed}` }} aria-hidden="true" />
@@ -594,8 +582,7 @@ export function VoxNovaPlayer() {
           </div>
         </div>
 
-        {/* Stage — same shell for every source. Source-specific data slots
-            into the same boxes (memo log, stage, transport, frequency, …). */}
+        {/* Stage */}
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 20, padding: '12px 24px 16px 24px', overflow: 'auto' }}>
           {/* Title */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
@@ -604,7 +591,7 @@ export function VoxNovaPlayer() {
             <div style={{ width: 120, height: 3, background: isSpotify ? SPOTIFY_GREEN : LCARS.peach, borderRadius: 2 }} aria-hidden="true" />
           </div>
 
-          {/* MEMO LOG (per-source content, same slot) */}
+          {/* MEMO LOG */}
           {isSpotify ? (
             <SpotifyMemoLog contentWidth={CONTENT_WIDTH} playerState={spotifyPlayerState} track={spotifyTrack} />
           ) : (
@@ -637,7 +624,7 @@ export function VoxNovaPlayer() {
               ))
           }
 
-          {/* Transport (shared widgets, source-aware engine) */}
+          {/* Transport */}
           <div style={{ alignSelf: 'center', width: CONTENT_WIDTH,
             border: `1px solid ${isSpotify ? `${SPOTIFY_GREEN}55` : `${LCARS.peach}33`}`,
             borderRadius: 4, padding: '12px 16px',
@@ -650,7 +637,7 @@ export function VoxNovaPlayer() {
 
           <div style={{ flex: 1, minHeight: 0 }} aria-hidden="true" />
 
-          {/* Frequency scan — only when a local WebAudio analyser is available */}
+          {/* Frequency scan */}
           {!isSpotify && selectedTrack && (
             <div style={{ alignSelf: 'center', width: WIDE_WIDTH, border: `1px solid ${LCARS.red ?? '#cc3333'}33`, borderRadius: 4, padding: '8px', background: LCARS_BOX_COLORS[3] }}>
               <div style={{ color: LCARS.subText, fontSize: 9, letterSpacing: 3, marginBottom: 6, paddingLeft: 4 }}>
@@ -669,7 +656,7 @@ export function VoxNovaPlayer() {
             <BlackHoleBadge active={activeEngine.isPlaying} analyser={analyser} />
           </div>
 
-          {/* Spotify browser (additive tail-section; only when linked) */}
+          {/* Spotify browser */}
           {isSpotify && spotifyStatus === 'authenticated' && (
             <SpotifyBrowserSection contentWidth={CONTENT_WIDTH} />
           )}

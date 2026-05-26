@@ -137,7 +137,6 @@ export function PlayerSidebar({
         <div style={{ fontSize: 10, letterSpacing: 2, marginTop: 4, opacity: 0.85 }}>NV-42 CORE</div>
       </div>
 
-      {/* CLOUD first, LYRIA directly below, then LOCAL, PURGE */}
       <SidebarButton label="CLOUD" title="Show cloud library signals" color={LCARS.purple} textColor="#0a0a10" active={view === 'cloud'} onClick={() => setView('cloud')} icon={<GlobeIcon />} />
       <SidebarButton label="LYRIA" title="Show Lyria generated signals" color="#00c8a0" textColor="#000" active={view === 'lyria'} onClick={() => setView('lyria')} icon={<SparkleIcon />} />
       <SidebarButton label="LOCAL" title="Show local memo log signals" color={LCARS.orange} textColor="#0a0a10" active={view === 'local'} onClick={() => setView('local')} icon={<DatabaseIcon />} />
@@ -262,7 +261,7 @@ export function PlayerSidebar({
         </div>
       )}
 
-      {/* UPLINK button */}
+      {/* UPLINK button — hatched texture + peach glow */}
       <button
         type="button"
         onClick={() => uploadInputRef.current?.click()}
@@ -272,12 +271,21 @@ export function PlayerSidebar({
           justifyContent: 'space-between',
           gap: 8,
           padding: '10px 14px',
-          background: `linear-gradient(
+          background: `
+            repeating-linear-gradient(
+              135deg,
+              ${LCARS.peach}28 0px,
+              ${LCARS.peach}28 2px,
+              transparent 2px,
+              transparent 10px
+            ),
+            linear-gradient(
               180deg,
               ${LCARS.peach}55 0%,
               ${LCARS.peach}22 60%,
               ${LCARS.peach}0a 100%
-            )`,
+            )
+          `,
           color: LCARS.peach,
           border: `2px solid ${LCARS.peach}cc`,
           borderRadius: 4,
@@ -286,7 +294,7 @@ export function PlayerSidebar({
           fontWeight: 700,
           cursor: 'pointer',
           fontFamily: 'inherit',
-          boxShadow: `0 0 8px ${LCARS.peach}44, inset 0 1px 0 ${LCARS.peach}33`,
+          boxShadow: `0 0 12px ${LCARS.peach}55, 0 0 4px ${LCARS.peach}33, inset 0 1px 0 ${LCARS.peach}44`,
         }}
         aria-label="Uplink audio files"
         title="Uplink local audio or video files"
