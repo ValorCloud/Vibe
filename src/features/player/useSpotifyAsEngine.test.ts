@@ -3,7 +3,7 @@
  * engine so it can be consumed by the canonical player widgets through the
  * `AudioEngineState` contract.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import type { SpotifyPlaybackState } from '../../types/spotify';
 
@@ -77,7 +77,11 @@ describe('useSpotifyAsEngine', () => {
     vi.clearAllMocks();
     mockPlayerState = 'ready';
     mockPlaybackState = null;
-    globalThis.fetch = vi.fn().mockResolvedValue(new Response(null, { status: 204 })) as unknown as typeof fetch;
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('reports idle state when no Spotify track is playing', () => {
