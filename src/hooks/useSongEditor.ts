@@ -59,7 +59,7 @@ export const useSongEditor = ({
   const versionContext = useOptionalVersionContext();
   const { removeStructureItem, addStructureItem, normalizeStructure } = useSectionManager();
 
-  // ── File operations ────────────────────────────────────────────────────────
+  // ── File operations ──────────────────────────────────────────────────────────────────────
   const exportSong = useCallback(async (format: ExportFormat) => {
     if (song.length === 0) return;
 
@@ -127,7 +127,7 @@ export const useSongEditor = ({
     } else if (file.name.endsWith('.json')) {
       const text = await file.text();
       try {
-        const parsed = JSON.parse(text) as unknown;
+        const parsed: unknown = JSON.parse(text);
         const result = SessionSchema.safeParse(parsed);
         if (result.success && result.data.song?.length) {
           const importedSong = result.data.song.map(section => normalizeLoadedSection(section));
@@ -146,9 +146,8 @@ export const useSongEditor = ({
           setRhythm(result.data.rhythm ?? '');
           setNarrative(result.data.narrative ?? '');
           setMusicalPrompt(result.data.musicalPrompt ?? '');
-          const importedVersions = Array.isArray((parsed as { versions?: unknown }).versions)
-            ? (parsed as { versions: SongVersion[] }).versions
-            : [];
+          // P7: versions validated by SongVersionSchema — no cast needed
+          const importedVersions: SongVersion[] = result.data.versions ?? [];
           versionContext?.replaceVersions(importedVersions);
           return {
             ...(result.data.songLanguage ? { songLanguage: result.data.songLanguage } : {}),
