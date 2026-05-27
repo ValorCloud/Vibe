@@ -537,7 +537,7 @@ export function VoxNovaPlayer() {
   useEffect(() => { if (lyriaCount > prevLyriaCount.current) setView('lyria'); prevLyriaCount.current = lyriaCount; }, [lyriaCount, setView]);
 
   return (
-    <div className="lcars-lyrics-area" style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', backgroundColor: LCARS.void, color: LCARS.text, fontFamily: '"Antonio", "Eurostile", "Helvetica Neue", Arial, sans-serif', overflow: 'hidden' }}>
+    <div className="lcars-lyrics-area" style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', color: 'var(--text-primary)', fontFamily: '"Antonio", "Eurostile", "Helvetica Neue", Arial, sans-serif', overflow: 'hidden' }}>
       <LCARSBackground />
       <SidebarProvider onLocalTracksAdded={() => setView('local')}>
         {/* Sidebar hidden (not unmounted) while player is active — preserves refs and state */}

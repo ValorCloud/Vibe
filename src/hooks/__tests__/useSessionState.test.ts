@@ -87,6 +87,20 @@ describe('useSessionState', () => {
         expect(result.current.theme).toBe('light');
         expect(document.documentElement.classList.contains('dark')).toBe(false);
       });
+
+      expect(localStorage.getItem('vibe_theme')).toBe('light');
+    });
+
+    it('loads theme from localStorage when set to light', () => {
+      localStorage.setItem('vibe_theme', 'light');
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        json: async () => ({ available: false }),
+      });
+
+      const { result } = renderHook(() => useSessionState());
+
+      expect(result.current.theme).toBe('light');
+      expect(document.documentElement.classList.contains('dark')).toBe(false);
     });
 
     it('updates UI scale and persists to localStorage', () => {
