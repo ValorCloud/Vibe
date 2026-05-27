@@ -21,6 +21,7 @@ import { useSongEditor } from '../../hooks/useSongEditor';
 import { useTopicMoodSuggester } from '../../hooks/useTopicMoodSuggester';
 import { useTranslation } from '../../i18n';
 import type { CloudFile } from '../../services/cloudStorage';
+import { VIBE_EVENTS } from '../../constants/vibeEvents';
 
 const AppModals = lazy(() =>
   import('./AppModals').then(m => ({ default: m.AppModals }))
@@ -113,7 +114,7 @@ export function AppModalLayer() {
     if (cloudStoragePickerMode === 'player' || cloudStoragePickerMode === 'player-files') {
       // Both player modes dispatch to PlayerTab via custom event.
       // PlayerTab listener reads file.fileList (AudioFileEntry[]) and adds tracks.
-      window.dispatchEvent(new CustomEvent('vibe:playerfolderloaded', { detail: file }));
+      window.dispatchEvent(new CustomEvent(VIBE_EVENTS.PLAYER_FOLDER_LOADED, { detail: file }));
       return;
     }
     // Mode lyrics : comportement original

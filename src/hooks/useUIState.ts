@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { EditMode } from '../types';
 import type { PickMode } from '../services/cloudStorage';
 import { safeGetItem, safeSetItem } from '../utils/safeStorage';
+import { VIBE_EVENTS } from '../constants/vibeEvents';
 
 const SPLASH_SHOWN_KEY = 'vibe_splash_shown';
 const shouldShowSplash = (): boolean => {
@@ -69,8 +70,8 @@ export function useUIState(initial?: NavInitial) {
       const detail = (e as CustomEvent<{ message: string }>).detail;
       setApiErrorModal({ open: true, message: detail.message });
     };
-    window.addEventListener('vibe:apierror', handler);
-    return () => window.removeEventListener('vibe:apierror', handler);
+    window.addEventListener(VIBE_EVENTS.API_ERROR, handler);
+    return () => window.removeEventListener(VIBE_EVENTS.API_ERROR, handler);
   }, []);
 
   return {
