@@ -116,7 +116,7 @@ export const useSongEditor = ({
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
-  }, [song, title, topic, mood, songLanguage, genre, tempo, instrumentation, rhythm, narrative, musicalPrompt, versionContext?.versions]);
+  }, [song, title, titleOrigin, topic, mood, songLanguage, genre, tempo, instrumentation, rhythm, narrative, musicalPrompt, versionContext?.versions]);
 
   const loadFileForAnalysis = useCallback(async (file: File): Promise<{ songLanguage?: string; songTitle?: string }> => {
     let payload: { text: string; songLanguage: string; songTitle?: string } = { text: '', songLanguage: '' };
