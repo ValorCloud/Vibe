@@ -12,6 +12,7 @@ import { saveSession } from '../lib/sessionPersistence';
 import type { SessionSnapshot } from '../lib/sessionPersistence';
 import type { Section, SongVersion } from '../types';
 import type { AppTab } from './useUIState';
+import { logger } from '../utils/logger';
 
 export type SaveStatus = 'idle' | 'unsaved' | 'saving' | 'saved' | 'error';
 
@@ -101,7 +102,7 @@ export function useSessionAutoSave(payload: AutoSavePayload): SessionAutoSaveRes
         setLastSavedAt(snapshot.savedAt);
         payloadRef.current.onSaved?.();
       } catch (err) {
-        console.error('[useSessionAutoSave] failed to persist session', err);
+        logger.error('[useSessionAutoSave] failed to persist session', err);
         setSaveStatus('error');
       }
     }, 2000);

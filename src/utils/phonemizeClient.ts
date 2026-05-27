@@ -2,6 +2,7 @@
  * Client for G2P phonemization microservice
  */
 import { z } from 'zod';
+import { logger } from './logger';
 
 export interface PhonemeRequest {
   text: string;
@@ -125,7 +126,7 @@ export const phonemizeText = async (
 
     const apiUrl = import.meta.env.VITE_PHONEMIZE_API_URL;
     if (!apiUrl) {
-      console.warn('PHONEMIZE_API_URL not configured - G2P service unavailable');
+      logger.warn('PHONEMIZE_API_URL not configured - G2P service unavailable');
       return null;
     }
 
@@ -138,20 +139,20 @@ export const phonemizeText = async (
     }).finally(requestSignal.cleanup);
 
     if (!response.ok) {
-      console.warn(`Phonemization service returned ${response.status}`);
+      logger.warn(`Phonemization service returned ${response.status}`);
       return null;
     }
 
     const raw: unknown = await response.json();
     const parsed = PhonemeResponseSchema.safeParse(raw);
     if (!parsed.success) {
-      console.warn('[phonemizeText] Unexpected response shape:', parsed.error);
+      logger.warn('[phonemizeText] Unexpected response shape:', parsed.error);
       return null;
     }
     return parsed.data;
   } catch (error) {
     if (signal?.aborted) throw error;
-    console.warn('Failed to call phonemization service:', error);
+    logger.warn('Failed to call phonemization service:', error);
     return null;
   }
 };

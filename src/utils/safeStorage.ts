@@ -6,6 +6,7 @@
  * Replaces both safeStorage.ts and storageUtils.ts — import from here only.
  */
 import type { ZodSchema } from 'zod';
+import { logger } from './logger';
 
 export const safeGetItem = (key: string): string | null => {
   try {
@@ -24,9 +25,9 @@ export const safeSetItem = (key: string, value: string): boolean => {
       e.name === 'QuotaExceededError' ||
       e.name === 'NS_ERROR_DOM_QUOTA_REACHED'
     )) {
-      console.warn(`[safeStorage] localStorage quota exceeded for key: "${key}"`);
+      logger.warn(`[safeStorage] localStorage quota exceeded for key: "${key}"`);
     } else {
-      console.warn(`[safeStorage] Could not persist "${key}":`, e);
+      logger.warn(`[safeStorage] Could not persist "${key}":`, e);
     }
     return false;
   }

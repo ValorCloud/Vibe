@@ -158,8 +158,16 @@ const TONAL_LANGS = new Set([
 
 function toGraphemeClusters(str: string): string[] {
   if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
-    const seg = new (Intl as any).Segmenter(undefined, { granularity: 'grapheme' });
-    return [...seg.segment(str)].map((s: any) => s.segment as string);
+    // `Intl.Segmenter` is available in all modern browsers but the TS lib
+    // shipped at the time of writing does not always expose it; use a
+    // narrowly-typed structural reference instead of `any`.
+    type SegmenterCtor = new (
+      locales?: string | string[],
+      options?: { granularity?: 'grapheme' | 'word' | 'sentence' },
+    ) => { segment: (input: string) => Iterable<{ segment: string }> };
+    const SegmenterRef = (Intl as unknown as { Segmenter: SegmenterCtor }).Segmenter;
+    const seg = new SegmenterRef(undefined, { granularity: 'grapheme' });
+    return [...seg.segment(str)].map(s => s.segment);
   }
   return [...str];
 }

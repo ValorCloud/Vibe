@@ -341,7 +341,19 @@ export async function rhymeScoreAsync(
   const phonesA = syncResult.nucleusA.vowels.split('').concat(syncResult.nucleusA.coda.split(''));
   const phonesB = syncResult.nucleusB.vowels.split('').concat(syncResult.nucleusB.coda.split(''));
 
-  const embResult = await embeddingScore(phonesA, phonesB, family as any, syncResult.langA);
+  // `family` here is a `FamilyId` (router-side type), but `embeddingScore`
+  // accepts `LangFamily` (morphoNucleus-side type). The two enums overlap
+  // (KWA/TAI/...) but are not structurally identical; the union of both is
+  // safe here because the embedding backend short-circuits to a phonetic
+  // fallback for unknown families. Use a named alias rather than an inline
+  // `Parameters<…>` cast so renaming embeddingScore stays explicit.
+  type EmbeddingFamily = Parameters<typeof embeddingScore>[2];
+  const embResult = await embeddingScore(
+    phonesA,
+    phonesB,
+    family as unknown as EmbeddingFamily,
+    syncResult.langA,
+  );
   const blended = blendScores(syncResult.score, embResult.score, 0.4);
   const warnings = [...syncResult.warnings, `embedding:${embResult.backend}`];
 

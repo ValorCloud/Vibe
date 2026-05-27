@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import type { TrackEntry } from './types';
+import { logger } from '../../utils/logger';
 
 export type RepeatMode = 'none' | 'one' | 'all';
 
@@ -126,7 +127,7 @@ async function cancelResponseBody(res: Response): Promise<void> {
   try {
     await res.body?.cancel();
   } catch (error) {
-    console.warn('[probeAudioFile] Failed to cancel oversized response:', error);
+    logger.warn('[probeAudioFile] Failed to cancel oversized response:', error);
   }
 }
 

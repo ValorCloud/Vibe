@@ -1,6 +1,7 @@
 import { withRetry, type RetryOptions } from './withRetry';
 import { z } from 'zod';
 import { VIBE_EVENTS } from '../constants/vibeEvents';
+import { logger } from './logger';
 
 const getErrorMessage = (error: unknown) => {
   if (error && typeof error === 'object' && 'message' in error) return String((error as { message?: unknown }).message ?? '');
@@ -165,22 +166,22 @@ export const safeJsonParse = <T>(
     const raw: unknown = JSON.parse(text);
     if (schema) {
       const result = schema.safeParse(raw);
-      if (!result.success) { console.warn('[safeJsonParse] Zod validation failed:', result.error); return fallback; }
+      if (!result.success) { logger.warn('[safeJsonParse] Zod validation failed:', result.error); return fallback; }
       return result.data;
     }
     if (raw === null || (typeof raw !== 'object' && !Array.isArray(raw))) {
-      console.warn('[safeJsonParse] Unexpected primitive payload — returning fallback.');
+      logger.warn('[safeJsonParse] Unexpected primitive payload — returning fallback.');
       return fallback;
     }
     return raw as T;
   } catch (e) {
-    console.warn('[safeJsonParse] Failed to parse JSON response, using fallback.', e);
+    logger.warn('[safeJsonParse] Failed to parse JSON response, using fallback.', e);
     return fallback;
   }
 };
 
 export const handleApiError = (error: unknown, defaultMessage: string) => {
-  console.error(defaultMessage, error);
+  logger.error(defaultMessage, error);
   const errorMessage = getErrorMessage(error);
   const errorCode = getErrorCode(error);
   let message: string;

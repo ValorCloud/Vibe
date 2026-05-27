@@ -8,6 +8,7 @@ import { useOptionalVersionContext } from '../contexts/VersionContext';
 import { SessionSchema } from '../schemas/sessionSchema';
 import { normalizeLoadedSection } from '../utils/songUtils';
 import type { SongVersion } from '../types';
+import { logger } from '../utils/logger';
 
 type SaveFilePickerOptions = {
   suggestedName: string;
@@ -158,7 +159,7 @@ export const useSongEditor = ({
         }
       } catch (error) {
         // JSON.parse failed — not a valid JSON file; fall through to plain-text analysis.
-        console.warn('[useSongEditor] JSON import: parse error, falling back to text analysis', error);
+        logger.warn('[useSongEditor] JSON import: parse error, falling back to text analysis', error);
       }
       payload = { text, songLanguage: '' };
     } else {

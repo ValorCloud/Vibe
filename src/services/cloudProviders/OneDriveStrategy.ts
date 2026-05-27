@@ -12,6 +12,7 @@ import {
 } from '@azure/msal-browser';
 import type { PickStrategy } from './PickStrategy';
 import type { CloudFile, PickMode, AudioFileEntry } from '../cloudStorage';
+import { logger } from '../../utils/logger';
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -296,7 +297,7 @@ async function pickOneDrive(
         }
       } catch (err) {
         resolve(null);
-        console.error('[OneDriveStrategy] pick error:', err);
+        logger.error('[OneDriveStrategy] pick error:', err);
       }
     };
 

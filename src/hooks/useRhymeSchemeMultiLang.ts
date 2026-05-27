@@ -3,6 +3,7 @@ import { detectRhymeSchemeMultiLang } from '../lib/rhyme/rhymeSchemeDetector';
 import { detectRhymeSchemeLocally } from '../utils/rhymeSchemeUtils';
 import { toRhymeLangCode } from '../lib/rhyme/langCode';
 import type { SchemeResult } from '../lib/rhyme/types';
+import { logger } from '../utils/logger';
 
 export interface MultiLangLine {
   text: string;
@@ -116,7 +117,7 @@ export function useRhymeSchemeMultiLang(
       return isProxied !== undefined ? { ...corrected, isProxied } : corrected;
     } catch (err) {
       if (process.env.NODE_ENV !== 'production') {
-        console.warn('[useRhymeSchemeMultiLang] detection failed:', err);
+        logger.warn('[useRhymeSchemeMultiLang] detection failed:', err);
       }
       return null;
     }

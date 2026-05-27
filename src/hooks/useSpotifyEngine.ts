@@ -5,6 +5,7 @@ import type {
   SpotifyPlaybackState,
   WebPlaybackError,
 } from '../types/spotify';
+import { logger } from '../utils/logger';
 
 // ---------------------------------------------------------------------------
 // SDK script loader (idempotent)
@@ -138,17 +139,17 @@ export function useSpotifyEngine({ accessToken, getValidToken }: UseSpotifyEngin
 
       (player.addListener as (event: 'initialization_error', cb: (err: WebPlaybackError) => void) => boolean)(
         'initialization_error',
-        ({ message }) => { if (!cancelled) { console.error('[SpotifyEngine] init:', message); setPlayerState('error'); } },
+        ({ message }) => { if (!cancelled) { logger.error('[SpotifyEngine] init:', message); setPlayerState('error'); } },
       );
 
       (player.addListener as (event: 'authentication_error', cb: (err: WebPlaybackError) => void) => boolean)(
         'authentication_error',
-        ({ message }) => { if (!cancelled) { console.error('[SpotifyEngine] auth:', message); setPlayerState('error'); } },
+        ({ message }) => { if (!cancelled) { logger.error('[SpotifyEngine] auth:', message); setPlayerState('error'); } },
       );
 
       (player.addListener as (event: 'account_error', cb: (err: WebPlaybackError) => void) => boolean)(
         'account_error',
-        ({ message }) => { if (!cancelled) { console.error('[SpotifyEngine] account (Premium required):', message); setPlayerState('error'); } },
+        ({ message }) => { if (!cancelled) { logger.error('[SpotifyEngine] account (Premium required):', message); setPlayerState('error'); } },
       );
 
       await player.connect();

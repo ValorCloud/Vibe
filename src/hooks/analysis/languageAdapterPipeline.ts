@@ -7,6 +7,7 @@ import { matchRhymeSchemeAcrossLang } from '../../utils/adaptationUtils';
 import { reverseTranslateLines, reviewTranslationFidelity } from '../../utils/llmPipelineUtils';
 import { buildDetectLanguagePrompt } from '../../utils/promptUtils';
 import type { Line, Section } from '../../types';
+import { logger } from '../../utils/logger';
 
 type AdaptationLinePayload = Partial<Line>;
 type AdaptationSectionPayload = Partial<Omit<Section, 'lines'>> & { lines?: AdaptationLinePayload[] };
@@ -201,9 +202,9 @@ export const getIpaEnhancedPrompt = async (
     });
 
     if (sectionName) {
-      console.debug('IPA constraints applied for section:', sectionName, adaptationResult.sourceScheme);
+      logger.debug('IPA constraints applied for section:', sectionName, adaptationResult.sourceScheme);
     } else {
-      console.debug('IPA constraints applied:', adaptationResult.sourceScheme);
+      logger.debug('IPA constraints applied:', adaptationResult.sourceScheme);
     }
     return {
       prompt: `\n\n${adaptationResult.constrainedPrompt}`,
@@ -211,9 +212,9 @@ export const getIpaEnhancedPrompt = async (
     };
   } catch (error) {
     if (sectionName) {
-      console.debug('IPA pipeline not available for section, continuing with standard prompt:', error);
+      logger.debug('IPA pipeline not available for section, continuing with standard prompt:', error);
     } else {
-      console.debug('IPA pipeline not available, continuing with standard prompt:', error);
+      logger.debug('IPA pipeline not available, continuing with standard prompt:', error);
     }
     return EMPTY_IPA_PROMPT_RESULT();
   }

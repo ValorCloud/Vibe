@@ -7,7 +7,6 @@
 export { useSongAnalysis } from '../useSongAnalysis';
 export { useSimilarityEngine } from '../useSimilarityEngine';
 export { useLinguisticsWorker } from '../useLinguisticsWorker';
-export { useDerivedPhonology } from '../useDerivedPhonology';
 export { usePhoneticTranscription } from '../usePhoneticTranscription';
 export { useRhymeSuggestions } from '../useRhymeSuggestions';
 export { useRhymeSchemeMultiLang } from '../useRhymeSchemeMultiLang';

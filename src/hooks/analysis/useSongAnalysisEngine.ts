@@ -13,6 +13,7 @@ import {
   buildSongAnalysisPrompt,
 } from '../../utils/promptUtils';
 import { analyzeSongRhymes } from '../../utils/songRhymeAnalysis';
+import { logger } from '../../utils/logger';
 
 export { analyzeSongRhymes } from '../../utils/songRhymeAnalysis';
 
@@ -204,7 +205,7 @@ export const useSongAnalysisEngine = ({
         wasAborted = true;
         return;
       }
-      console.error('Apply batch analysis error:', error);
+      logger.error('Apply batch analysis error:', error);
     } finally {
       if (!wasAborted) setIsApplyingAnalysis(null);
     }
@@ -255,7 +256,7 @@ export const useSongAnalysisEngine = ({
         wasAborted = true;
         return;
       }
-      console.error('Apply analysis error:', error);
+      logger.error('Apply analysis error:', error);
     } finally {
       if (!wasAborted) setIsApplyingAnalysis(null);
     }
@@ -324,7 +325,7 @@ export const useSongAnalysisEngine = ({
         wasAborted = true;
         return;
       }
-      console.error('Analysis error:', error);
+      logger.error('Analysis error:', error);
       setAnalysisSteps(prev => [...prev, 'Error during analysis. Please try again.']);
     } finally {
       if (!wasAborted) setIsAnalyzing(false);

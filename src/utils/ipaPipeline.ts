@@ -22,6 +22,7 @@ import {
   type RhymeSimilarityResult,
 } from './ipaUtils';
 import { finalizeDetectedRhymeScheme, RHYME_SCHEME_LETTERS } from './rhymeSchemeUtils';
+import { logger } from './logger';
 
 const createAbortError = () => {
   const error = new Error('Operation aborted');
@@ -141,7 +142,7 @@ export const runIPAPipeline = async (
     if (isAbortError(error)) {
       throw error;
     }
-    console.debug('Phonemization service unavailable, using client fallback');
+    logger.debug('Phonemization service unavailable, using client fallback');
   }
 
   throwIfAborted(signal);

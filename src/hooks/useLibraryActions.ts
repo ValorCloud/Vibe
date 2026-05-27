@@ -13,6 +13,7 @@ import {
 import { safeJsonParse } from '../utils/safeStorage';
 import { useSongContext } from '../contexts/SongContext';
 import { useLibrarySongActions } from './useLibrarySongActions';
+import { logger } from '../utils/logger';
 
 const lyricalKey = (song: Section[]): string => {
   return song
@@ -87,7 +88,7 @@ export const useLibraryActions = ({
       setSimilarityMatches(prev => prev.filter(match => match.versionId !== versionId));
       setLibraryCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Failed to delete library asset:', error);
+      logger.error('Failed to delete library asset:', error);
       setSaveLibraryError('Failed to delete asset from library');
     }
   }, [setLibraryAssets, setLibraryCount, setSimilarityMatches]);
@@ -99,7 +100,7 @@ export const useLibraryActions = ({
       setSimilarityMatches([]);
       setLibraryCount(0);
     } catch (error) {
-      console.error('Failed to purge library:', error);
+      logger.error('Failed to purge library:', error);
       setSaveLibraryError('Failed to purge library');
     }
   }, [setLibraryAssets, setLibraryCount, setSimilarityMatches]);

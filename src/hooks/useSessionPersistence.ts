@@ -2,10 +2,11 @@ import { useEffect, useRef } from 'react';
 import { Section } from '../types';
 import { cleanSectionName, normalizeLoadedSection } from '../utils/songUtils';
 import { DEFAULT_STRUCTURE } from '../constants/editor';
-import { safeSetItem, safeGetItem } from '../utils/safeStorage';
+import { safeSetItem, safeGetItem, safeRemoveItem } from '../utils/safeStorage';
 import { isPristineDraft } from '../utils/songDefaults';
 import { useSongContext } from '../contexts/SongContext';
 import { SessionSchema } from '../schemas/sessionSchema';
+import { logger } from '../utils/logger';
 
 /** Debounce delay for session persistence writes (ms). */
 const SAVE_DEBOUNCE_MS = 500;
@@ -51,10 +52,12 @@ export function useSessionPersistence(params: UseSessionPersistenceParams): void
 
         if (!result.success) {
           // Schema validation failed — session is corrupted or from an
-          // incompatible version. Log in dev, skip hydration gracefully.
+          // incompatible version. Purge the persisted blob so we don't
+          // retry the same corrupted payload on every reload.
           if (import.meta.env.DEV) {
-            console.warn('[useSessionPersistence] Invalid session schema:', result.error.flatten());
+            logger.warn('[useSessionPersistence] Invalid session schema:', result.error.flatten());
           }
+          safeRemoveItem('lyricist_session');
         } else {
           const parsed = result.data;
 
@@ -88,7 +91,10 @@ export function useSessionPersistence(params: UseSessionPersistenceParams): void
           }
         }
       } catch (e) {
-        console.error('[useSessionPersistence] Failed to parse saved session', e);
+        logger.error('[useSessionPersistence] Failed to parse saved session', e);
+        // Corrupted JSON — remove so subsequent loads start fresh instead of
+        // looping the same parse error.
+        safeRemoveItem('lyricist_session');
       }
     }
     setIsSessionHydrated(true);

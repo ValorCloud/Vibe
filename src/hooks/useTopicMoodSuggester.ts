@@ -5,6 +5,7 @@ import { withAbort, isAbortError } from '../utils/withAbort';
 import { useSongContext } from '../contexts/SongContext';
 import { DEFAULT_TITLE } from '../constants/editor';
 import { sanitizeForPrompt } from '../utils/promptSanitization';
+import { logger } from '../utils/logger';
 
 interface TopicMoodSuggestion {
   topic: string;
@@ -76,7 +77,7 @@ export function useTopicMoodSuggester({ hasApiKey }: { hasApiKey: boolean }) {
         wasAborted = true;
         return null;
       }
-      console.warn('Failed to generate topic/mood suggestion:', error);
+      logger.warn('Failed to generate topic/mood suggestion:', error);
       return null;
     } finally {
       if (!wasAborted) setIsGeneratingSuggestion(false);

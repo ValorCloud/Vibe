@@ -1,6 +1,7 @@
 import React, { createContext, useState, useMemo, useEffect, useCallback, type ReactNode } from 'react';
 import type { Translations } from './locales/types';
 import { SUPPORTED_UI_LOCALES, migrateToLangId, langIdToLocaleCode } from './constants';
+import { logger } from '../utils/logger';
 
 // Re-export legacy alias so existing consumers don't break
 export { SUPPORTED_UI_LOCALES as SUPPORTED_LANGUAGES } from './constants';
@@ -33,7 +34,7 @@ async function loadLocale(lang: string): Promise<Translations | null> {
     localeCache[lang] = locale;
     return locale;
   } catch (error) {
-    console.error(`[i18n] Failed to load locale '${lang}':`, error);
+    logger.error(`[i18n] Failed to load locale '${lang}':`, error);
     return null;
   }
 }
@@ -42,7 +43,7 @@ async function loadLocale(lang: string): Promise<Translations | null> {
 let en: Translations | null = null;
 const enPromise = loadLocale('en').then(locale => {
   if (!locale || Object.keys(locale).length === 0) {
-    console.error('[i18n] en.json is missing or empty.');
+    logger.error('[i18n] en.json is missing or empty.');
     return null;
   }
   en = locale;

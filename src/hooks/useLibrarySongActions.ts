@@ -19,6 +19,7 @@ import {
 } from '../utils/libraryUtils';
 import { useSongContext } from '../contexts/SongContext';
 import { useOptionalVersionContext } from '../contexts/VersionContext';
+import { logger } from '../utils/logger';
 
 type UseLibrarySongActionsParams = {
   setIsSavingToLibrary: (v: boolean) => void;
@@ -88,7 +89,7 @@ export const useLibrarySongActions = ({
       setLibraryCount(updated.length);
       setLibraryAssets(updated);
     } catch (error) {
-      console.error('Failed to save to library:', error);
+      logger.error('Failed to save to library:', error);
       setSaveError('Failed to save to library. Please try again.');
     } finally {
       setIsSavingToLibrary(false);

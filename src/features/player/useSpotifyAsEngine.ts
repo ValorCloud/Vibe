@@ -6,6 +6,7 @@ import {
 } from '../../hooks/useSpotifyEngine';
 import { useSpotifyEngine_ } from '../../contexts/SpotifyEngineContext';
 import { useSpotifyAuthActions } from '../../contexts/SpotifyAuthContext';
+import { logger } from '../../utils/logger';
 
 const REPEAT_MODE_BY_INDEX: RepeatMode[] = ['none', 'all', 'one'];
 const REPEAT_INDEX_BY_MODE: Record<RepeatMode, 0 | 1 | 2> = {
@@ -123,7 +124,7 @@ export function useSpotifyAsEngine(): AudioEngineState {
         headers: { Authorization: `Bearer ${token}` },
       });
     } catch (err) {
-      console.warn('[useSpotifyAsEngine] Spotify API call failed:', err);
+      logger.warn('[useSpotifyAsEngine] Spotify API call failed:', err);
     }
   }, [getValidToken]);
 

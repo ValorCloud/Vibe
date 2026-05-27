@@ -19,6 +19,7 @@ import {
 import { detectSongLanguage, getAdaptationResponseSchema, getIpaEnhancedPrompt, getLineAdaptationResponseSchema, parseAdaptationResponse, reverseTranslate, reviewFidelity } from './languageAdapterPipeline';
 import { abortCurrent, withAbort, isAbortError } from '../../utils/withAbort';
 import { buildAdaptLinePrompt, buildAdaptSectionPrompt, buildAdaptSongPrompt } from '../../utils/promptUtils';
+import { logger } from '../../utils/logger';
 export type { AdaptationStepId, AdaptationStep, AdaptationProgress, AdaptationResult } from './languageAdapterTypes';
 type SaveVersionFn = (name: string, snapshot?: { song: Section[]; structure: string[]; title: string; titleOrigin: 'user' | 'ai'; topic: string; mood: string }) => void;
 type UseLanguageAdapterParams = {
@@ -157,7 +158,7 @@ export const useLanguageAdapter = ({
       });
     } catch (error) {
       if (isAbortError(error)) return;
-      console.error('Language detection error:', error);
+      logger.error('Language detection error:', error);
     } finally {
       if (detectRunIdRef.current === runId) setIsDetectingLanguage(false);
     }
@@ -256,7 +257,7 @@ export const useLanguageAdapter = ({
       });
     } catch (error) {
       if (isAbortError(error)) return;
-      console.error(errorLabel, error);
+      logger.error(errorLabel, error);
       setAdaptationProgress({ active: 'failed', steps: PIPELINE_STEPS, label: progressLabel });
     } finally {
       if (adaptRunIdRef.current === runId) setIsAdaptingLanguage(false);
@@ -386,7 +387,7 @@ export const useLanguageAdapter = ({
       }
     } catch (error) {
       if (isAbortError(error)) return;
-      console.error('Line adaptation error:', error);
+      logger.error('Line adaptation error:', error);
     } finally {
       lineAbortControllersRef.current.delete(lineId);
       setAdaptingLineIds(prev => {

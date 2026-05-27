@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { ChangeEvent, RefObject } from 'react';
+import { logger } from '../utils/logger';
 
 type FilePickerHandle = { getFile: () => Promise<File> };
 type WindowWithOpenFilePicker = Window & {
@@ -56,7 +57,7 @@ export const useImportHandlers = (params: UseImportHandlersParams) => {
         onComplete?.();
       } catch (error) {
         if (!(error instanceof DOMException && error.name === 'AbortError')) {
-          console.error('Failed to open import file picker', error);
+          logger.error('Failed to open import file picker', error);
         }
       }
       return;

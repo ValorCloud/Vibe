@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import type { Section } from '../types';
 import { useSongContext } from '../contexts/SongContext';
 import type { AppTab } from './useUIState';
+import { logger } from '../utils/logger';
 
 interface UseAppHandlersParams {
   t: {
@@ -46,7 +47,7 @@ export function useAppHandlers({
   const handleGlobalRegenerate = useCallback(() => {
     const runGenerate = () => {
       generateSong().catch((err: unknown) => {
-        console.error('[generateSong] unhandled error', err);
+        logger.error('[generateSong] unhandled error', err);
         const message =
           err instanceof Error ? err.message : String(err ?? 'Unknown error');
         setApiErrorModal({ open: true, message });

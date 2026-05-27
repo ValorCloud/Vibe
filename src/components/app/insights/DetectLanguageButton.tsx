@@ -6,6 +6,7 @@ import { LanguageBadge } from '../../ui/LanguageBadge';
 import { getLanguageDisplay, useTranslation, SUPPORTED_ADAPTATION_LANGUAGES } from '../../../i18n';
 import { usePickerCoords } from './usePickerCoords';
 import { LanguagePicker } from './LanguagePicker';
+import { logger } from '../../../utils/logger';
 
 type LanguageDisplay = ReturnType<typeof getLanguageDisplay>;
 
@@ -87,7 +88,7 @@ export function DetectLanguageButton({
     } else {
       // Fix #2: explicit .catch() — never silently swallow async rejections.
       Promise.resolve(onDetect()).catch((err: unknown) => {
-        console.error('[DetectLanguageButton] onDetect failed:', err);
+        logger.error('[DetectLanguageButton] onDetect failed:', err);
       });
     }
   };

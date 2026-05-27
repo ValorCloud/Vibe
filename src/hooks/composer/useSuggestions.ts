@@ -7,6 +7,7 @@ import { buildRhymeConstrainedPrompt } from '../../utils/promptUtils';
 import { countSyllables } from '../../utils/syllableUtils';
 import { withAbort, isAbortError } from '../../utils/withAbort';
 import { UNTRUSTED_INPUT_PREAMBLE, fence, sanitizeForPrompt } from '../../utils/promptSanitization';
+import { logger } from '../../utils/logger';
 
 const SuggestionsSchema = z.array(z.string());
 const SynonymsSchema = z.record(z.array(z.string()));
@@ -116,7 +117,7 @@ export const useSuggestions = ({
                 );
               }
             } catch (error) {
-              console.debug('Failed to build IPA-enhanced prompt, continuing without:', error);
+              logger.debug('Failed to build IPA-enhanced prompt, continuing without:', error);
             }
           }
 

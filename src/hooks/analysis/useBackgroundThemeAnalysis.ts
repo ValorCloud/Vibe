@@ -4,6 +4,7 @@ import { AI_MODEL_NAME, generateContentWithRetry, handleApiError, safeJsonParse 
 import { buildThemeAnalysisPrompt } from '../../utils/promptUtils';
 import type { Section } from '../../types';
 import { abortCurrent, isAbortError, withAbort } from '../../utils/withAbort';
+import { logger } from '../../utils/logger';
 
 type UseBackgroundThemeAnalysisParams = {
   song: Section[];
@@ -132,7 +133,7 @@ export const useBackgroundThemeAnalysis = ({
         const isQuota = (e as { code?: unknown })?.code === 429 || msg.includes('429') || msg.includes('quota');
         if (isQuota) {
           backoffUntilRef.current = Date.now() + 5 * 60 * 1000;
-          console.warn('[useBackgroundThemeAnalysis] Quota exceeded — background analysis paused for 5 minutes.');
+          logger.warn('[useBackgroundThemeAnalysis] Quota exceeded — background analysis paused for 5 minutes.');
         } else {
           handleApiError(e, 'Background analysis failed.');
         }
