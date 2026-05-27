@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Apple, Github, Music, Youtube, ExternalLink, Linkedin, Radio, ShoppingBag, Info, X, BookOpen } from '../../ui/icons';
+import { Apple, Github, Music, Youtube, ExternalLink, Linkedin, Radio, ShoppingBag, Info, X, BookOpen, Shield, FileText } from '../../ui/icons';
 import { useTranslation } from '../../../i18n';
 import { APP_VERSION_LABEL } from '../../../version';
 import { AI_KEY_ENV_VAR, AI_MODEL_NAME } from '../../../utils/aiUtils';
@@ -248,6 +248,31 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
                 <a href="https://music.apple.com/artist/emmanuel-kerhoz/1776965137" target="_blank" rel="noopener noreferrer" aria-label="Visit Apple Music artist page"
                   className="about-sweep-item ux-interactive flex items-center justify-center gap-2 px-4 py-2 bg-[var(--bg-app)] hover:bg-[var(--bg-sidebar)] border border-[var(--border-color)] hover:border-[var(--accent-color)]/30 text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-lg text-xs font-medium">
                   <Apple className="w-4 h-4" /><span>Apple Music</span><ExternalLink className="w-3 h-3 opacity-50" />
+                </a>
+              </div>
+
+              {/* Legal */}
+              <div className="about-sweep-item pt-3 border-t border-[var(--border-color)] flex items-center justify-center gap-4">
+                <a
+                  href="/privacy.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Privacy Policy"
+                  className="ux-interactive flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  <Shield className="w-3 h-3" />
+                  <span>Privacy Policy</span>
+                </a>
+                <span className="text-[var(--border-color)]">·</span>
+                <a
+                  href="/terms.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Terms of Service"
+                  className="ux-interactive flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  <FileText className="w-3 h-3" />
+                  <span>Terms of Service</span>
                 </a>
               </div>
             </div>
