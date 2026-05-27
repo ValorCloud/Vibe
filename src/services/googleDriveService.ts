@@ -157,7 +157,13 @@ function silentRefresh(scope: string): Promise<string> {
 // OAuth2 popup (full interactive login)
 // ---------------------------------------------------------------------------
 
-function popupSignIn(scope: string): Promise<string> {
+/**
+ * @param scope    OAuth2 scope string.
+ * @param existingPopup  A popup window already opened synchronously (for iOS
+ *   compatibility). When provided the function navigates it to the auth URL
+ *   instead of calling window.open() again.
+ */
+function popupSignIn(scope: string, existingPopup?: Window | null): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!CLIENT_ID) { reject(new Error('GDRIVE_NOT_CONFIGURED')); return; }
 
@@ -172,13 +178,29 @@ function popupSignIn(scope: string): Promise<string> {
     });
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-    const popup = window.open(authUrl, 'GDriveAuth', 'width=520,height=640,toolbar=0,scrollbars=1');
+    let popup: Window | null;
+    if (existingPopup && !existingPopup.closed) {
+      popup = existingPopup;
+      popup.location.href = authUrl;
+    } else {
+      popup = window.open(authUrl, 'GDriveAuth', 'width=520,height=640,toolbar=0,scrollbars=1');
+    }
     if (!popup) { reject(new Error('GDRIVE_POPUP_BLOCKED')); return; }
 
+    // `settled` prevents double-settle when the popup closes immediately after
+    // posting the token (race between closedCheck and messageHandler).
+    let settled = false;
+
+    const cleanup = () => {
+      clearInterval(closedCheck);
+      window.removeEventListener('message', messageHandler);
+    };
+
     const closedCheck = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(closedCheck);
-        window.removeEventListener('message', messageHandler);
+      if (popup!.closed) {
+        if (settled) return;
+        settled = true;
+        cleanup();
         reject(new Error('GDRIVE_AUTH_CANCELLED'));
       }
     }, 500);
@@ -187,9 +209,9 @@ function popupSignIn(scope: string): Promise<string> {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; access_token?: string; expires_in?: number; error?: string };
       if (data.type !== 'GDRIVE_TOKEN') return;
-
-      clearInterval(closedCheck);
-      window.removeEventListener('message', messageHandler);
+      if (settled) return;
+      settled = true;
+      cleanup();
 
       if (data.error || !data.access_token) {
         reject(new Error(data.error ?? 'GDRIVE_NO_TOKEN'));
@@ -214,6 +236,11 @@ function popupSignIn(scope: string): Promise<string> {
  *   2. Silent iframe refresh (prompt=none) → resolves if Google session active.
  *   3. Interactive popup (select_account) → user explicitly consents.
  *
+ * The popup window is pre-opened **synchronously** (before any async work) to
+ * preserve the user-gesture context required by iOS Safari.  If silent refresh
+ * succeeds the pre-opened window is immediately closed (unused).  If silent
+ * refresh fails the popup is navigated to the OAuth URL by popupSignIn().
+ *
  * Throws GDRIVE_AUTH_CANCELLED | GDRIVE_POPUP_BLOCKED on user abort.
  */
 export async function signIn(write = false): Promise<string> {
@@ -222,15 +249,25 @@ export async function signIn(write = false): Promise<string> {
 
   const scope = write ? SCOPE_WRITE : SCOPE_READ;
 
-  // 1. Try silent refresh
+  // Pre-open the popup synchronously so iOS Safari does not block it later
+  // (window.open after an await is treated as a non-gesture context on iOS).
+  const prePopup = window.open('about:blank', 'GDriveAuth', 'width=520,height=640,toolbar=0,scrollbars=1');
+
+  // 1. Try silent refresh (hidden iframe, no user interaction)
   try {
-    return await silentRefresh(scope);
+    const token = await silentRefresh(scope);
+    // Silent succeeded — discard the pre-opened popup
+    if (prePopup && !prePopup.closed) prePopup.close();
+    return token;
   } catch {
-    // Silent failed (no active session, interaction_required, timeout) — fall through to popup
+    // Silent failed (no active session, interaction_required, timeout) — use popup
   }
 
-  // 2. Interactive popup
-  return popupSignIn(scope);
+  // If popup was blocked even at the pre-open stage throw the right error
+  if (!prePopup) throw new Error('GDRIVE_POPUP_BLOCKED');
+
+  // 2. Navigate pre-opened popup to the OAuth URL
+  return popupSignIn(scope, prePopup);
 }
 
 // ---------------------------------------------------------------------------
@@ -277,8 +314,7 @@ export async function listRecentLyricsFiles(token: string): Promise<GDriveFile[]
 /**
  * List the 50 most recent audio files from Drive.
  * Uses drive.readonly scope — works with any file in the user's Drive.
- * Only includes files that have a webContentLink (downloadable).
- * Returns GDriveFile[] with webContentLink for direct download.
+ * Returns GDriveFile[] suitable for download via the alt=media endpoint.
  */
 export async function listRecentAudioFiles(token: string): Promise<GDriveFile[]> {
   const mimeQuery = AUDIO_MIME_TYPES.map(m => `mimeType='${m}'`).join(' or ');
@@ -290,8 +326,7 @@ export async function listRecentAudioFiles(token: string): Promise<GDriveFile[]>
   );
   return (data.files ?? [])
     .filter(f =>
-      GDRIVE_AUDIO_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext)) &&
-      f.webContentLink !== undefined
+      GDRIVE_AUDIO_EXTENSIONS.some(ext => f.name.toLowerCase().endsWith(ext))
     )
     .map(f => {
       const file: GDriveFile = { id: f.id, name: f.name, mimeType: f.mimeType };

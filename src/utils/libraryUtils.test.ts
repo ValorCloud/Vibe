@@ -18,6 +18,7 @@ import {
   mergeAssets,
   parseTextToSections,
   purgeLibrary,
+  updateAssetInLibrary,
   type LibraryAsset,
 } from './libraryUtils';
 
@@ -256,5 +257,66 @@ describe('deleteAssetFromLibrary and purgeLibrary', () => {
       version: 0,
       assets: [],
     }));
+  });
+});
+
+describe('updateAssetInLibrary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    storageMocks.safeSetItem.mockReturnValue(true);
+  });
+
+  it('returns null when the asset id is not found', async () => {
+    storageMocks.safeGetItem.mockReturnValue(JSON.stringify({
+      version: 1,
+      assets: [makeAsset({ id: 'other', timestamp: 100 })],
+    }));
+
+    const result = await updateAssetInLibrary('missing', { title: 'New title' });
+
+    expect(result).toBeNull();
+    expect(storageMocks.safeSetItem).not.toHaveBeenCalled();
+  });
+
+  it('appends a version snapshot on each update', async () => {
+    storageMocks.safeGetItem.mockReturnValue(JSON.stringify({
+      version: 1,
+      assets: [makeAsset({ id: 'song-1', title: 'Original', timestamp: 100 })],
+    }));
+
+    const updated = await updateAssetInLibrary('song-1', { title: 'Updated' });
+
+    expect(updated).not.toBeNull();
+    expect(updated!.title).toBe('Updated');
+    expect(updated!.versions).toHaveLength(1);
+    expect(updated!.versions![0]!.title).toBe('Original');
+  });
+
+  it('caps versions[] at 50 to prevent unbounded growth', async () => {
+    // Build an asset that already has 50 versions
+    const existingVersions = Array.from({ length: 50 }, (_, i) => ({
+      id:          `ver_${i}`,
+      timestamp:   i,
+      song:        [],
+      structure:   [],
+      title:       `v${i}`,
+      titleOrigin: 'user' as const,
+      topic:       '',
+      mood:        '',
+      name:        `v${i}`,
+    }));
+
+    storageMocks.safeGetItem.mockReturnValue(JSON.stringify({
+      version: 1,
+      assets: [makeAsset({ id: 'song-cap', title: 'Cap test', timestamp: 100, versions: existingVersions })],
+    }));
+
+    const updated = await updateAssetInLibrary('song-cap', { title: 'After cap' });
+
+    expect(updated).not.toBeNull();
+    // Still exactly 50 — oldest dropped, newest appended
+    expect(updated!.versions).toHaveLength(50);
+    // The newly appended snapshot title matches the pre-update state
+    expect(updated!.versions![49]!.title).toBe('Cap test');
   });
 });

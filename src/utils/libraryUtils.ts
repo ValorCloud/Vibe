@@ -45,6 +45,9 @@ export type LibrarySearchResult = SimilarityMatch & {
 // M2 fix: version-stamp + merge strategy for atomic-safe writes.
 // ---------------------------------------------------------------------------
 
+/** Maximum number of version snapshots kept per asset. Oldest are dropped. */
+const MAX_VERSIONS = 50;
+
 type LibraryStore = {
   version: number;
   assets: LibraryAsset[];
@@ -236,7 +239,8 @@ export const updateAssetInLibrary = async (
       ...patch,
       id,
       timestamp: now,
-      versions: [...existingVersions, snapshot],
+      // Keep at most MAX_VERSIONS snapshots; drop oldest when the cap is exceeded.
+      versions: [...existingVersions, snapshot].slice(-MAX_VERSIONS),
       metadata: updatedMetadata,
     };
 
