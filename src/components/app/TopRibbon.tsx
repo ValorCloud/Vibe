@@ -185,8 +185,8 @@ export function TopRibbon({ hasApiKey, handleApiKeyHelp, onOpenNewGeneration, on
         <RibbonTabs />
       </div>
 
-      {/* Centre: Voice assistant pill — absolutely centred */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5" style={{ zIndex: 10 }}>
+      {/* Centre: Voice assistant pill — absolutely centred, z-index above tab strip */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center gap-0.5" style={{ zIndex: 30 }}>
         <Tooltip title={voiceLabel}>
           <button
             onClick={invokeVoiceAssistant}
