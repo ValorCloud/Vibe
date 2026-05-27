@@ -328,10 +328,10 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
 
   const login = useCallback(async (): Promise<void> => {
     setState(prev => ({ ...prev, status: 'authenticating', error: null }));
-    const state    = generateRandomString(16);
+    const oauthState = generateRandomString(16);
     const verifier = generateRandomString(64);
     const challenge = await generateCodeChallenge(verifier);
-    storeSet(STATE_KEY,    state);
+    storeSet(STATE_KEY,    oauthState);
     storeSet(VERIFIER_KEY, verifier);
 
     const authUrl = new URL('https://accounts.spotify.com/authorize');
@@ -339,7 +339,7 @@ export function SpotifyAuthProvider({ children }: { children: React.ReactNode })
     authUrl.searchParams.set('client_id',            CLIENT_ID);
     authUrl.searchParams.set('scope',                SCOPES);
     authUrl.searchParams.set('redirect_uri',         REDIRECT_URI);
-    authUrl.searchParams.set('state',                state);
+    authUrl.searchParams.set('state',                oauthState);
     authUrl.searchParams.set('code_challenge_method','S256');
     authUrl.searchParams.set('code_challenge',       challenge);
 

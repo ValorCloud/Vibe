@@ -233,7 +233,6 @@ export function useAudioEngine(): AudioEngineState {
     el.addEventListener('ended', onEnded);
     el.addEventListener('play', onPlay);
     el.addEventListener('pause', onPause);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function onTime(this: HTMLMediaElement) { setCurrentTime(this.currentTime); }
@@ -361,7 +360,7 @@ export function useAudioEngine(): AudioEngineState {
   const toggleShuffle = useCallback(() => { setShuffle(s => !s); }, []);
   const toggleAutoplay = useCallback(() => { setAutoplay(a => !a); }, []);
 
-  const beep = useCallback((freq = 440, type: OscillatorType = 'sine', duration = 0.1) => {
+  const beep = useCallback((freq = 440, type: OscillatorType = 'sine', durationSec = 0.1) => {
     try {
       const AudioCtx = window.AudioContext ||
         (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
@@ -372,9 +371,9 @@ export function useAudioEngine(): AudioEngineState {
       osc.type = type;
       osc.frequency.setValueAtTime(freq, ctx.currentTime);
       gain.gain.setValueAtTime(0.1, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + durationSec);
       osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(); osc.stop(ctx.currentTime + duration);
+      osc.start(); osc.stop(ctx.currentTime + durationSec);
     } catch (_) {}
   }, []);
 

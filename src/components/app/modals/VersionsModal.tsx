@@ -85,7 +85,6 @@ export const VersionsModal = ({
             <button
               onClick={onClose}
               aria-label="Close Song Versions"
-              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
               className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-app)] rounded-md transition-colors"
             >
