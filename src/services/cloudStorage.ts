@@ -22,6 +22,7 @@ import {
   downloadFile as gdriveDownload,
   saveFile as gdriveSave,
   isGDriveConfigured,
+  createAudioBlobUrl,
   type GDriveFile,
 } from './googleDriveService';
 
@@ -506,6 +507,9 @@ async function pickBox(mode: PickMode, signal?: AbortSignal): Promise<CloudFile 
  *
  * Mode lyrics      : list 30 recent lyrics files → native dialog → single pick → download text
  * Mode player-files: list 50 recent audio files  → native multi-select dialog  → AudioFileEntry[]
+ *                    Each entry's downloadUrl is a Blob Object URL (blob:) resolved at pick time
+ *                    via createAudioBlobUrl(). Caller MUST revoke these URLs with
+ *                    URL.revokeObjectURL() when the player is destroyed or the file list replaced.
  * Mode player      : unsupported (GDrive REST v3 does not expose folder-level crawl
  *                    with downloadUrl in drive.readonly scope without Drive SDK)
  */
@@ -534,25 +538,27 @@ async function pickGDrive(mode: PickMode, signal?: AbortSignal): Promise<CloudFi
     const chosen = await showGDriveMultiFilePicker(audioFiles);
     if (!chosen?.length || signal?.aborted) return null;
 
-    const entries: AudioFileEntry[] = chosen.map(f => ({
-      id:          f.id,
-      name:        f.name,
-      // webContentLink requires auth header — we pass the Drive download URL
-      // with the token embedded as a query param is NOT supported by Drive REST;
-      // instead we use the alt=media endpoint with the stored token.
-      // The player must call this URL with `Authorization: Bearer <token>` header.
-      // As a workaround we embed the token in a custom scheme the player resolves.
-      downloadUrl: `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
-      size:        f.size ? parseInt(f.size, 10) : 0,
-      mimeType:    f.mimeType,
-    }));
+    // Resolve each file to a local Blob Object URL at pick time.
+    // This avoids exposing the OAuth token in AudioFileEntry.downloadUrl or
+    // gdriveFileId, and lets the player use standard <audio src> without
+    // custom fetch headers.
+    // IMPORTANT: caller must call URL.revokeObjectURL(entry.downloadUrl) for
+    // each entry when the player is destroyed or the file list is replaced.
+    const entries: AudioFileEntry[] = await Promise.all(
+      chosen.map(async f => ({
+        id:          f.id,
+        name:        f.name,
+        downloadUrl: await createAudioBlobUrl(f.id, token),
+        size:        f.size ? parseInt(f.size, 10) : 0,
+        mimeType:    f.mimeType,
+      }))
+    );
 
     return {
       name:     `selection (${entries.length} fichiers)`,
       content:  JSON.stringify(entries),
       fileList: entries,
-      // Pass token so the player can inject it into fetch headers
-      gdriveFileId: `__token__${token}`,
+      // gdriveFileId intentionally omitted — token is not stored here.
     };
   }
 
