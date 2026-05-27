@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Apple, Github, Music, Youtube, ExternalLink, Linkedin, Radio, ShoppingBag, Info, X, BookOpen, Shield, FileText } from '../../ui/icons';
+import { Apple, Github, Music, Youtube, ExternalLink, Linkedin, Radio, ShoppingBag, Info, X, BookOpen, FileText } from '../../ui/icons';
 import { useTranslation } from '../../../i18n';
 import { APP_VERSION_LABEL } from '../../../version';
 import { AI_KEY_ENV_VAR, AI_MODEL_NAME } from '../../../utils/aiUtils';
@@ -260,7 +260,7 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
                   aria-label="Privacy Policy"
                   className="ux-interactive flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
-                  <Shield className="w-3 h-3" />
+                  <Info className="w-3 h-3" />
                   <span>Privacy Policy</span>
                 </a>
                 <span className="text-[var(--border-color)]">·</span>
