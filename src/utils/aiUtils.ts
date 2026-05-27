@@ -1,5 +1,6 @@
 import { withRetry, type RetryOptions } from './withRetry';
 import { z } from 'zod';
+import { VIBE_EVENTS } from '../constants/vibeEvents';
 
 const getErrorMessage = (error: unknown) => {
   if (error && typeof error === 'object' && 'message' in error) return String((error as { message?: unknown }).message ?? '');
@@ -193,5 +194,5 @@ export const handleApiError = (error: unknown, defaultMessage: string) => {
   } else {
     message = sanitiseErrorMessage(errorMessage) || defaultMessage;
   }
-  window.dispatchEvent(new CustomEvent('vibe:apierror', { detail: { message } }));
+  window.dispatchEvent(new CustomEvent(VIBE_EVENTS.API_ERROR, { detail: { message } }));
 };

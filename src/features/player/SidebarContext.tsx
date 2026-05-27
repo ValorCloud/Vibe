@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useLibraryContext } from '../../contexts/LibraryContext';
 import { SCAN_PROTOCOLS, type ScanConfig, type ScanProtocol, type TrackEntry } from './types';
 import {
@@ -10,7 +10,8 @@ import {
   normalizeCloudUrl,
   type CloudProviderId,
 } from '../../utils/cloudProviders';
-import { pickFromCloud, type CloudFile, type AudioFileEntry } from '../../services/cloudStorage';
+import { pickFromCloud, type CloudFile, type AudioFileEntry, type CloudProviderId as ServiceCloudProviderId } from '../../services/cloudStorage';
+import { VIBE_EVENTS } from '../../constants/vibeEvents';
 
 const VIDEO_EXT = /\.(mp4|webm|mov|mkv|avi|m4v)$/i;
 const PROTOCOL_ACCEPT: Record<ScanProtocol, string[]> = {
@@ -53,6 +54,17 @@ function formatModified(lastModified: number): string {
   return Number.isFinite(lastModified) && lastModified > 0
     ? new Date(lastModified).toLocaleDateString()
     : 'unknown date';
+}
+
+/**
+ * Map the cloud-service provider identifiers (`services/cloudStorage`) to the
+ * player-side identifiers (`utils/cloudProviders`). They differ for Google Drive
+ * (`gdrive` vs `google-drive`); other ids match 1:1.
+ */
+function mapServiceProviderToPlayer(id: ServiceCloudProviderId | undefined): CloudProviderId {
+  if (id === 'gdrive') return 'google-drive';
+  if (id === 'onedrive' || id === 'onedrive-business' || id === 'dropbox' || id === 'box') return id;
+  return 'onedrive';
 }
 
 function immediateParentName(f: File): string {
@@ -226,6 +238,43 @@ export function SidebarProvider({ onLocalTracksAdded, onCloudTracksAdded, childr
         setTimeout(() => setOneDriveScanStatus('idle'), 3000);
       });
   }, [oneDriveScanStatus, library, onCloudTracksAdded]);
+
+  // Consume PLAYER_FOLDER_LOADED events dispatched by AppModalLayer when the
+  // ribbon "Open Audio Folder from Cloud" / "Add Audio Files from Cloud" picker
+  // resolves. Without this listener the new ribbon entries would silently
+  // succeed but never add tracks (regression introduced when the cloud picker
+  // was split into lyrics / player / player-files modes — see commits
+  // 9b0189c → 814d130).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const file = (e as CustomEvent<CloudFile | undefined>).detail;
+      if (!file?.fileList?.length) return;
+      const provider = mapServiceProviderToPlayer(file.provider);
+      const providerLabel = formatCloudProviderLabel(provider);
+      const added: Omit<TrackEntry, 'id'>[] = file.fileList.map((entry: AudioFileEntry) => {
+        const base: Omit<TrackEntry, 'id'> = {
+          title:         entry.name.replace(/\.[^/.]+$/, ''),
+          source:        'cloud',
+          url:           entry.downloadUrl,
+          memo:          `[CLOUD_PICK] ${providerLabel} | ${entry.name} | Size: ${Math.round(entry.size / 1024)} KB | Type: ${entry.mimeType}`,
+          linked:        true,
+          isVideo:       VIDEO_EXT.test(entry.name),
+          cloudProvider: provider,
+        };
+        if (provider === 'onedrive' || provider === 'onedrive-business') {
+          base.oneDriveItemId = entry.id;
+        }
+        base.oneDriveSize = entry.size;
+        return base;
+      });
+      if (added.length) {
+        library.addTracks(added);
+        onCloudTracksAdded?.();
+      }
+    };
+    window.addEventListener(VIBE_EVENTS.PLAYER_FOLDER_LOADED, handler as EventListener);
+    return () => window.removeEventListener(VIBE_EVENTS.PLAYER_FOLDER_LOADED, handler as EventListener);
+  }, [library, onCloudTracksAdded]);
 
   const value = useMemo<SidebarContextValue>(() => ({
     scanProtocol,

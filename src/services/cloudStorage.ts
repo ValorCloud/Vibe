@@ -26,6 +26,9 @@ export interface CloudFile {
   fileList?: AudioFileEntry[];
   /** Google Drive file ID — set when file was loaded from GDrive (used for save-back). */
   gdriveFileId?: string;
+  /** Provider that produced this file — stamped by `pickFromCloud` so downstream
+   *  consumers (e.g. player listeners) know how to attribute the tracks. */
+  provider?: CloudProviderId;
 }
 
 export interface AudioFileEntry {
@@ -126,5 +129,7 @@ export async function pickFromCloud(
   mode: PickMode,
   signal?: AbortSignal,
 ): Promise<CloudFile | null> {
-  return strategies[providerId]?.pick(mode, signal) ?? null;
+  const result = await (strategies[providerId]?.pick(mode, signal) ?? null);
+  if (result) result.provider = providerId;
+  return result;
 }

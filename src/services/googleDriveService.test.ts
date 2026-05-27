@@ -107,14 +107,18 @@ describe('listRecentAudioFiles', () => {
     expect(result[0]!.id).toBe('no-link');
   });
 
-  it('preserves webContentLink when present', async () => {
+  it('strips webContentLink (caller must use createAudioBlobUrl for streaming)', async () => {
+    // listRecentAudioFiles deliberately omits webContentLink from the returned
+    // shape — the link is unreliable for fetch() and createAudioBlobUrl should
+    // be used instead. See fix(gdrive) fab1a16 / 7e74ff2.
     mockFetchResponse([
       makeDriveFile({ id: 'with-link', name: 'track.ogg', mimeType: 'audio/ogg', webContentLink: 'https://example.com/dl' }),
     ]);
 
     const result = await listRecentAudioFiles(FAKE_TOKEN);
 
-    expect(result[0]!.webContentLink).toBe('https://example.com/dl');
+    expect(result[0]!.id).toBe('with-link');
+    expect(result[0]!.webContentLink).toBeUndefined();
   });
 
   it('propagates fetch errors', async () => {

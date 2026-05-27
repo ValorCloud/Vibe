@@ -151,8 +151,8 @@ describe('loadAssetIntoEditor', () => {
       ],
     };
 
-    const { sections } = loadAssetIntoEditor(asset);
-    const lines = sections[0]?.lines ?? [];
+    const loaded = loadAssetIntoEditor(asset);
+    const lines = loaded.song[0]?.lines ?? [];
 
     expect(lines[0]?.syllables).toBeGreaterThan(0);
     expect(lines[1]?.syllables).toBeGreaterThan(0);
@@ -160,46 +160,65 @@ describe('loadAssetIntoEditor', () => {
 });
 
 describe('updateAssetInLibrary', () => {
-  const STORAGE_KEY = 'vibeLibrary';
+  // libraryUtils stores its payload under this key (see LIBRARY_KEY).
+  const STORAGE_KEY = 'lyricist_library';
 
   beforeEach(() => {
     storageMocks.safeGetItem.mockReset();
     storageMocks.safeSetItem.mockReset();
+    storageMocks.safeSetItem.mockReturnValue(true);
   });
 
   function seedLibrary(assets: LibraryAsset[]) {
+    // readStore expects a { version, assets } envelope validated by LibraryStoreSchema.
     storageMocks.safeGetItem.mockImplementation((key: string) =>
-      key === STORAGE_KEY ? JSON.stringify(assets) : null,
+      key === STORAGE_KEY ? JSON.stringify({ version: 0, assets }) : null,
     );
   }
 
-  it('appends a prompt snapshot to an existing asset', () => {
+  function parseLastWrite(): LibraryAsset[] {
+    const calls = storageMocks.safeSetItem.mock.calls as [string, string][];
+    const lastCall = calls[calls.length - 1];
+    if (!lastCall) throw new Error('safeSetItem was not called');
+    const [, json] = lastCall;
+    const parsed = JSON.parse(json) as { assets: LibraryAsset[] };
+    return parsed.assets;
+  }
+
+  // Build a fully-typed SongVersion entry compatible with SongVersionSchema.
+  const makeVersion = (label: string, ts: number) => ({
+    id:          `ver-${label}`,
+    timestamp:   ts,
+    song:        [],
+    structure:   [],
+    title:       label,
+    titleOrigin: 'user' as const,
+    topic:       '',
+    mood:        '',
+    name:        label,
+  });
+
+  it('appends a prompt snapshot to an existing asset', async () => {
     const existing = makeAsset({ id: 'a1', versions: [] });
     seedLibrary([existing]);
 
-    updateAssetInLibrary('a1', { title: 'Updated' });
+    await updateAssetInLibrary('a1', { title: 'Updated' });
 
-    const [[, json]] = storageMocks.safeSetItem.mock.calls as [[string, string]];
-    const saved: LibraryAsset[] = JSON.parse(json);
+    const saved = parseLastWrite();
     const updated = saved.find(a => a.id === 'a1')!;
 
     expect(updated.title).toBe('Updated');
     expect(updated.versions).toHaveLength(1);
   });
 
-  it('caps versions[] at MAX_ASSET_VERSIONS (50)', () => {
-    const versions = Array.from({ length: 55 }, (_, i) => ({
-      timestamp: i,
-      sections:  [],
-      title:     `v${i}`,
-    }));
+  it('caps versions[] at MAX_ASSET_VERSIONS (50)', async () => {
+    const versions = Array.from({ length: 55 }, (_, i) => makeVersion(`v${i}`, i));
     const existing = makeAsset({ id: 'a2', versions });
     seedLibrary([existing]);
 
-    updateAssetInLibrary('a2', { title: 'Capped' });
+    await updateAssetInLibrary('a2', { title: 'Capped' });
 
-    const [[, json]] = storageMocks.safeSetItem.mock.calls as [[string, string]];
-    const saved: LibraryAsset[] = JSON.parse(json);
+    const saved = parseLastWrite();
     const updated = saved.find(a => a.id === 'a2')!;
 
     // After appending 1 snapshot to 55 existing ones (56 total), slice(-50) keeps 50.
@@ -208,57 +227,79 @@ describe('updateAssetInLibrary', () => {
     expect(updated.versions[0]?.title).toBe('v6');
   });
 
-  it('caps promptSnapshots[] at MAX_PROMPT_SNAPSHOTS (100)', () => {
+  it('caps promptSnapshots[] at MAX_PROMPT_SNAPSHOTS (100)', async () => {
     const promptSnapshots = Array.from({ length: 105 }, (_, i) => ({
       timestamp: i,
       prompt:    `p${i}`,
     }));
-    const existing = makeAsset({ id: 'a3', promptSnapshots });
+    // promptSnapshots live under asset.metadata, not at the top level.
+    const existing = makeAsset({
+      id:       'a3',
+      metadata: { musicalPrompt: 'old', promptSnapshots },
+    });
     seedLibrary([existing]);
 
-    updateAssetInLibrary('a3', { title: 'Capped prompts' });
+    // Changing musicalPrompt triggers a new prompt snapshot for the old value.
+    await updateAssetInLibrary('a3', { metadata: { musicalPrompt: 'new' } });
 
-    const [[, json]] = storageMocks.safeSetItem.mock.calls as [[string, string]];
-    const saved: LibraryAsset[] = JSON.parse(json);
+    const saved = parseLastWrite();
     const updated = saved.find(a => a.id === 'a3')!;
+    const snapshots = updated.metadata?.promptSnapshots ?? [];
 
-    expect(updated.promptSnapshots).toHaveLength(100);
-    expect(updated.promptSnapshots![0]?.prompt).toBe('p5');
+    expect(snapshots).toHaveLength(100);
+    // The oldest entries (p0…p5) should have been dropped.
+    expect(snapshots[0]?.prompt).toBe('p6');
   });
 
-  it('does nothing when the id is not found in the library', () => {
+  it('does nothing when the id is not found in the library', async () => {
     seedLibrary([makeAsset({ id: 'other' })]);
 
-    updateAssetInLibrary('missing-id', { title: 'Ghost' });
+    await updateAssetInLibrary('missing-id', { title: 'Ghost' });
 
     expect(storageMocks.safeSetItem).not.toHaveBeenCalled();
   });
 });
 
 describe('deleteAssetFromLibrary', () => {
-  it('removes the asset with the given id', () => {
+  beforeEach(() => {
+    storageMocks.safeGetItem.mockReset();
+    storageMocks.safeSetItem.mockReset();
+    storageMocks.safeSetItem.mockReturnValue(true);
+  });
+
+  it('removes the asset with the given id', async () => {
     storageMocks.safeGetItem.mockImplementation((key: string) =>
-      key === 'vibeLibrary'
-        ? JSON.stringify([makeAsset({ id: 'to-delete' }), makeAsset({ id: 'keep' })])
+      key === 'lyricist_library'
+        ? JSON.stringify({
+            version: 0,
+            assets:  [makeAsset({ id: 'to-delete' }), makeAsset({ id: 'keep' })],
+          })
         : null,
     );
 
-    deleteAssetFromLibrary('to-delete');
+    await deleteAssetFromLibrary('to-delete');
 
-    const [[, json]] = storageMocks.safeSetItem.mock.calls as [[string, string]];
-    const saved: LibraryAsset[] = JSON.parse(json);
+    const calls = storageMocks.safeSetItem.mock.calls as [string, string][];
+    const [, json] = calls[calls.length - 1]!;
+    const saved = (JSON.parse(json) as { assets: LibraryAsset[] }).assets;
 
     expect(saved.map(a => a.id)).toEqual(['keep']);
   });
 });
 
 describe('purgeLibrary', () => {
-  it('writes an empty array to storage', () => {
-    purgeLibrary();
+  beforeEach(() => {
+    storageMocks.safeGetItem.mockReset();
+    storageMocks.safeSetItem.mockReset();
+    storageMocks.safeSetItem.mockReturnValue(true);
+  });
+
+  it('writes an empty store to storage', async () => {
+    await purgeLibrary();
 
     const [[key, json]] = storageMocks.safeSetItem.mock.calls as [[string, string]];
 
-    expect(key).toBe('vibeLibrary');
-    expect(JSON.parse(json)).toEqual([]);
+    expect(key).toBe('lyricist_library');
+    expect(JSON.parse(json)).toEqual({ version: 0, assets: [] });
   });
 });

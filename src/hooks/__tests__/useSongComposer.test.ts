@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Section } from '../../types';
 import { RefsProvider } from '../../contexts/RefsContext';
 import { useSongComposer } from '../useSongComposer';
+import { VIBE_EVENTS } from '../../constants/vibeEvents';
 
 const RefsWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   React.createElement(RefsProvider, null, children);
@@ -190,7 +191,7 @@ describe('useSongComposer', () => {
     generateContent.mockRejectedValueOnce(new Error('AI offline'));
     const params = createParams();
     const eventListener = vi.fn();
-    window.addEventListener('vibe:apierror', eventListener as EventListener);
+    window.addEventListener(VIBE_EVENTS.API_ERROR, eventListener as EventListener);
 
     const { result } = renderHook(() => useSongComposer(params), { wrapper: RefsWrapper });
 
@@ -205,7 +206,7 @@ describe('useSongComposer', () => {
 
     const event = eventListener.mock.calls[0]?.[0] as CustomEvent<{ message: string }>;
     expect(event.detail.message).toContain('AI offline');
-    window.removeEventListener('vibe:apierror', eventListener as EventListener);
+    window.removeEventListener(VIBE_EVENTS.API_ERROR, eventListener as EventListener);
   });
 
   it('updates only the targeted line when updateLineText is called', () => {
