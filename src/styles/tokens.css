@@ -60,7 +60,8 @@
 
   /* Fluent light */
   --bg-app:            #f3f2f1;
-  --bg-sidebar:        rgba(243, 242, 241, 0.75);
+  /* Raised from 0.75 → 0.90: sidebar less transparent over textured backgrounds */
+  --bg-sidebar:        rgba(243, 242, 241, 0.90);
   --bg-card:           #e1dfdd;
   --border-color:      #c8c6c4;
   --text-primary:      #242424;
@@ -96,7 +97,8 @@
 
 /* Fluent UI overrides (light) — valeurs divergentes + tokens sémantiques explicites */
 .ui-fluent {
-  --bg-card:           rgba(255, 255, 255, 0.65);
+  /* Raised from 0.65 → 0.85: cards less transparent, text readable over texture */
+  --bg-card:           rgba(255, 255, 255, 0.85);
   --border-color:      #e1dfdd;
   --acrylic-bg:        rgba(255, 255, 255, 0.6);
   --scrollbar-thumb:   oklch(0 0 0 / 0.20);
@@ -110,7 +112,7 @@
   --fluent-radius:      24px 4px 24px 4px;
   --glow-accent:        0 0 8px  oklch(from var(--accent-color) l c h / 0.3);
   --glow-accent-strong: 0 0 16px oklch(from var(--accent-color) l c h / 0.5);
-  --status-bar-bg:      rgba(243, 242, 241, 0.9);
+  --status-bar-bg:      rgba(243, 242, 241, 0.96);
   --layer1-blur:        blur(4px);
   --layer2-blur:        blur(2px);
   --motion-duration-fast:   180ms;
@@ -170,7 +172,7 @@
   --fluent-radius:      24px 4px 24px 4px;
   --glow-accent:        0 0 8px  oklch(from var(--lcars-sage) l c h / 0.25);
   --glow-accent-strong: 0 0 20px oklch(from var(--lcars-sage) l c h / 0.45);
-  --status-bar-bg:      rgba(8, 8, 8, 0.95);
+  --status-bar-bg:      rgba(8, 8, 8, 0.98);
   --layer1-blur:        blur(4px);
   --layer2-blur:        blur(2px);
   --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
