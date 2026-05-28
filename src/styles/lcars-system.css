@@ -450,6 +450,9 @@
   animation: lcars-pulse-anim 2.5s ease-in-out infinite;
 }
 
+/* lcars-meta-btn: readable at rest, accent on hover
+   Uses --text-primary at 0.75 opacity so it's visible over the textured
+   status-bar background while remaining subdued vs. primary content. */
 .lcars-meta-btn {
   display: inline-flex;
   align-items: center;
@@ -458,7 +461,7 @@
   font-size: 12px;
   font-family: var(--font-mono);
   letter-spacing: 0.06em;
-  color: var(--text-secondary);
+  color: oklch(from var(--text-primary) l c h / 0.75);
   background: transparent;
   border: none;
   cursor: pointer;
@@ -468,7 +471,7 @@
 }
 .lcars-meta-btn:hover {
   color: var(--text-primary);
-  background: oklch(from var(--text-secondary) l c h / 0.12);
+  background: oklch(from var(--text-primary) l c h / 0.10);
 }
 
 .lcars-app-id { font-weight: 600; color: var(--accent-color); opacity: 0.8; }
