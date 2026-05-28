@@ -548,7 +548,7 @@ export function PlayerSidebar({
         );})}
       </div>
 
-      {/* UPLINK button — hatched texture + peach glow */}
+      {/* UPLINK — fond peach solide + hachures sombres + texte #000 + glow fort */}
       <button
         type="button"
         onClick={() => uploadInputRef.current?.click()}
@@ -561,27 +561,22 @@ export function PlayerSidebar({
           background: `
             repeating-linear-gradient(
               135deg,
-              ${LCARS.peach}28 0px,
-              ${LCARS.peach}28 2px,
+              rgba(0,0,0,0.10) 0px,
+              rgba(0,0,0,0.10) 2px,
               transparent 2px,
               transparent 10px
             ),
-            linear-gradient(
-              180deg,
-              ${LCARS.peach}55 0%,
-              ${LCARS.peach}22 60%,
-              ${LCARS.peach}0a 100%
-            )
+            ${LCARS.peach}
           `,
-          color: LCARS.peach,
-          border: `2px solid ${LCARS.peach}cc`,
+          color: '#000',
+          border: `2px solid ${LCARS.peach}`,
           borderRadius: 4,
           fontSize: 11,
           letterSpacing: 2,
           fontWeight: 700,
           cursor: 'pointer',
           fontFamily: 'inherit',
-          boxShadow: `0 0 12px ${LCARS.peach}55, 0 0 4px ${LCARS.peach}33, inset 0 1px 0 ${LCARS.peach}44`,
+          boxShadow: `0 0 16px ${LCARS.peach}99, 0 0 6px ${LCARS.peach}66, inset 0 1px 0 rgba(255,255,255,0.30)`,
         }}
         aria-label="Uplink audio files"
         title="Uplink local audio or video files"
