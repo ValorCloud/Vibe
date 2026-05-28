@@ -194,7 +194,15 @@ export const usePasteImport = ({
             return {
               name: section.name?.trim() || chunk.nameHint || chunk.displayLabel,
               rhymeScheme: section.rhymeScheme,
-              lines: section.lines ?? [],
+              // Normalize untrusted parsed lines into the fully-required shape
+              // mandated by ChunkResult / SECTION_RESPONSE_SCHEMA required[].
+              lines: (section.lines ?? []).map((line) => ({
+                text: line.text ?? '',
+                rhymingSyllables: line.rhymingSyllables ?? '',
+                rhyme: line.rhyme ?? '',
+                syllables: line.syllables ?? 0,
+                concept: line.concept ?? '',
+              })),
               _displayLabel: chunk.displayLabel,
             };
           } catch (sectionError) {

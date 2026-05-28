@@ -1,0 +1,618 @@
+/* ===========================================================================
+   LCARS SYSTEM — gradient-border, accent-rail, band, panel, holo, ribbon
+   =========================================================================== */
+
+/* ---------------------------------------------------------------------------
+   GRADIENT BORDER — shared pseudo-element overlay
+   --------------------------------------------------------------------------- */
+
+.lcars-gradient-container,
+.lcars-gb-panel,
+.lcars-gradient-outline,
+.lcars-holo,
+.glass-panel,
+.dialog-surface,
+.acrylic,
+.ui-fluent .fluent-card,
+.ui-fluent .lcars-panel,
+.lcars-band {
+  position: relative;
+  --lcars-gradient-border-thickness:    1px;
+  --lcars-gradient-border-background: linear-gradient(
+    135deg,
+    var(--lcars-amber)  0%,
+    var(--lcars-sage)   25%,
+    var(--lcars-cyan)   50%,
+    var(--lcars-blue)   75%,
+    var(--lcars-violet) 100%
+  );
+  --lcars-gradient-border-opacity:       0;
+  --lcars-gradient-border-hover-opacity: var(--lcars-gradient-border-opacity);
+  --lcars-gradient-border-render-opacity: 0;
+  --lcars-gradient-border-shadow:        none;
+}
+
+.lcars-gradient-container::after,
+.lcars-gb-panel::after,
+.lcars-gradient-outline::after,
+.lcars-holo::after,
+.glass-panel::after,
+.dialog-surface::after,
+.acrylic::after,
+.ui-fluent .fluent-card::after,
+.ui-fluent .lcars-panel::after,
+.lcars-band::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: var(--lcars-gradient-border-thickness);
+  background: var(--lcars-gradient-border-background);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+  opacity: var(--lcars-gradient-border-render-opacity);
+  box-shadow: var(--lcars-gradient-border-shadow);
+  transition: opacity 0.3s ease;
+}
+
+/* Visible at rest (all themes) */
+.lcars-gradient-container::after,
+.lcars-gb-panel::after,
+.lcars-gradient-outline::after,
+.lcars-holo::after,
+.glass-panel::after,
+.dialog-surface::after,
+.acrylic::after,
+.ui-fluent .fluent-card::after,
+.ui-fluent .lcars-panel::after,
+.lcars-band::after {
+  --lcars-gradient-border-render-opacity: var(--lcars-gradient-border-opacity);
+}
+
+/* Hover / focus-within */
+.lcars-gradient-container:hover::after,
+.lcars-gradient-container:focus-within::after,
+.lcars-gb-panel:hover::after,
+.lcars-gb-panel:focus-within::after,
+.lcars-gradient-outline:hover::after,
+.lcars-gradient-outline:focus-within::after,
+.lcars-holo:hover::after,
+.lcars-holo:focus-within::after,
+.glass-panel:hover::after,
+.glass-panel:focus-within::after,
+.dialog-surface:hover::after,
+.dialog-surface:focus-within::after,
+.acrylic:hover::after,
+.acrylic:focus-within::after,
+.ui-fluent .fluent-card:hover::after,
+.ui-fluent .fluent-card:focus-within::after,
+.ui-fluent .lcars-panel:hover::after,
+.ui-fluent .lcars-panel:focus-within::after,
+.lcars-band:hover::after,
+.lcars-band:focus-within::after {
+  --lcars-gradient-border-render-opacity: var(--lcars-gradient-border-hover-opacity);
+}
+
+/* Animated conic spin on hover — will-change: auto (correct pour @property animation) */
+.lcars-gradient-container:hover::after,
+.lcars-gb-panel:hover::after,
+.lcars-gradient-outline:hover::after,
+.lcars-holo:hover::after,
+.glass-panel:hover::after,
+.dialog-surface:hover::after,
+.acrylic:hover::after,
+.ui-fluent .fluent-card:hover::after,
+.ui-fluent .lcars-panel:hover::after,
+.lcars-band:hover::after {
+  background: conic-gradient(
+    from var(--lcars-gradient-angle),
+    var(--lcars-amber),
+    var(--lcars-sage),
+    var(--lcars-cyan),
+    var(--lcars-blue),
+    var(--lcars-violet),
+    var(--lcars-amber)
+  );
+  animation: lcars-border-spin 2.5s linear infinite;
+  will-change: auto;
+}
+
+/* Per-variant opacities */
+.lcars-gradient-outline {
+  --lcars-gradient-border-thickness:    var(--accent-rail-outline-thickness);
+  --lcars-gradient-border-opacity:      0.65;
+  --lcars-gradient-border-hover-opacity: 1;
+  --lcars-gradient-border-shadow:       var(--accent-rail-glow);
+}
+.lcars-holo {
+  position: relative;
+  border-radius: 8px 2px 8px 2px;
+  --lcars-gradient-border-thickness:    var(--accent-rail-outline-thickness);
+  --lcars-gradient-border-opacity:      0.65;
+  --lcars-gradient-border-hover-opacity: 1;
+  --lcars-gradient-border-shadow:       var(--accent-rail-glow);
+}
+.lcars-gb-panel {
+  --lcars-gradient-border-thickness:    var(--accent-rail-thickness);
+  --lcars-gradient-border-opacity:      0.65;
+  --lcars-gradient-border-hover-opacity: 1;
+  --lcars-gradient-border-shadow:       var(--accent-rail-glow);
+}
+.lcars-gradient-container,
+.glass-panel,
+.dialog-surface,
+.acrylic,
+.ui-fluent .fluent-card,
+.ui-fluent .lcars-panel {
+  --lcars-gradient-border-opacity:      0.55;
+  --lcars-gradient-border-hover-opacity: 0.82;
+}
+.lcars-band {
+  --lcars-gradient-border-opacity:      0.35;
+  --lcars-gradient-border-hover-opacity: 0.62;
+}
+
+/* Dark mode: transparent base borders */
+.dark :is(
+  .lcars-gradient-container,
+  .lcars-holo,
+  .glass-panel,
+  .dialog-surface,
+  .acrylic,
+  .lcars-band
+) {
+  border-color: transparent;
+}
+.dark .ui-fluent :is(.fluent-card, .lcars-panel) {
+  border-color: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   ACCENT RAIL — pseudo-element helpers
+   --------------------------------------------------------------------------- */
+
+.accent-rail-top { position: relative; }
+.accent-rail-top::before {
+  content: '';
+  position: absolute;
+  left: 8px; right: 8px; top: 0;
+  height:     var(--accent-rail-thickness);
+  background: var(--accent-rail-gradient-h);
+  border-radius: var(--accent-rail-radius);
+  box-shadow: var(--accent-rail-glow);
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.dark .accent-rail-top::before { opacity: 1; }
+
+.accent-rail-right { position: relative; }
+.accent-rail-right::before {
+  content: '';
+  position: absolute;
+  top: 8px; bottom: 8px; right: 0;
+  width:      var(--accent-rail-thickness);
+  background: var(--accent-rail-gradient-v);
+  border-radius: var(--accent-rail-radius);
+  box-shadow: var(--accent-rail-glow);
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.dark .accent-rail-right::before { opacity: 1; }
+
+.accent-rail-top-right { position: relative; }
+.accent-rail-top-right::before {
+  content: '';
+  position: absolute;
+  left: 8px; right: 0; top: 0;
+  height:     var(--accent-rail-thickness);
+  background: var(--accent-rail-gradient-h);
+  border-radius: var(--accent-rail-radius) var(--accent-rail-radius) 0 0;
+  box-shadow: var(--accent-rail-glow);
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.accent-rail-top-right::after {
+  content: '';
+  position: absolute;
+  top: var(--accent-rail-thickness); bottom: 8px; right: 0;
+  width:      var(--accent-rail-thickness);
+  background: var(--accent-rail-gradient-v);
+  border-radius: 0 0 var(--accent-rail-radius) var(--accent-rail-radius);
+  box-shadow: var(--accent-rail-glow);
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.dark .accent-rail-top-right::before,
+.dark .accent-rail-top-right::after { opacity: 1; }
+
+.lcars-ribbon-rail { position: relative; }
+.lcars-ribbon-rail::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width:      var(--accent-rail-thickness);
+  background: var(--accent-rail-gradient-v);
+  border-radius: var(--accent-rail-radius);
+  box-shadow: var(--accent-rail-glow);
+  opacity: 0.9;
+}
+
+/* ---------------------------------------------------------------------------
+   LCARS GB-PANEL
+   --------------------------------------------------------------------------- */
+
+.lcars-gb-panel {
+  border-radius: 14px 4px 14px 4px;
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.dark .lcars-gb-panel {
+  background-color: oklch(from var(--lcars-near-black) l c h / 0.70);
+  border-color: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+   LCARS BAND
+   --------------------------------------------------------------------------- */
+
+.lcars-band {
+  display: flex;
+  align-items: stretch;
+  --lcars-band-border-thickness: 1px;
+  background-color: var(--bg-card);
+  backdrop-filter: var(--layer2-blur);
+  border-radius: 24px 4px 24px 4px;
+  overflow: visible;
+  margin-bottom: 2px;
+  border: 1px solid var(--border-color);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+              transform 0.4s cubic-bezier(0.1, 0.9, 0.2, 1);
+}
+.dark .lcars-band {
+  background-color: #000000;
+  background-image: none;
+  border-color: oklch(1 0 0 / 0.06);
+}
+.dark .lcars-band:hover { border-color: oklch(from var(--lcars-sage) l c h / 0.2); }
+.dark .lcars-section-title { text-shadow: none; }
+
+.lcars-band-stripe {
+  width: calc(16px - var(--lcars-band-border-thickness));
+  flex-shrink: 0;
+  margin: var(--lcars-band-border-thickness) 0
+          var(--lcars-band-border-thickness) var(--lcars-band-border-thickness);
+  border-radius:
+    calc(24px - var(--lcars-band-border-thickness))
+    0
+    0
+    calc(4px - var(--lcars-band-border-thickness));
+}
+
+/* ---------------------------------------------------------------------------
+   FLUENT SIDEBAR
+   --------------------------------------------------------------------------- */
+
+.ui-fluent .fluent-sidebar {
+  backdrop-filter: var(--layer1-blur);
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  border-bottom: none;
+  box-shadow: inset 1px 0 0 oklch(0 0 0 / 0.02);
+  position: relative;
+}
+.dark .ui-fluent .fluent-sidebar {
+  box-shadow: inset 1px 0 0 oklch(1 0 0 / 0.02);
+}
+:is(.dark .ui-fluent, .dark.ui-fluent) .fluent-sidebar::before {
+  content: '';
+  position: absolute;
+  left: 8px; right: 8px; top: 0;
+  height:     var(--accent-rail-thickness);
+  background: var(--accent-rail-gradient-h);
+  border-radius: var(--accent-rail-radius);
+  box-shadow: var(--accent-rail-glow);
+  opacity: 1;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------------------------
+   FLUENT CARD / PANEL / INPUT
+   --------------------------------------------------------------------------- */
+
+.ui-fluent .fluent-card {
+  border-radius: var(--fluent-radius);
+  transition: box-shadow var(--motion-duration-fast) ease,
+              transform  var(--motion-duration-fast) ease;
+  background-color: var(--bg-card);
+  backdrop-filter: var(--layer2-blur);
+  border: 1px solid var(--border-color);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.5);
+}
+:is(.dark .ui-fluent, .dark.ui-fluent) .fluent-card {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
+}
+.ui-fluent .fluent-card:hover {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.5);
+  transform: translateY(-1px);
+}
+:is(.dark .ui-fluent, .dark.ui-fluent) .fluent-card:hover {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
+}
+
+.ui-fluent .fluent-input {
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg);
+  transition: border-color var(--motion-duration-fast) ease,
+              box-shadow  var(--motion-duration-fast) ease;
+  backdrop-filter: var(--layer2-blur);
+  color: var(--text-primary);
+}
+/* WCAG 2.4.11 — visible focus indicator on keyboard navigation */
+.ui-fluent .fluent-input:focus-within {
+  border-bottom-color: var(--accent-color);
+  border-bottom-width: 2px;
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px oklch(from var(--accent-color) l c h / 0.18);
+}
+
+.ui-fluent .lcars-panel {
+  background-color: var(--bg-sidebar);
+  backdrop-filter: var(--layer1-blur);
+  border: 1px solid var(--border-color);
+  border-radius: var(--fluent-radius);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.4);
+  position: relative;
+  overflow: hidden;
+}
+:is(.dark .ui-fluent, .dark.ui-fluent) .lcars-panel {
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04);
+}
+
+/* ---------------------------------------------------------------------------
+   FLUENT ANIMATIONS
+   --------------------------------------------------------------------------- */
+
+.ui-fluent .fluent-animate-in {
+  animation: fluentSlideIn var(--motion-duration-normal) var(--motion-ease-standard) both;
+}
+.ui-fluent .fluent-fade-in {
+  animation: fluentFadeIn var(--motion-duration-normal) ease both;
+}
+.ui-fluent .fluent-animate-panel {
+  animation: fluentPanelFloatIn var(--motion-duration-normal) var(--motion-ease-standard) both;
+}
+/* opacity removed: Fluent 2 reserves opacity transitions for disabled states
+   and overlay fade-ins, not pressable hover/active. Animating opacity here
+   triggers unnecessary repaints compounding backdrop-filter composite work. */
+.ui-fluent .fluent-animate-pressable {
+  transition:
+    transform          var(--motion-duration-fast) var(--motion-ease-standard),
+    box-shadow         var(--motion-duration-fast) ease,
+    border-color       var(--motion-duration-fast) ease,
+    background-color   var(--motion-duration-fast) ease;
+}
+.ui-fluent .fluent-animate-pressable:hover:not(:disabled)  { transform: translateY(-1px); }
+.ui-fluent .fluent-animate-pressable:active:not(:disabled) { transform: translateY(0) scale(0.985); }
+
+.ui-fluent .fluent-stagger-1  { animation-delay: 0.04s; }
+.ui-fluent .fluent-stagger-2  { animation-delay: 0.08s; }
+.ui-fluent .fluent-stagger-3  { animation-delay: 0.12s; }
+.ui-fluent .fluent-stagger-4  { animation-delay: 0.16s; }
+.ui-fluent .fluent-stagger-5  { animation-delay: 0.20s; }
+.ui-fluent .fluent-stagger-6  { animation-delay: 0.24s; }
+.ui-fluent .fluent-stagger-7  { animation-delay: 0.28s; }
+.ui-fluent .fluent-stagger-8  { animation-delay: 0.32s; }
+
+/* ---------------------------------------------------------------------------
+   STATUS BAR / DIVIDER / CURSOR / META-BTN
+   --------------------------------------------------------------------------- */
+
+.lcars-status-bar {
+  background: var(--status-bar-bg);
+  backdrop-filter: var(--layer1-blur);
+  -webkit-backdrop-filter: var(--layer1-blur);
+}
+/* Dark mode: raised to 98% opacity — guarantees WCAG AA contrast for all
+   status-bar buttons even when background texture bleeds through. */
+.dark .lcars-status-bar {
+  background: color-mix(in oklch, var(--status-bar-bg) 98%, oklch(0.08 0 0));
+}
+
+.lcars-status-bar-desktop { display: flex; }
+@media (max-width: 1023px) {
+  .lcars-status-bar-desktop { display: none; }
+}
+
+.lcars-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--border-color);
+  flex-shrink: 0;
+}
+
+.lcars-cursor-blink {
+  display: inline-block;
+  width: 6px; height: 10px;
+  background: currentColor;
+  animation: lcars-blink 1s step-end infinite;
+  vertical-align: middle;
+}
+
+.lcars-pulse {
+  animation: lcars-pulse-anim 2.5s ease-in-out infinite;
+}
+
+/* lcars-meta-btn: full opacity in both light and dark to guarantee WCAG AA
+   contrast against the textured / blurred status-bar background. */
+.lcars-meta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  white-space: nowrap;
+}
+.dark .lcars-meta-btn {
+  color: var(--text-primary);
+}
+.lcars-meta-btn:hover {
+  color: var(--text-primary);
+  background: oklch(from var(--text-primary) l c h / 0.10);
+}
+
+.lcars-app-id { font-weight: 600; color: var(--accent-color); opacity: 0.8; }
+.lcars-app-id:hover { opacity: 1; }
+
+.lcars-hud-chip.ui-fluent,
+.ui-fluent .lcars-hud-chip {
+  background-color: oklch(0 0 0 / 0.06);
+  backdrop-filter: blur(2px);
+  border-radius: 4px 2px 4px 2px;
+  border: 1px solid oklch(0 0 0 / 0.08);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.5);
+}
+:is(.dark .ui-fluent, .dark.ui-fluent) .lcars-hud-chip {
+  background-color: oklch(from var(--bg-card) l c h / 0.5);
+  border: 1px solid oklch(1 0 0 / 0.12);
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.08);
+}
+
+.lcars-ribbon { position: relative; }
+.lcars-ribbon::before { display: none; }
+
+/* WCAG 2.4.11 — visible focus indicator; glow enhancement retained */
+.lcars-glow-focus:focus {
+  outline: 2px solid var(--accent-color);
+  outline-offset: 2px;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px oklch(from var(--accent-color) l c h / 0.18);
+}
+
+/* ---------------------------------------------------------------------------
+   LCARS SELECT TRIGGER
+   --lcars-select-accent is set inline by LcarsSelect when accentColor prop
+   is provided; falls back to --accent-color for the default theme.
+   --------------------------------------------------------------------------- */
+
+.lcars-select-trigger {
+  --lcars-select-accent: var(--accent-color);
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.lcars-select-trigger:hover:not(:disabled) {
+  border-color: var(--lcars-select-accent) !important;
+}
+
+.lcars-select-trigger:focus-visible {
+  border-color: var(--lcars-select-accent) !important;
+  outline: 2px solid var(--lcars-select-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px oklch(from var(--lcars-select-accent) l c h / 0.18);
+}
+
+.lcars-select-trigger[data-open="true"] {
+  border-color: var(--lcars-select-accent) !important;
+  box-shadow: 0 0 0 2px oklch(from var(--lcars-select-accent) l c h / 0.12);
+}
+
+/* ---------------------------------------------------------------------------
+   LCARS SELECT DROPDOWN — enter / exit animations
+   Origin anchored to top (open-down) or bottom (open-up) via transform-origin
+   set inline in LcarsSelect.
+   --------------------------------------------------------------------------- */
+
+@keyframes lcarsDropdownIn {
+  from {
+    opacity: 0;
+    transform: scaleY(0.88) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+
+@keyframes lcarsDropdownInUp {
+  from {
+    opacity: 0;
+    transform: scaleY(0.88) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+
+@keyframes lcarsDropdownOut {
+  from {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scaleY(0.88) translateY(-4px);
+  }
+}
+
+@keyframes lcarsDropdownOutUp {
+  from {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scaleY(0.88) translateY(4px);
+  }
+}
+
+.lcars-dropdown-enter {
+  animation: lcarsDropdownIn 160ms cubic-bezier(0.1, 0.9, 0.2, 1) both;
+  transform-origin: top center;
+}
+
+.lcars-dropdown-enter-up {
+  animation: lcarsDropdownInUp 160ms cubic-bezier(0.1, 0.9, 0.2, 1) both;
+  transform-origin: bottom center;
+}
+
+.lcars-dropdown-exit {
+  animation: lcarsDropdownOut 120ms cubic-bezier(0.4, 0, 1, 1) both;
+  transform-origin: top center;
+  pointer-events: none;
+}
+
+.lcars-dropdown-exit-up {
+  animation: lcarsDropdownOutUp 120ms cubic-bezier(0.4, 0, 1, 1) both;
+  transform-origin: bottom center;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lcars-dropdown-enter,
+  .lcars-dropdown-enter-up,
+  .lcars-dropdown-exit,
+  .lcars-dropdown-exit-up {
+    animation: none;
+  }
+}

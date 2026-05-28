@@ -1,0 +1,199 @@
+/* ===========================================================================
+   DESIGN TOKENS — variables uniquement
+   Source de vérité : couleurs, espacements, rail, motion
+   =========================================================================== */
+
+:root {
+  --lcars-rust:        #C45B2D;
+  --lcars-tangerine:   #F5A623;
+  --lcars-maize:       #FFCC44;
+  --lcars-sage:        #4CAF73;
+  --lcars-teal:        #0FB8B8;
+  --lcars-cyan:        #06b6d4;
+  --lcars-blue:        #5EA3DE;
+  --lcars-indigo:      #4040C0;
+  --lcars-violet:      #a78bfa;
+  --lcars-purple:      #9956D6;
+  --lcars-amber:       #f59e0b;
+  --lcars-red:         #ef4444;
+  --lcars-white:       #E0E0E0;
+  --lcars-near-black:  #050505;
+
+  /* Mobile nav */
+  --mobile-nav-h: 56px;
+
+  /* Accent rail */
+  --accent-rail-thickness:  2px;
+  --accent-rail-radius:     1px;
+  --accent-rail-glow:       0 0 4px oklch(from var(--lcars-amber) l c h / 0.35);
+  --accent-rail-gradient-h: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--lcars-amber)  12%,
+    var(--lcars-sage)   30%,
+    var(--lcars-cyan)   50%,
+    var(--lcars-blue)   68%,
+    var(--lcars-violet) 88%,
+    transparent 100%
+  );
+  --accent-rail-gradient-h-rev: linear-gradient(
+    90deg,
+    var(--lcars-violet) 0%,
+    var(--lcars-blue)   18%,
+    var(--lcars-cyan)   40%,
+    var(--lcars-sage)   60%,
+    var(--lcars-amber)  82%,
+    var(--lcars-rust)   100%
+  );
+  --accent-rail-gradient-v: linear-gradient(
+    180deg,
+    var(--lcars-amber)  0%,
+    var(--lcars-sage)   25%,
+    var(--lcars-cyan)   50%,
+    var(--lcars-blue)   75%,
+    var(--lcars-violet) 100%
+  );
+  --accent-rail-outline-thickness: var(--accent-rail-thickness);
+
+  /* Fluent radius — promu ici pour usage hors .ui-fluent */
+  --fluent-radius: 24px 4px 24px 4px;
+
+  /* Fluent light */
+  --bg-app:            #f3f2f1;
+  /* Raised from 0.75 → 0.90: sidebar less transparent over textured backgrounds */
+  --bg-sidebar:        rgba(243, 242, 241, 0.90);
+  --bg-card:           #e1dfdd;
+  --border-color:      #c8c6c4;
+  --text-primary:      #242424;
+  --text-secondary:    #605e5c;
+  --accent-color:      #0f7b0f;
+  --accent-color-rgb:  15, 123, 15;
+  --on-accent-color:   #ffffff;
+  --accent-success:    #107c10;
+  --accent-error:      #a4262c;
+  --accent-warning:    #d83b01;
+  --on-accent-warning: #ffffff;
+  --accent-critical:   #a4262c;
+  --on-accent-critical:#ffffff;
+  --acrylic-bg:        rgba(243, 242, 241, 0.8);
+  --scrollbar-thumb:   oklch(0 0 0 / 0.10);
+  --input-bg:          rgba(255, 255, 255, 0.55);
+
+  /* Safe-area insets */
+  --sab: 0;
+  --sat: 0;
+  --sal: 0;
+  --sar: 0;
+}
+
+@supports (padding: env(safe-area-inset-bottom)) {
+  :root {
+    --sab: env(safe-area-inset-bottom);
+    --sat: env(safe-area-inset-top);
+    --sal: env(safe-area-inset-left);
+    --sar: env(safe-area-inset-right);
+  }
+}
+
+/* Fluent UI overrides (light) — valeurs divergentes + tokens sémantiques explicites */
+.ui-fluent {
+  /* Raised from 0.65 → 0.85: cards less transparent, text readable over texture */
+  --bg-card:           rgba(255, 255, 255, 0.85);
+  --border-color:      #e1dfdd;
+  --acrylic-bg:        rgba(255, 255, 255, 0.6);
+  --scrollbar-thumb:   oklch(0 0 0 / 0.20);
+
+  /* Explicités pour éviter une divergence silencieuse si :root est modifié */
+  --accent-success:    #107c10;
+  --accent-error:      #a4262c;
+  --accent-warning:    #d83b01;
+
+  --fluent-shadow:      0 4px 8px oklch(0 0 0 / 0.04), 0 0 2px oklch(0 0 0 / 0.06);
+  --fluent-radius:      24px 4px 24px 4px;
+  --glow-accent:        0 0 8px  oklch(from var(--accent-color) l c h / 0.3);
+  --glow-accent-strong: 0 0 16px oklch(from var(--accent-color) l c h / 0.5);
+  --status-bar-bg:      rgba(243, 242, 241, 0.96);
+  --layer1-blur:        blur(4px);
+  --layer2-blur:        blur(2px);
+  --motion-duration-fast:   180ms;
+  --motion-duration-normal: 320ms;
+  --motion-duration-slow:   480ms;
+  --motion-ease-standard:   cubic-bezier(0.2, 0.8, 0.2, 1);
+  --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "Consolas", monospace;
+  background-image: none;
+}
+
+/* Dark mode */
+.dark {
+  --bg-app:            #1b1a19;
+  --bg-sidebar:        #201f1e;
+  --bg-card:           #323130;
+  --border-color:      #484644;
+  --text-primary:      #f3f2f1;
+  --text-secondary:    #a19f9d;
+  --accent-color:      #8FDE8B;
+  --accent-color-rgb:  143, 222, 139;
+  --on-accent-color:   #003912;
+  --accent-success:    #6daa45;
+  --accent-error:      #f1707b;
+  --accent-warning:    #fce100;
+  --on-accent-warning: #1a1a00;
+  --accent-critical:   #f1707b;
+  --on-accent-critical:#210307;
+  --acrylic-bg:        rgba(27, 26, 25, 0.8);
+  --scrollbar-thumb:   oklch(1 0 0 / 0.10);
+  --input-bg:          rgba(50, 49, 48, 0.55);
+  color-scheme: dark;
+}
+
+/* Dark + Fluent (LCARS FUI) */
+:is(.dark .ui-fluent, .dark.ui-fluent) {
+  --bg-app:            var(--lcars-near-black);
+  --bg-sidebar:        rgba(12, 12, 12, 0.80);
+  --bg-card:           rgba(22, 22, 22, 0.60);
+  --border-color:      rgba(255, 255, 255, 0.07);
+  --text-primary:      var(--lcars-white);
+  --text-secondary:    #8a8a8a;
+  --accent-color:      var(--lcars-sage);
+  --accent-color-rgb:  76, 175, 115;
+  --on-accent-color:   #000000;
+  --accent-success:    var(--lcars-sage);
+  --accent-error:      var(--lcars-red);
+  --accent-warning:    var(--lcars-tangerine);
+  --on-accent-warning: #000000;
+  --accent-critical:   var(--lcars-red);
+  --on-accent-critical:#ffffff;
+  --acrylic-bg:        rgba(12, 12, 12, 0.65);
+  --scrollbar-thumb:   oklch(1 0 0 / 0.12);
+  --input-bg:          rgba(22, 22, 22, 0.50);
+
+  --fluent-shadow:      0 0 6px oklch(from var(--lcars-sage) l c h / 0.12);
+  --fluent-radius:      24px 4px 24px 4px;
+  --glow-accent:        0 0 8px  oklch(from var(--lcars-sage) l c h / 0.25);
+  --glow-accent-strong: 0 0 20px oklch(from var(--lcars-sage) l c h / 0.45);
+  --status-bar-bg:      rgba(8, 8, 8, 0.98);
+  --layer1-blur:        blur(4px);
+  --layer2-blur:        blur(2px);
+  --font-sans: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", "Consolas", monospace;
+  background-image: none;
+}
+
+/* Tailwind @theme bridge — tokens sémantiques complets */
+@theme {
+  --font-sans: var(--font-sans, "Inter", ui-sans-serif, system-ui, sans-serif);
+  --font-mono: var(--font-mono, "JetBrains Mono", ui-monospace, SFMono-Regular, monospace);
+  --color-fluent-bg:         var(--bg-app);
+  --color-fluent-sidebar:    var(--bg-sidebar);
+  --color-fluent-card:       var(--bg-card);
+  --color-fluent-border:     var(--border-color);
+  --color-fluent-accent:     var(--accent-color);
+  --color-fluent-text:       var(--text-primary);
+  --color-fluent-text-muted: var(--text-secondary);
+  --color-fluent-acrylic:    var(--acrylic-bg);
+  --color-fluent-success:    var(--accent-success);
+  --color-fluent-error:      var(--accent-error);
+  --color-fluent-warning:    var(--accent-warning);
+  --color-fluent-input:      var(--input-bg);
+}

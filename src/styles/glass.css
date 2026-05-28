@@ -1,0 +1,101 @@
+/* ===========================================================================
+   GLASS / ACRYLIC / DIALOG SURFACE
+   =========================================================================== */
+
+.acrylic {
+  background: var(--acrylic-bg);
+  backdrop-filter: blur(4px) saturate(180%);
+  border: 1px solid var(--border-color);
+}
+
+.glass-panel {
+  background: oklch(1 0 0 / 0.65);
+  backdrop-filter: blur(8px) saturate(180%);
+  -webkit-backdrop-filter: blur(8px) saturate(180%);
+  border: 1px solid oklch(0 0 0 / 0.08);
+  box-shadow: 0 8px 32px 0 oklch(0 0 0 / 0.06), inset 0 0 0 1px oklch(1 0 0 / 0.5);
+  position: relative;
+  overflow: hidden;
+}
+.dark .glass-panel {
+  background: oklch(0 0 0 / 0.4);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  box-shadow: 0 8px 32px 0 oklch(0 0 0 / 0.3), inset 0 0 0 1px oklch(1 0 0 / 0.02);
+}
+.glass-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Dialog surface — supprime le background-image hérité du root dark */
+.glass-panel[role="dialog"],
+.glass-panel[role="alertdialog"],
+.about-dialog-shimmer[role="dialog"],
+.acrylic[role="dialog"],
+.dialog-surface {
+  background-image: none !important;
+  background: oklch(1 0 0 / 0.88);
+  backdrop-filter: blur(8px) saturate(160%);
+  -webkit-backdrop-filter: blur(8px) saturate(160%);
+}
+.dark .glass-panel[role="dialog"],
+.dark .glass-panel[role="alertdialog"],
+.dark .about-dialog-shimmer[role="dialog"],
+.dark .acrylic[role="dialog"],
+.dark .dialog-surface {
+  background: oklch(0.04 0 0 / 0.88);
+  background-image: none !important;
+}
+.dialog-surface {
+  border: 1px solid var(--border-color);
+}
+
+/* Double-border fix : .lcars-gradient-outline wrapping .dialog-surface / .glass-panel */
+.lcars-gradient-outline > .dialog-surface,
+.lcars-gradient-outline > .glass-panel { border: none; }
+.lcars-gradient-outline > .dialog-surface::after,
+.lcars-gradient-outline > .glass-panel::after { display: none !important; }
+
+.glass-button {
+  background: oklch(0 0 0 / 0.04);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  border: 1px solid oklch(0 0 0 / 0.08);
+  border-radius: 4px;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.06);
+  position: relative;
+  overflow: hidden;
+}
+.glass-button::after {
+  content: "";
+  position: absolute;
+  top: 0; left: -100%;
+  width: 50%; height: 100%;
+  background: linear-gradient(to right, transparent, oklch(1 0 0 / 0.2), transparent);
+  transform: skewX(-20deg);
+  transition: all 0.5s ease;
+}
+.glass-button:hover:not(:disabled) {
+  background: oklch(0 0 0 / 0.07);
+  border-color: oklch(0 0 0 / 0.12);
+  transform: translateY(-1px);
+}
+.glass-button:hover:not(:disabled)::after { left: 200%; }
+.dark .glass-button {
+  background: oklch(1 0 0 / 0.03);
+  border: 1px solid oklch(1 0 0 / 0.08);
+  box-shadow: 0 4px 12px oklch(0 0 0 / 0.1);
+}
+.dark .glass-button::after {
+  background: linear-gradient(to right, transparent, oklch(1 0 0 / 0.1), transparent);
+}
+.dark .glass-button:hover:not(:disabled) {
+  background: oklch(1 0 0 / 0.08);
+  border-color: oklch(1 0 0 / 0.15);
+}
