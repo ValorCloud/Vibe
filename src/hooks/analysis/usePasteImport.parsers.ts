@@ -24,7 +24,9 @@ export type PasteImportChunk = {
 export type ChunkResult = {
   name: string;
   rhymeScheme: string | undefined;
-  lines: Array<{ text?: string; rhymingSyllables?: string; rhyme?: string; syllables?: number; concept?: string }>;
+  // All fields required — mirrors SECTION_RESPONSE_SCHEMA runtime `required[]`.
+  // Prevents silent `undefined` in downstream consumers.
+  lines: Array<{ text: string; rhymingSyllables: string; rhyme: string; syllables: number; concept: string }>;
   _displayLabel: string;
 };
 
@@ -69,7 +71,7 @@ export const SECTION_RESPONSE_SCHEMA = {
     },
   },
   required: ['name', 'rhymeScheme', 'lines'],
-};
+} as const satisfies Record<string, unknown>;
 
 export const METADATA_RESPONSE_SCHEMA = {
   type: Type.OBJECT,
@@ -79,7 +81,7 @@ export const METADATA_RESPONSE_SCHEMA = {
     language: { type: Type.STRING },
   },
   required: ['topic', 'mood', 'language'],
-};
+} as const satisfies Record<string, unknown>;
 
 export const normalizeSectionHeaderCandidate = (line: string): string => {
   const trimmed = line.trim().replace(/^#+\s*/, '').replace(/[:::]\s*$/, '');
@@ -294,4 +296,4 @@ Analyze these lyrics and return a JSON object with:
 
 Use only the provided lyrics. Do not generate new content.
 
-${fenceLong('LYRICS', text.substring(0, MAX_METADATA_PROMPT_LENGTH), { maxLength: 0 })}`;
+${fenceLong('LYRICS', text, { maxLength: MAX_METADATA_PROMPT_LENGTH })}`;
