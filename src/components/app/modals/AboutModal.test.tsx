@@ -12,10 +12,24 @@ describe('AboutModal', () => {
       </LanguageProvider>,
     );
 
+    const expectedHrefs = [
+      'https://github.com/EmmanuelKerhoz/Vibe',
+      'https://github.com/sponsors/EmmanuelKerhoz',
+      'https://www.youtube.com/@voxnova42',
+      'https://open.spotify.com/artist/6VfhDlWsBW0qk0a8x7UbOM',
+      'https://www.linkedin.com/in/emmanuelkerhoz/',
+      'https://network.landr.com/users/emmanueldk',
+      'https://music.amazon.com/artists/B0DKW3BNL7/emmanuel-kerhoz',
+      'https://music.apple.com/artist/emmanuel-kerhoz/1776965137',
+      '/privacy.html',
+      '/terms.html',
+    ];
+    const renderedHrefs = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
     const donationLink = screen.getByText('Donation (Github Sponsor)').closest('a');
 
     expect(donationLink?.getAttribute('href')).toBe('https://github.com/sponsors/EmmanuelKerhoz');
-    expect(screen.getAllByRole('link')).toHaveLength(8);
+    expect(renderedHrefs).toEqual(expect.arrayContaining(expectedHrefs));
+    expect(renderedHrefs).toHaveLength(expectedHrefs.length);
     expect(container.querySelector('.lcars-gradient-outline')).toBeTruthy();
   });
 
