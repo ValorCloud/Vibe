@@ -45,7 +45,8 @@
     "structure": "结构",
     "compose": "创作",
     "composeAria": "打开歌词生成面板",
-    "generateShort": "生成"
+    "generateShort": "生成",
+    "player": "播放器"
   },
   "leftPanel": {
     "title": "Lyricist Pro",

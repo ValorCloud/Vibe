@@ -41,7 +41,8 @@
     "structure": "Struktur",
     "compose": "Erstellen",
     "composeAria": "Texterstellungs-Bereich öffnen",
-    "generateShort": "Gen"
+    "generateShort": "Gen",
+    "player": "Player"
   },
   "leftPanel": {
     "title": "Lyricist Pro",

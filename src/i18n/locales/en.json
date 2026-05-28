@@ -68,7 +68,8 @@
     "structure": "Structure",
     "compose": "Compose",
     "composeAria": "Open lyrics generation panel",
-    "generateShort": "Gen"
+    "generateShort": "Gen",
+    "player": "Player"
   },
   "menu": {
     "create": "Create",

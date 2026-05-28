@@ -88,6 +88,7 @@ export function MobileBottomNav({
         }}
         aria-label={t.mobileNav.lyrics}
         aria-pressed={activeTab === 'lyrics'}
+        aria-current={activeTab === 'lyrics' && !isLeftPanelOpen && !isStructureOpen ? 'page' : undefined}
       >
         <BookOpen size={20} />
         <span>{t.mobileNav.lyrics}</span>
@@ -116,6 +117,7 @@ export function MobileBottomNav({
         }}
         aria-label={t.mobileNav.music}
         aria-pressed={activeTab === 'musical'}
+        aria-current={activeTab === 'musical' && !isLeftPanelOpen && !isStructureOpen ? 'page' : undefined}
       >
         <Music size={20} />
         <span>{t.mobileNav.music}</span>
@@ -129,11 +131,12 @@ export function MobileBottomNav({
           setIsLeftPanelOpen(false);
           setIsStructureOpen(false);
         }}
-        aria-label="Player"
+        aria-label={t.mobileNav.player ?? 'Player'}
         aria-pressed={activeTab === 'player'}
+        aria-current={activeTab === 'player' && !isLeftPanelOpen && !isStructureOpen ? 'page' : undefined}
       >
         <Headphones size={20} />
-        <span>Player</span>
+        <span>{t.mobileNav.player ?? 'Player'}</span>
       </button>
     </nav>
   );

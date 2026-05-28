@@ -108,6 +108,8 @@ export interface Translations {
     composeAria?: string;
     /** Short label on the centre CTA when it triggers a regenerate */
     generateShort?: string;
+    /** Label and aria-label for the Player tab */
+    player?: string;
   };
 
   /** Labels for the burger-menu panel section headers and menu items */

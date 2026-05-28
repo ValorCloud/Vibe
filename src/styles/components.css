@@ -198,6 +198,10 @@
   color: var(--text-primary);
   background: oklch(from var(--text-primary) l c h / 0.06);
 }
+.mobile-bottom-nav-btn:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}
 .mobile-generate { color: var(--accent-color); }
 .mobile-bottom-nav-generate { color: var(--accent-color); }
 .mobile-bottom-nav-generate:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -211,6 +215,10 @@
   backdrop-filter: blur(1px);
   cursor: pointer;
   appearance: none;
+}
+.mobile-panel-backdrop:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
 /* ---------------------------------------------------------------------------

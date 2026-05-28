@@ -67,7 +67,8 @@
     "structure": "Structure",
     "compose": "Composer",
     "composeAria": "Ouvrir le panneau de génération de paroles",
-    "generateShort": "Gén"
+    "generateShort": "Gén",
+    "player": "Lecteur"
   },
   "menu": {
     "create": "Créer",

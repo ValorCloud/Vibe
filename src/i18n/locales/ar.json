@@ -41,7 +41,8 @@
     "structure": "البنية",
     "compose": "إنشاء",
     "composeAria": "فتح لوحة إنشاء الكلمات",
-    "generateShort": "إنشاء"
+    "generateShort": "إنشاء",
+    "player": "مشغل"
   },
   "leftPanel": {
     "title": "Lyricist Pro",

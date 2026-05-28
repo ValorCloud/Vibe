@@ -78,6 +78,14 @@ html, body, #root {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }
+
+/* Reusable keyboard-focus indicator. Apply to raw <button>/interactive
+   elements that don't inherit Fluent's built-in focus ring. */
+.focus-ring:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
+  border-radius: 4px;
+}
 @media (pointer: coarse) {
   .ux-interactive { min-height: 44px; min-width: 44px; }
   .ux-interactive:hover:not(:disabled)  { transform: none; }

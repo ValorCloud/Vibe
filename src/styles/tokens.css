@@ -22,6 +22,12 @@
   /* Mobile nav */
   --mobile-nav-h: 56px;
 
+  /* Focus ring — single source of truth for keyboard focus indicators.
+     Color is re-mapped per theme below (light/dark/LCARS) via --accent-color. */
+  --focus-ring-width:  2px;
+  --focus-ring-offset: 2px;
+  --focus-ring-color:  var(--accent-color);
+
   /* Accent rail */
   --accent-rail-thickness:  2px;
   --accent-rail-radius:     1px;

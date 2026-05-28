@@ -44,7 +44,8 @@
     "structure": "구성",
     "compose": "작성",
     "composeAria": "가사 생성 패널 열기",
-    "generateShort": "생성"
+    "generateShort": "생성",
+    "player": "플레이어"
   },
   "leftPanel": {
     "title": "Lyricist Pro",
