@@ -425,6 +425,11 @@
   backdrop-filter: var(--layer1-blur);
   -webkit-backdrop-filter: var(--layer1-blur);
 }
+/* Dark mode: ensure the status bar has enough opacity to guarantee contrast
+   even when the background texture bleeds through the blur layer. */
+.dark .lcars-status-bar {
+  background: color-mix(in oklch, var(--status-bar-bg) 85%, oklch(0.08 0 0));
+}
 
 .lcars-status-bar-desktop { display: flex; }
 @media (max-width: 1023px) {
@@ -450,9 +455,10 @@
   animation: lcars-pulse-anim 2.5s ease-in-out infinite;
 }
 
-/* lcars-meta-btn: readable at rest, accent on hover
-   Uses --text-primary at 0.75 opacity so it's visible over the textured
-   status-bar background while remaining subdued vs. primary content. */
+/* lcars-meta-btn: raised from 0.75 → 0.92 to guarantee WCAG AA contrast
+   against the textured status-bar background in all themes.
+   The .dark override pins to full opacity since --text-primary on dark
+   surfaces is already low-luminance relative to the bar background. */
 .lcars-meta-btn {
   display: inline-flex;
   align-items: center;
@@ -461,13 +467,16 @@
   font-size: 12px;
   font-family: var(--font-mono);
   letter-spacing: 0.06em;
-  color: oklch(from var(--text-primary) l c h / 0.75);
+  color: oklch(from var(--text-primary) l c h / 0.92);
   background: transparent;
   border: none;
   cursor: pointer;
   border-radius: 3px;
   transition: color 0.15s ease, background-color 0.15s ease;
   white-space: nowrap;
+}
+.dark .lcars-meta-btn {
+  color: var(--text-primary);
 }
 .lcars-meta-btn:hover {
   color: var(--text-primary);
