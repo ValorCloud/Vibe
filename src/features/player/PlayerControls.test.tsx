@@ -39,9 +39,9 @@ function makeEngine(overrides: Partial<AudioEngineState> = {}): AudioEngineState
 
 afterEach(() => {
   vi.useRealTimers();
-  // Drop any <style> injected by the controls so each test starts clean is not
-  // strictly possible (module-level idempotency flag), but clearing the DOM
-  // keeps assertions about ripple nodes reliable.
+  // Clearing the DOM keeps assertions about ripple nodes reliable between
+  // tests. The injected <style> is intentionally left in <head> because the
+  // controls use a module-level idempotency flag.
   document.body.innerHTML = '';
 });
 
