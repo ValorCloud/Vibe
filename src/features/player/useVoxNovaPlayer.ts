@@ -9,6 +9,8 @@ import { useSpotifyAsEngine } from './useSpotifyAsEngine';
 import type { AudioSource } from './VoxNovaHeader';
 import { LIBRARY_CAPACITY } from './playerConstants';
 
+const SPOTIFY_AUTO_SWITCH_FALLBACK_MS = 5_000;
+
 function isEditableSpaceTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
@@ -32,17 +34,42 @@ export function useVoxNovaPlayer() {
 
   const { status: spotifyStatus } = useSpotifyAuthState();
   const prevSpotifyStatus = useRef(spotifyStatus);
+  const pendingSpotifyAutoSwitch = useRef(false);
+  const spotifyAutoSwitchTimer = useRef<number | null>(null);
   useEffect(() => {
+    const clearSpotifyAutoSwitchTimer = () => {
+      if (spotifyAutoSwitchTimer.current === null) return;
+      window.clearTimeout(spotifyAutoSwitchTimer.current);
+      spotifyAutoSwitchTimer.current = null;
+    };
+
     // Auto-switch to Spotify on successful auth; do NOT force back to local on disconnect
     // — VoxNovaSpotifyMemo is always visible and shows CONNECT inline.
-    if (
-      prevSpotifyStatus.current !== 'authenticated'
-      && spotifyStatus === 'authenticated'
-      && spotifyPlaybackState !== null
-    ) {
-      setAudioSource('spotify');
-    }
+    const hasJustAuthenticated = prevSpotifyStatus.current !== 'authenticated' && spotifyStatus === 'authenticated';
+    if (hasJustAuthenticated) pendingSpotifyAutoSwitch.current = true;
     prevSpotifyStatus.current = spotifyStatus;
+
+    if (spotifyStatus !== 'authenticated' || !pendingSpotifyAutoSwitch.current) {
+      if (spotifyStatus !== 'authenticated') pendingSpotifyAutoSwitch.current = false;
+      clearSpotifyAutoSwitchTimer();
+      return undefined;
+    }
+
+    if (spotifyPlaybackState !== null) {
+      clearSpotifyAutoSwitchTimer();
+      pendingSpotifyAutoSwitch.current = false;
+      setAudioSource('spotify');
+      return undefined;
+    }
+
+    clearSpotifyAutoSwitchTimer();
+    spotifyAutoSwitchTimer.current = window.setTimeout(() => {
+      pendingSpotifyAutoSwitch.current = false;
+      spotifyAutoSwitchTimer.current = null;
+      setAudioSource('spotify');
+    }, SPOTIFY_AUTO_SWITCH_FALLBACK_MS);
+
+    return clearSpotifyAutoSwitchTimer;
   }, [spotifyStatus, spotifyPlaybackState]);
 
   const videoElRef = useRef<HTMLVideoElement>(null);
