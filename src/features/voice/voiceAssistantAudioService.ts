@@ -35,11 +35,41 @@ type WindowWithSpeechRecognition = Window & typeof globalThis & {
 // Practical threshold for cold-start TTS voices, especially on mobile browsers.
 export const VOICE_SPEECH_SLOW_START_MS = 1800;
 
+/**
+ * Map a UI locale code (e.g. 'fr') to a full BCP-47 tag with a sensible default
+ * region, so the Web Speech API can pick a matching voice reliably.
+ *
+ * Accepts canonical UI langIds ('ui:fr'), bare codes ('fr') and locale variants
+ * ('fr-FR'); the `ui:` prefix and any existing region are preserved/normalized.
+ */
+const UI_LOCALE_TO_BCP47: Record<string, string> = {
+  en: 'en-US',
+  fr: 'fr-FR',
+  es: 'es-ES',
+  de: 'de-DE',
+  pt: 'pt-PT',
+  ar: 'ar-SA',
+  zh: 'zh-CN',
+  ko: 'ko-KR',
+};
+
+export function uiLocaleToBcp47(code: string): string {
+  const raw = (typeof code === 'string' ? code : '').trim();
+  if (!raw) return 'en-US';
+  const withoutPrefix = raw.toLowerCase().startsWith('ui:') ? raw.slice(3) : raw;
+  // Caller already supplied a region (e.g. 'pt-BR') — respect it verbatim.
+  if (withoutPrefix.includes('-')) return withoutPrefix;
+  const primary = withoutPrefix.toLowerCase();
+  return UI_LOCALE_TO_BCP47[primary] ?? withoutPrefix;
+}
+
 export interface VoiceAudioService {
   isRecognitionSupported: () => boolean;
   isSpeechSupported: () => boolean;
   listenOnce: (language?: string) => Promise<string>;
   speak: (text: string, options?: { lang?: string; slowStartMs?: number; onSlowStart?: () => void }) => Promise<boolean>;
+  /** Immediately stop any in-flight or queued speech. Optional for test doubles. */
+  cancel?: () => void;
 }
 
 function getSpeechRecognitionCtor(): SpeechRecognitionConstructorLike | null {
@@ -79,6 +109,11 @@ export class BrowserVoiceAudioService implements VoiceAudioService {
     return typeof window !== 'undefined'
       && 'speechSynthesis' in window
       && typeof SpeechSynthesisUtterance !== 'undefined';
+  }
+
+  cancel(): void {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
   }
 
   listenOnce(language = 'fr-FR'): Promise<string> {

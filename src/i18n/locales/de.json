@@ -416,7 +416,18 @@
     "openSearch": "Suche & Ersetzen in Liedtexten (Ctrl+F)",
     "sendToLyriaConfirm": "Musical wird geöffnet…",
     "sendToLyria": "Musical-Tab öffnen, um Lyria-Vorschau zu erzeugen",
-    "quantizeLineDone": "Zeile quantisiert"
+    "quantizeLineDone": "Zeile quantisiert",
+    "readAloud": "Vorlesen",
+    "stopReading": "Vorlesen stoppen",
+    "readAnalysis": "Analyse vorlesen",
+    "readSection": "Diesen Abschnitt vorlesen",
+    "readLyrics": "Songtext vorlesen"
+  },
+  "voice": {
+    "prompt": "Was möchtest du wissen oder tun?",
+    "noInput": "Ich habe deine Anfrage nicht verstanden. Bitte versuche es erneut.",
+    "unavailable": "Spracheingabe ist in diesem Browser nicht verfügbar.",
+    "error": "Fehler des Sprachassistenten."
   },
   "sections": {
     "intro": "Intro",

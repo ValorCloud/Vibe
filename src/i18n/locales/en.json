@@ -551,7 +551,18 @@
     "voiceAssistant": "Voice assistant",
     "voiceListening": "Listening…",
     "voiceProcessing": "Processing your request…",
-    "voiceSpeaking": "Speaking…"
+    "voiceSpeaking": "Speaking…",
+    "readAloud": "Read aloud",
+    "stopReading": "Stop reading",
+    "readAnalysis": "Read analysis aloud",
+    "readSection": "Read this section aloud",
+    "readLyrics": "Read lyrics aloud"
+  },
+  "voice": {
+    "prompt": "What do you want to know or do?",
+    "noInput": "I did not catch your request. Please try speaking again.",
+    "unavailable": "Voice input is not available in this browser.",
+    "error": "Voice assistant error."
   },
   "sections": {
     "intro": "Intro",

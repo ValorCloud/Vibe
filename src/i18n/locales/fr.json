@@ -548,7 +548,18 @@
     "voiceAssistant": "Assistant vocal",
     "voiceListening": "Écoute en cours…",
     "voiceProcessing": "Traitement de votre demande…",
-    "voiceSpeaking": "Synthèse vocale…"
+    "voiceSpeaking": "Synthèse vocale…",
+    "readAloud": "Lire à voix haute",
+    "stopReading": "Arrêter la lecture",
+    "readAnalysis": "Lire l'analyse à voix haute",
+    "readSection": "Lire cette section à voix haute",
+    "readLyrics": "Lire les paroles à voix haute"
+  },
+  "voice": {
+    "prompt": "Que voulez-vous savoir ou faire ?",
+    "noInput": "Je n'ai pas saisi votre demande. Veuillez réessayer.",
+    "unavailable": "La saisie vocale n'est pas disponible dans ce navigateur.",
+    "error": "Erreur de l'assistant vocal."
   },
   "sections": {
     "intro": "Intro",

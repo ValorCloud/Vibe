@@ -416,7 +416,18 @@
     "openSearch": "Buscar e substituir nas letras (Ctrl+F)",
     "sendToLyriaConfirm": "A abrir Musical…",
     "sendToLyria": "Abrir a aba Musical para gerar prévia com Lyria",
-    "quantizeLineDone": "Line quantized"
+    "quantizeLineDone": "Line quantized",
+    "readAloud": "Ler em voz alta",
+    "stopReading": "Parar a leitura",
+    "readAnalysis": "Ler a análise em voz alta",
+    "readSection": "Ler esta seção em voz alta",
+    "readLyrics": "Ler a letra em voz alta"
+  },
+  "voice": {
+    "prompt": "O que você quer saber ou fazer?",
+    "noInput": "Não captei o seu pedido. Tente falar novamente.",
+    "unavailable": "A entrada de voz não está disponível neste navegador.",
+    "error": "Erro do assistente de voz."
   },
   "sections": {
     "intro": "Intro",

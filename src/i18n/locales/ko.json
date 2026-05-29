@@ -451,7 +451,18 @@
     "redetectLanguage": "Detected: {langs} — click to re-detect",
     "sendToLyriaConfirm": "Musical 여는 중…",
     "sendToLyria": "Musical 탭을 열어 Lyria 미리듣기 생성",
-    "quantizeLineDone": "Line quantized"
+    "quantizeLineDone": "Line quantized",
+    "readAloud": "소리내어 읽기",
+    "stopReading": "읽기 중지",
+    "readAnalysis": "분석 소리내어 읽기",
+    "readSection": "이 섹션 소리내어 읽기",
+    "readLyrics": "가사 소리내어 읽기"
+  },
+  "voice": {
+    "prompt": "무엇을 알고 싶거나 하고 싶으신가요?",
+    "noInput": "요청을 인식하지 못했습니다. 다시 말씀해 주세요.",
+    "unavailable": "이 브라우저에서는 음성 입력을 사용할 수 없습니다.",
+    "error": "음성 어시스턴트 오류."
   },
   "sections": {
     "intro": "인트로",

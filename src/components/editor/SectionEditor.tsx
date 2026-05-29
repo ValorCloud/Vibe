@@ -7,6 +7,7 @@ import { SectionLineList } from './SectionLineList';
 import { SectionFooter } from './SectionFooter';
 import { Check, Loader2 } from '../ui/icons';
 import { Tooltip } from '../ui/Tooltip';
+import { ReadAloudButton } from '../../features/voice/ReadAloudButton';
 import { useTranslation } from '../../i18n';
 import { useDragActions, useDragState } from '../../contexts/DragContext';
 import { useDragHandlersContext } from '../../contexts/DragHandlersContext';
@@ -59,6 +60,16 @@ export const SectionEditor = React.memo(function SectionEditor({
 
   const sectionName: string = section.name ?? '';
   const committedRhyme: string = section.rhymeScheme || globalRhymeScheme;
+
+  // Voice-friendly reading of this section: its name followed by the lyric
+  // lines, skipping pure meta/instruction lines so only sung text is spoken.
+  const sectionSpokenText = useMemo(() => {
+    const body = section.lines
+      .map(line => line.text ?? '')
+      .filter(text => text.trim() && !isPureMetaLine(text))
+      .join('. ');
+    return [sectionName, body].filter(s => s.trim()).join('. ');
+  }, [section.lines, sectionName]);
 
   const [pendingName, setPendingName] = useState<string>(sectionName);
   const [pendingRhyme, setPendingRhyme] = useState<string>(committedRhyme);
@@ -294,6 +305,16 @@ export const SectionEditor = React.memo(function SectionEditor({
                 <span>{t.editor?.adaptApply ?? 'Apply'}</span>
               </button>
             </Tooltip>
+
+            {sectionSpokenText.trim() && (
+              <ReadAloudButton
+                id={`section-${section.id}`}
+                text={sectionSpokenText}
+                label={t.tooltips?.readSection ?? 'Read this section aloud'}
+                iconClassName="h-3.5 w-3.5"
+                className="p-1"
+              />
+            )}
           </div>
         </div>
 

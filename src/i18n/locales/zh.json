@@ -456,7 +456,18 @@
     "viewMode": "在不同歌词编辑器视图之间切换",
     "sendToLyriaConfirm": "正在打开Musical…",
     "sendToLyria": "打开 Musical 标签以使用 Lyria 生成预览",
-    "quantizeLineDone": "Line quantized"
+    "quantizeLineDone": "Line quantized",
+    "readAloud": "朗读",
+    "stopReading": "停止朗读",
+    "readAnalysis": "朗读分析",
+    "readSection": "朗读此段落",
+    "readLyrics": "朗读歌词"
+  },
+  "voice": {
+    "prompt": "你想了解或做什么？",
+    "noInput": "我没有捕捉到你的请求，请重试。",
+    "unavailable": "此浏览器不支持语音输入。",
+    "error": "语音助手出错。"
   },
   "sections": {
     "intro": "前奏",

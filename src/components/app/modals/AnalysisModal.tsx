@@ -6,6 +6,7 @@ import {
 import { Button } from '../../ui/Button';
 import { Tooltip } from '../../ui/Tooltip';
 import { useTranslation } from '../../../i18n';
+import { ReadAloudButton } from '../../../features/voice/ReadAloudButton';
 import { AnalysisLanguagePicker } from './AnalysisLanguagePicker';
 import type { SongVersion } from '../../../types';
 
@@ -59,6 +60,18 @@ export function AnalysisModal({
   const musicalSuggestions = Array.isArray(analysisReport?.musicalSuggestions) ? analysisReport.musicalSuggestions : [];
 
   const hasReport = !!analysisReport;
+
+  // Assemble a natural, voice-friendly reading of the report using localized
+  // section labels so it is spoken in the active UI language.
+  const analysisSpokenText = analysisReport
+    ? [
+        `${t.analysis.summary}. ${analysisReport.summary}`,
+        `${t.analysis.emotionalArc}. ${analysisReport.emotionalArc}`,
+        `${t.analysis.theme}. ${analysisReport.theme}`,
+        strengths.length ? `${t.analysis.strengths}. ${strengths.join('. ')}` : '',
+        improvements.length ? `${t.analysis.improvements}. ${improvements.join('. ')}` : '',
+      ].filter(Boolean).join('. ')
+    : '';
 
   // Only clear the applied-items state when a matching snapshot actually exists.
   // Calling clearAppliedAnalysisItems() without a rollback would mislead the UI
@@ -131,6 +144,13 @@ export function AnalysisModal({
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                {hasReport && !isAnalyzing && (
+                  <ReadAloudButton
+                    id="analysis-report"
+                    text={analysisSpokenText}
+                    label={t.tooltips?.readAnalysis ?? 'Read analysis aloud'}
+                  />
+                )}
                 <AnalysisLanguagePicker />
                 <button
                   onClick={onClose}
