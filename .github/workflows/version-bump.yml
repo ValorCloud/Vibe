@@ -1,0 +1,57 @@
+name: Version Bump
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '.github/workflows/**'
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip bump]')"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bump sub-minor-minor version
+        id: bump
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT"
+          IFS='.' read -ra PARTS <<< "$CURRENT"
+          MAJOR=${PARTS[0]}
+          MINOR=${PARTS[1]:-0}
+          PATCH=${PARTS[2]:-0}
+          BUILD=${PARTS[3]:-0}
+          if [ ${#PARTS[@]} -eq 4 ]; then
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH.$((BUILD + 1))"
+          else
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          fi
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            pkg.version = '$NEW_VERSION';
+            fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\\n');
+          "
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.new_version }} [skip bump]"
+          git push
