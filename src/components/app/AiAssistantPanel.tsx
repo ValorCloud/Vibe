@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Bot, X, Loader2 } from '../ui/icons';
-import { useTranslation } from '../../i18n';
+import { useTranslation, langIdToLocaleCode } from '../../i18n';
+import { getUiLanguageNameForAi } from '../../i18n/constants';
 import { generateContentWithRetry } from '../../utils/aiUtils';
 import { AI_MODEL_NAME } from '../../utils/aiUtils';
 import { useModalState } from '../../contexts/ModalContext';
@@ -19,13 +20,13 @@ interface Props {
   onClose: () => void;
 }
 
-const PROMPT_TEMPLATE = `You are a contextual songwriting assistant embedded in a lyric editor. The user is currently in <<<page>>> using <<<mode>>>. Only provide concise, actionable guidance (max 2 sentences unless the user asks for more). Answer in the user's detected language. Do not recap the context. You are not a chatbot — you are a contextual creative assistant.
+const PROMPT_TEMPLATE = `You are a contextual songwriting assistant embedded in a lyric editor. The user is currently in <<<page>>> using <<<mode>>>. Only provide concise, actionable guidance (max 2 sentences unless the user asks for more). <<<language>>> Do not recap the context. You are not a chatbot — you are a contextual creative assistant.
 
 Knowledge base:
 <<<knowledge>>>`;
 
-function getKnowledgeBase(language: string): string {
-  return language === 'fr' ? knowledgeFr : knowledgeEn;
+function getKnowledgeBase(localeCode: string): string {
+  return localeCode === 'fr' ? knowledgeFr : knowledgeEn;
 }
 
 export function AiAssistantPanel({ onClose }: Props) {
@@ -63,10 +64,16 @@ export function AiAssistantPanel({ onClose }: Props) {
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const buildSystemPrompt = useCallback(() => {
-    const knowledge = getKnowledgeBase(language);
+    const localeCode = langIdToLocaleCode(language);
+    const knowledge = getKnowledgeBase(localeCode);
+    const languageName = getUiLanguageNameForAi(localeCode);
+    const languageInstruction = localeCode === 'en'
+      ? 'Always reply in English.'
+      : `Always reply in ${languageName}. Your entire response must be in ${languageName}, regardless of the language the user writes in.`;
     return PROMPT_TEMPLATE
       .replace('<<<page>>>', sanitizeForPrompt(currentPage, { maxLength: 64 }))
       .replace('<<<mode>>>', sanitizeForPrompt(editMode, { maxLength: 64 }))
+      .replace('<<<language>>>', languageInstruction)
       .replace('<<<knowledge>>>', knowledge);
   }, [language, currentPage, editMode]);
 
