@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAudioEngine } from './useAudioEngine';
 import { useFrequencyAnalyser } from './useFrequencyAnalyser';
 import { useLibraryContext } from '../../contexts/LibraryContext';
@@ -35,11 +35,15 @@ export function useVoxNovaPlayer() {
   useEffect(() => {
     // Auto-switch to Spotify on successful auth; do NOT force back to local on disconnect
     // — VoxNovaSpotifyMemo is always visible and shows CONNECT inline.
-    if (prevSpotifyStatus.current !== 'authenticated' && spotifyStatus === 'authenticated') {
+    if (
+      prevSpotifyStatus.current !== 'authenticated'
+      && spotifyStatus === 'authenticated'
+      && spotifyPlaybackState !== null
+    ) {
       setAudioSource('spotify');
     }
     prevSpotifyStatus.current = spotifyStatus;
-  }, [spotifyStatus]);
+  }, [spotifyStatus, spotifyPlaybackState]);
 
   const videoElRef = useRef<HTMLVideoElement>(null);
 
@@ -69,7 +73,10 @@ export function useVoxNovaPlayer() {
   }, [library, setSelectedId, engine]);
 
   const isSpotify = audioSource === 'spotify';
-  const activeEngine = isSpotify ? spotifyEngine : engine;
+  const activeEngine = useMemo(
+    () => (isSpotify ? spotifyEngine : engine),
+    [isSpotify, spotifyEngine, engine],
+  );
 
   const spotifyTrack = spotifyPlaybackState?.track_window?.current_track;
   const spotifyArtists = (spotifyTrack?.artists ?? []).map(a => a.name).join(', ');
