@@ -696,6 +696,28 @@ export interface Translations {
     voiceProcessing?: string;
     /** Status label while the assistant is speaking the response */
     voiceSpeaking?: string;
+    /** Tooltip for the read-aloud pictogram (idle/play state) */
+    readAloud?: string;
+    /** Tooltip for the read-aloud pictogram while speaking (stop state) */
+    stopReading?: string;
+    /** Tooltip for reading the lyrics analysis report aloud */
+    readAnalysis?: string;
+    /** Tooltip for reading a single lyrics section aloud */
+    readSection?: string;
+    /** Tooltip for reading the full lyrics text aloud */
+    readLyrics?: string;
+  };
+
+  /** Voice assistant spoken/written feedback messages (respect UI language). */
+  voice?: {
+    /** Prompt shown when the assistant starts listening */
+    prompt?: string;
+    /** Message when no speech input was captured */
+    noInput?: string;
+    /** Message when speech input is unavailable in the browser */
+    unavailable?: string;
+    /** Generic voice assistant error message */
+    error?: string;
   };
 
   sections: {

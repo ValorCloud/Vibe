@@ -416,7 +416,18 @@
     "openSearch": "بحث واستبدال في الكلمات (Ctrl+F)",
     "sendToLyriaConfirm": "فتح Musical…",
     "sendToLyria": "افتح علامة تبويب موسيقى لتوليد المعاينة عبر Lyria",
-    "quantizeLineDone": "Line quantized"
+    "quantizeLineDone": "Line quantized",
+    "readAloud": "القراءة بصوت عالٍ",
+    "stopReading": "إيقاف القراءة",
+    "readAnalysis": "قراءة التحليل بصوت عالٍ",
+    "readSection": "قراءة هذا المقطع بصوت عالٍ",
+    "readLyrics": "قراءة الكلمات بصوت عالٍ"
+  },
+  "voice": {
+    "prompt": "ماذا تريد أن تعرف أو تفعل؟",
+    "noInput": "لم ألتقط طلبك. يرجى المحاولة مرة أخرى.",
+    "unavailable": "إدخال الصوت غير متوفر في هذا المتصفح.",
+    "error": "خطأ في المساعد الصوتي."
   },
   "sections": {
     "intro": "مقدمة",

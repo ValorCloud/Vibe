@@ -7,8 +7,8 @@ import {
 } from './voiceAssistantAudioService';
 import { requestVoiceAssistantReply, type VoiceAssistantContext } from './voiceAssistantOrchestrator';
 import { useVoiceAssistantState } from './useVoiceAssistantState';
+import { useUiSpeechLocale } from './useUiSpeechLocale';
 import { LanguageContext } from '../../i18n/LanguageProvider';
-import { langIdToLocaleCode } from '../../i18n/constants';
 
 export type VoiceAssistantUiState = 'idle' | 'listening' | 'processing' | 'speaking';
 
@@ -23,7 +23,14 @@ interface UseVoiceAssistantControllerParams extends ControllerDependencies {
   mode: EditMode;
 }
 
-const NO_INPUT_CAPTURED_TEXT = 'I did not catch your request. Please try speaking again.';
+// English fallbacks used when the active locale omits a key or no
+// LanguageProvider is present (tests, SSR).
+const FALLBACK_MESSAGES = {
+  prompt: 'What do you want to know or do?',
+  noInput: 'I did not catch your request. Please try speaking again.',
+  unavailable: 'Voice input is not available in this browser.',
+  error: 'Voice assistant error.',
+} as const;
 
 export function useVoiceAssistantController({
   enabled,
@@ -36,12 +43,18 @@ export function useVoiceAssistantController({
   const defaultAudioService = useMemo(() => new BrowserVoiceAudioService(), []);
   const audio = audioService ?? defaultAudioService;
 
-  // Derive BCP-47 locale code from the active UI language (e.g. 'ui:fr' → 'fr').
-  // Falls back to 'en' when LanguageContext is not available (tests, SSR).
+  // Resolve the active UI language so STT/TTS and the AI reply all match it.
   const langCtx = useContext(LanguageContext);
-  const uiLocaleCode = langCtx ? langIdToLocaleCode(langCtx.language) : 'en';
-  // Full BCP-47 tag for Web Speech API (e.g. 'fr' → 'fr-FR').
-  const bcpTag = uiLocaleCode.includes('-') ? uiLocaleCode : `${uiLocaleCode}-${uiLocaleCode.toUpperCase()}`;
+  const { uiLocaleCode, bcpTag } = useUiSpeechLocale();
+
+  // Localized user-facing messages, falling back to English literals.
+  const voiceMessages = (langCtx?.t.voice ?? {}) as Partial<typeof FALLBACK_MESSAGES>;
+  const messages = {
+    prompt: voiceMessages.prompt ?? FALLBACK_MESSAGES.prompt,
+    noInput: voiceMessages.noInput ?? FALLBACK_MESSAGES.noInput,
+    unavailable: voiceMessages.unavailable ?? FALLBACK_MESSAGES.unavailable,
+    error: voiceMessages.error ?? FALLBACK_MESSAGES.error,
+  };
 
   const [uiState, setUiState] = useState<VoiceAssistantUiState>('idle');
   const [errorText, setErrorText] = useState<string | null>(null);
@@ -55,10 +68,10 @@ export function useVoiceAssistantController({
 
     setErrorText(null);
     setTextFallback(null);
-    setPromptText('What do you want to know or do?');
+    setPromptText(messages.prompt);
 
     if (!audio.isRecognitionSupported()) {
-      setErrorText('Voice input is not available in this browser.');
+      setErrorText(messages.unavailable);
       return;
     }
 
@@ -66,7 +79,7 @@ export function useVoiceAssistantController({
       setUiState('listening');
       // Pass UI locale to STT so recognition targets the correct language.
       const query = await audio.listenOnce(bcpTag);
-      if (!query.trim()) throw new Error(NO_INPUT_CAPTURED_TEXT);
+      if (!query.trim()) throw new Error(messages.noInput);
 
       setUiState('processing');
       const voiceContext: VoiceAssistantContext = { ...context, isFirstCall, uiLocaleCode };
@@ -84,11 +97,11 @@ export function useVoiceAssistantController({
       if (!spoken) setTextFallback(reply);
       setUiState('idle');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Voice assistant error.';
+      const message = error instanceof Error ? error.message : messages.error;
       setErrorText(message);
       setUiState('idle');
     }
-  }, [audio, bcpTag, context, enabled, isFirstCall, markFirstCallHandled, requestReply, uiLocaleCode, uiState]);
+  }, [audio, bcpTag, context, enabled, isFirstCall, markFirstCallHandled, messages.error, messages.noInput, messages.prompt, messages.unavailable, requestReply, uiLocaleCode, uiState]);
 
   return {
     invoke,

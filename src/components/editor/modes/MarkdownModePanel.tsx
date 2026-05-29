@@ -1,6 +1,7 @@
 import type { RefObject } from 'react';
 import { Layout } from '../../ui/icons';
 import { useTranslation } from '../../../i18n';
+import { ReadAloudButton } from '../../../features/voice/ReadAloudButton';
 import { MarkupInput } from '../MarkupInput';
 import { EditorModeShell } from './EditorModeShell';
 
@@ -25,6 +26,13 @@ export function MarkdownModePanel({
       title={t.editor.markupMode.title}
       description={t.editor.markupMode.description}
       hint={t.editor.markupMode.hint}
+      headerActions={
+        <ReadAloudButton
+          id="lyrics-markdown"
+          text={() => markupText}
+          label={t.tooltips?.readLyrics ?? 'Read lyrics aloud'}
+        />
+      }
     >
       <MarkupInput
         value={markupText}

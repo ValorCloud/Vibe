@@ -1,6 +1,7 @@
 import { useRef, useEffect, type RefObject } from 'react';
 import { Type } from '../../ui/icons';
 import { useTranslation } from '../../../i18n';
+import { ReadAloudButton } from '../../../features/voice/ReadAloudButton';
 import { EditorModeShell } from './EditorModeShell';
 
 interface TextModePanelProps {
@@ -40,6 +41,13 @@ export function TextModePanel({
       title={t.editor.textMode.title}
       description={t.editor.textMode.description}
       hint={t.editor.textMode.hint}
+      headerActions={
+        <ReadAloudButton
+          id="lyrics-text"
+          text={() => markupText}
+          label={t.tooltips?.readLyrics ?? 'Read lyrics aloud'}
+        />
+      }
     >
       <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
         <div

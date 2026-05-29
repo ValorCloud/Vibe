@@ -5,6 +5,8 @@ interface EditorModeShellProps {
   title: string;
   description: string;
   hint?: string;
+  /** Optional controls rendered on the right side of the header (e.g. read-aloud). */
+  headerActions?: ReactNode;
   children: ReactNode;
 }
 
@@ -13,6 +15,7 @@ export function EditorModeShell({
   title,
   description,
   hint,
+  headerActions,
   children,
 }: EditorModeShellProps) {
   return (
@@ -32,6 +35,9 @@ export function EditorModeShell({
             {description}
           </p>
         </div>
+        {headerActions ? (
+          <div className="ml-auto flex items-center gap-1">{headerActions}</div>
+        ) : null}
       </div>
       {children}
       {hint ? (
