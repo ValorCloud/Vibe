@@ -176,10 +176,23 @@ function extractNucleusData(
   const coda = workStr.slice(vowelEnd);
   const stressedVowel = lang === 'es' ? rawVowels.match(/[áéíóúÁÉÍÓÚ]/u)?.[0] : undefined;
   let vowels = stressedVowel ?? rawVowels;
-  if ((lang === 'fr' || lang === 'ca') && rawVowels.toLowerCase() === 'ie') {
+
+  if (lang === 'fr' || lang === 'ca') {
+    const rawLower = rawVowels.toLowerCase();
     const codaLower = coda.toLowerCase();
-    if (codaLower === 'l' || codaLower === 'r') vowels = 'e';
+    // ie + l/r → /ɛ/ : ciel /sjɛl/, hier /jɛʁ/, fier /fjɛʁ/.
+    if (rawLower === 'ie' && (codaLower === 'l' || codaLower === 'r')) {
+      vowels = 'e';
+    }
+    // ai / ei before a rhotic coda → /ɛ/ : clair /klɛʁ/, chair /ʃɛʁ/,
+    // faire /fɛʁ/, peine→reine (ei) — so they rhyme with mer, hier, fier.
+    // Restricted to a rhotic coda to avoid mis-merging -ail /aj/ (travail)
+    // and nasal -ain/-aim /ɛ̃/ (main, faim) which keep their own nucleus.
+    else if ((rawLower === 'ai' || rawLower === 'ei') && codaLower.startsWith('r')) {
+      vowels = 'e';
+    }
   }
+
   const onset = workStr.slice(0, vowelStart).toLowerCase();
 
   const moraCount = (lang === 'fr' || lang === 'ca')
