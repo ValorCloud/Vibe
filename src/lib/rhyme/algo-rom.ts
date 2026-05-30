@@ -16,27 +16,35 @@ import type { LineEndingUnit, LangCode, RhymeNucleus } from './types';
 // realised in most French lyric words (ciel /sjɛl/, amour /amuʁ/).
 const FR_MUTE_FINALS = /[bcdghpqst]+$/i;
 
-// French silent suffixes, ordered longest-first so the greediest match wins.
-// Covers:
-//   -aient  (imparfait 3p:   chantaient)
-//   -eront  (futur 3p:       chanteront)
-//   -aient  already above
-//   -iront  (futur irrég:    viendront — caught by -ont below)
-//   -ont    (futur/présent:  seront, feront, verront, vont, font*)
-//          *font/sont/dont are in FR_PRONOUNCED_FINALS — they won't be stripped
-//   -ons    (présent 1p:     allons, viendrons)
-//   -ent    (présent 3p:     chantent)
-//   -es     (2s présent / pluriel)
-//   -e      (e muet)
-const FR_SILENT_SUFFIX = /(?:aient|eront|iront|uront|aront|ont|ons|ent|es|e)$/i;
+// French silent suffixes — longer alternatives must precede shorter ones that
+// are a prefix of them (leftmost-match ordering), otherwise the shorter
+// alternative shadows the longer (e.g. `ent` must precede `e`).
+// Covers: -ent (ils chantent), -aient (imparfait), -eront/-iront (futur),
+//         -es (2s présent / pluriel), bare -e (e muet).
+// NOTE: -ont / -ons are intentionally NOT here — see FR_NASAL_VERBAL_FINAL
+// below for the dedicated terminal-consonant-only strip that preserves `on`.
+const FR_SILENT_SUFFIX = /(?:aient|eront|iront|uront|aront|ent|es|e)$/i;
+
+// Strip only the terminal `t` or `s` of verbal -ont/-ons forms, preserving
+// the nasal nucleus `on`. Applied as a SECOND PASS only when FR_SILENT_SUFFIX
+// did NOT fire (effectiveEnd === joined.length), so it never touches words
+// whose verbal suffix was already handled (chanteront → already stripped to
+// `chanter` by FR_SILENT_SUFFIX before this regex is reached).
+//
+// seront  → seron   (nucleus `on`) → rhymes avec chanson, maison ✓
+// feront  → feron   (nucleus `on`) ✓
+// allons  → allon   (nucleus `on`) ✓
+// maisons → maison  via FR_MUTE_FINALS (s stripped separately) ✓  — not affected
+// chansons→ chanson via FR_MUTE_FINALS ✓  — not affected
+const FR_NASAL_VERBAL_FINAL = /(?<=on)[ts]$/i;
 
 // ─── Whitelist: French words whose final consonant IS pronounced ──────────────
-// These must NOT have their final consonant stripped by FR_MUTE_FINALS,
-// and -ont endings here must NOT be stripped by FR_SILENT_SUFFIX.
+// These must NOT have their consonants stripped by FR_MUTE_FINALS,
+// and must NOT be touched by FR_NASAL_VERBAL_FINAL.
 const FR_PRONOUNCED_FINALS = new Set([
   // Native French — final consonant phonetically realised
   'font', 'sont', 'dont', 'pont', 'mont', 'front', 'long', 'bond',
-  'fond', 'rond', 'blond', 'second', 'profond', 'respond',
+  'fond', 'rond', 'blond', 'second', 'profond',
   // English loans
   'net', 'fat', 'test', 'toast', 'fast', 'cast', 'best', 'west', 'rest',
   'trust', 'bust', 'dust', 'rust', 'gust', 'just', 'must', 'post', 'coast',
@@ -55,8 +63,9 @@ const FR_PRONOUNCED_FINALS = new Set([
 ]);
 
 // ─── Vowel regex (shared) ─────────────────────────────────────────────────────
-// Order matters: multi-char digraphs/trigraphs must precede single vowels.
-// 'ui' added before single-vowel fallback to correctly capture nuit/bruit/fruit/lui.
+// Longer alternatives must precede shorter ones that are a prefix of them
+// (leftmost-match ordering). 'ui' added before single-vowel fallback to
+// correctly capture nuit/bruit/fruit/lui.
 const VOWEL_RE = /eau|oeu|œu|[ao]u|[aeo]i|ui|eu|[aeiouáàâäéèêëíìîïóòôöúùûüýÿæœ]+/giu;
 
 // ─── French mora count table ──────────────────────────────────────────────────
@@ -106,13 +115,24 @@ function normalizeFR(surface: string): { stripped: string; offsetMap: number[] }
 
   let effectiveEnd = joined.length;
 
-  // Only strip -ont/-ons if the word is NOT in the pronounced-finals whitelist
   if (!FR_PRONOUNCED_FINALS.has(tokenLower)) {
+    // Pass 1: strip verbal silent suffixes (-aient, -eront, -ent, -es, -e)
     const silentSuffixMatch = FR_SILENT_SUFFIX.exec(joined);
     if (silentSuffixMatch && silentSuffixMatch.index + silentSuffixMatch[0].length === joined.length) {
       effectiveEnd = silentSuffixMatch.index;
     }
 
+    // Pass 2: strip only terminal t/s of -ont/-ons verbal forms (seront→seron,
+    // allons→allon), preserving the nasal `on` nucleus.
+    // Only fires when Pass 1 did NOT consume the end (effectiveEnd unchanged).
+    if (effectiveEnd === joined.length) {
+      const nasalMatch = FR_NASAL_VERBAL_FINAL.exec(joined);
+      if (nasalMatch && nasalMatch.index !== undefined) {
+        effectiveEnd = nasalMatch.index;
+      }
+    }
+
+    // Pass 3: strip mute final consonants
     const afterSuffix = joined.slice(0, effectiveEnd);
     const muteFinalMatch = FR_MUTE_FINALS.exec(afterSuffix);
     if (muteFinalMatch && muteFinalMatch.index + muteFinalMatch[0].length === afterSuffix.length) {
@@ -201,6 +221,8 @@ function extractNucleusData(
     }
     // ai / ei before a rhotic coda → /ɛ/ : clair /klɛʁ/, chair /ʃɛʁ/,
     // faire /fɛʁ/, peine→reine (ei) — so they rhyme with mer, hier, fier.
+    // Restricted to a rhotic coda to avoid mis-merging -ail /aj/ (travail)
+    // and nasal -ain/-aim /ɛ̃/ (main, faim) which keep their own nucleus.
     else if ((rawLower === 'ai' || rawLower === 'ei') && codaLower.startsWith('r')) {
       vowels = 'e';
     }
