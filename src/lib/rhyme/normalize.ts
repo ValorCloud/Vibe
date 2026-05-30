@@ -50,6 +50,34 @@ export function normalizeInput(raw: string): string {
   return raw.normalize('NFC').trim();
 }
 
+// ─── Annotation strip ─────────────────────────────────────────────────────────
+//
+// Parenthetical content — backing vocals, harmony cues, stage directions —
+// must NOT participate in rhyme scoring.  We strip ALL bracketed blocks
+// from the working line before token extraction.
+//
+// Bracket pairs covered:
+//   ( )  — Latin/universal
+//   [ ]  — editorial / chord notation
+//   { }  — templating / annotation
+//   ＜ ＞ — fullwidth (CJK annotations)
+//   （ ） — fullwidth parentheses (Japanese / Chinese)
+//   【 】— CJK lenticular brackets
+//   〔 〕— tortoise-shell brackets
+//   「 」— Japanese corner brackets (often used for asides)
+//
+// Nesting is NOT handled — a single greedy pass is sufficient for lyrics.
+// If stripping reduces the line to whitespace the original is returned so
+// the caller always has something to work with.
+
+const ANNOTATION_BLOCK_RE =
+  /[([{＜（【〔「][^\])}＞）】〕」]*[\])}＞）】〕」]/gu;
+
+function stripAnnotations(line: string): string {
+  const stripped = line.replace(ANNOTATION_BLOCK_RE, '').trim();
+  return stripped.length > 0 ? stripped : line;
+}
+
 // ─── Punctuation ──────────────────────────────────────────────────────────────
 
 const LATIN_PUNCT   = /[.,;:!?¡¿"'«»()\[\]{}…–—]+$/u;
@@ -131,9 +159,13 @@ export function extractLineEndingUnit(line: string, langHint?: string): LineEndi
   const script = detectScript(normalized);
   const segmentationMode = resolveSegmentationMode(script, langHint);
 
+  // Strip parenthetical annotations (backing vocals, harmony cues, stage
+  // directions) BEFORE token extraction so they never pollute rhyme scoring.
+  const deAnnotated = stripAnnotations(normalized);
+
   const workingNorm = isRTLLang(langHint)
-    ? normalized.split(/\s+/).reverse().join(' ')
-    : normalized;
+    ? deAnnotated.split(/\s+/).reverse().join(' ')
+    : deAnnotated;
 
   const surface = extractFinalToken(workingNorm, segmentationMode, script);
 
