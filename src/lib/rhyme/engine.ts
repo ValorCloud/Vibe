@@ -163,9 +163,7 @@ export function analyzeBlock(
   const lineSpans = buildLineSpans(lineItems, scheme);
 
   // Collect code-switching warnings from pairScores
-  const csWarnings = scheme.warnings
-    .filter(w => w.includes('lid-cs-hint'))
-    .map(w => w);
+  const csWarnings = scheme.warnings.filter(w => w.includes('lid-cs-hint'));
 
   return {
     lines: lineItems.map(l => l.text),
