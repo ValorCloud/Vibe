@@ -907,53 +907,53 @@ describe('analyzeBlock', () => {
   it('splits on newlines into separate lines', () => {
     const r = analyzeBlock('night\nlight\nfight', 'en');
     expect(r.lines).toHaveLength(3);
-    expect(r.lines.map(l => l.text)).toEqual(['night', 'light', 'fight']);
-    expect(r.lines.every(l => l.lang === 'en')).toBe(true);
+    expect(r.lines).toEqual(['night', 'light', 'fight']);
+    expect(r.lineLangs).toEqual(['en', 'en', 'en']);
   });
 
   it('splits hemistich (//) into separate lines by default', () => {
     const r = analyzeBlock('beau // mou\nclair // rare', 'fr');
     // Each // should split, producing 4 lines total
     expect(r.lines).toHaveLength(4);
-    expect(r.lines.map(l => l.text)).toEqual(['beau', 'mou', 'clair', 'rare']);
+    expect(r.lines).toEqual(['beau', 'mou', 'clair', 'rare']);
   });
 
   it('splitHemistich:false preserves hemistich on a single line', () => {
     const r = analyzeBlock('beau // mou', 'fr', { splitHemistich: false });
     // verseSegmenter still collapses // to a space, but does not split
     expect(r.lines).toHaveLength(1);
-    expect(r.lines[0]!.text).toContain('beau');
-    expect(r.lines[0]!.text).toContain('mou');
+    expect(r.lines[0]!).toContain('beau');
+    expect(r.lines[0]!).toContain('mou');
   });
 
   it('opts.langs aligned: applies per-line language', () => {
     const r = analyzeBlock('night\nlight', 'fr', { langs: ['en', 'en'] });
-    expect(r.lines.map(l => l.lang)).toEqual(['en', 'en']);
+    expect(r.lineLangs).toEqual(['en', 'en']);
   });
 
   it('opts.langs shorter than lines: falls back to default lang for missing entries', () => {
     const r = analyzeBlock('night\nlight\nfight', 'fr', { langs: ['en'] });
-    expect(r.lines[0]!.lang).toBe('en');
-    expect(r.lines[1]!.lang).toBe('fr');
-    expect(r.lines[2]!.lang).toBe('fr');
+    expect(r.lineLangs?.[0]).toBe('en');
+    expect(r.lineLangs?.[1]).toBe('fr');
+    expect(r.lineLangs?.[2]).toBe('fr');
   });
 
   it('opts.langs empty: every line uses the default lang', () => {
     const r = analyzeBlock('night\nlight', 'en', { langs: [] });
-    expect(r.lines.map(l => l.lang)).toEqual(['en', 'en']);
+    expect(r.lineLangs).toEqual(['en', 'en']);
   });
 
   it('opts.langs with empty-string entries: falls back to default lang', () => {
     const r = analyzeBlock('night\nlight', 'en', { langs: ['' as any, 'fr'] });
-    expect(r.lines[0]!.lang).toBe('en');
-    expect(r.lines[1]!.lang).toBe('fr');
+    expect(r.lineLangs?.[0]).toBe('en');
+    expect(r.lineLangs?.[1]).toBe('fr');
   });
 
   it('multilingual fr/en mix: per-line language preserved', () => {
     const r = analyzeBlock('le chat\nthe cat\nles rats\nthe mats', 'fr', {
       langs: ['fr', 'en', 'fr', 'en'],
     });
-    expect(r.lines.map(l => l.lang)).toEqual(['fr', 'en', 'fr', 'en']);
+    expect(r.lineLangs).toEqual(['fr', 'en', 'fr', 'en']);
     expect(r.scheme).toBeDefined();
   });
 

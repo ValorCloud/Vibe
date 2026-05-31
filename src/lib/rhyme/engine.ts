@@ -1,7 +1,7 @@
 /**
  * Rhyme Engine v4 — Entry Point
  * rhymeScore(lineA, lineB, langA, langB, opts): RhymeResult
- * analyzeBlock(block, lang, opts): BlockAnalysis
+ * analyzeBlock(block, lang, opts): BlockAnalysisResult
  *
  * v4 additions:
  *  - morphoAwareNucleus wired for BNT family (TRK/FIN handle morpho internally)
@@ -14,9 +14,23 @@
  *  - ROM nucleus now extracted from last word only (not full surface string)
  *  - charSpanA/charSpanB added to RhymeResult — UI consumes directly, no heuristic
  *  - scoreROM is lang-aware (FR/CA: vowel weight 0.85, others: 0.65)
+ *
+ * v4.2 fixes:
+ *  - analyzeBlock now returns full BlockAnalysisResult with lineSpans populated
+ *  - lineSpans derived from scheme.pairScores charSpanA/B — no heuristic fallback
+ *  - Lines with no rhyming partner receive charSpanStart/End = -1
  */
 
-import type { LangCode, RhymeNucleus, RhymeResult, RhymeCharSpan, SchemeResult, FamilyId } from './types';
+import type {
+  LangCode,
+  RhymeNucleus,
+  RhymeResult,
+  RhymeCharSpan,
+  SchemeResult,
+  FamilyId,
+  LineRhymeSpan,
+  BlockAnalysisResult,
+} from './types';
 import { extractLineEndingUnit, normalizeInput } from './normalize';
 import { routeToFamily } from './router';
 import { categorize, scoreKWANormalized, scoreCRV, phonemeEditDistance } from './scoring';
@@ -66,14 +80,59 @@ export interface RhymeScoreOptions extends PositionOptions {
   tonalWeight?: number;
 }
 
-export interface BlockAnalysis {
-  scheme: SchemeResult;
-  lines: Array<{ text: string; lang: LangCode }>;
-}
-
 // ─── Embedding-eligible families ─────────────────────────────────────────────
 // CJK excluded: Han/kana/jamo graphemic proxies are not in PHOIBLE vectors.
 const EMBEDDING_FAMILIES = new Set(['TAI', 'VIET', 'YRB', 'KWA']);
+
+// ─── lineSpans builder ───────────────────────────────────────────────────────
+/**
+ * Derives a per-line LineRhymeSpan array from scheme.pairScores.
+ *
+ * Strategy: for each line index i, scan all pairScores that involve i and
+ * pick the one with the highest score.  Extract charSpanA when i === pair.i,
+ * charSpanB when i === pair.j.  The span is relative to the FULL original
+ * line string (engine.ts guarantees charSpanA/B are computed via
+ * computeCharSpan(lineA/B, rhymeToken) — i.e. absolute offsets in the line).
+ *
+ * Lines with no rhyming pair (score < threshold, or no pair at all) receive
+ * charSpanStart = charSpanEnd = -1 so the UI can skip highlighting safely.
+ */
+function buildLineSpans(
+  lines: Array<{ text: string; lang: LangCode }>,
+  scheme: SchemeResult
+): LineRhymeSpan[] {
+  const n = lines.length;
+  // Track best (score, charSpan, surface) seen for each line index
+  const best: Array<{
+    score: number;
+    span: RhymeCharSpan | undefined;
+    surface: string;
+  }> = Array.from({ length: n }, () => ({ score: -1, span: undefined, surface: '' }));
+
+  for (const { i, j, result } of scheme.pairScores) {
+    if (result.score > (best[i]?.score ?? -1)) {
+      best[i] = {
+        score: result.score,
+        span: result.charSpanA,
+        surface: result.unitA.surface,
+      };
+    }
+    if (result.score > (best[j]?.score ?? -1)) {
+      best[j] = {
+        score: result.score,
+        span: result.charSpanB,
+        surface: result.unitB.surface,
+      };
+    }
+  }
+
+  return best.map((entry, lineIndex) => ({
+    lineIndex,
+    surface: entry.surface,
+    charSpanStart: entry.span?.start ?? -1,
+    charSpanEnd:   entry.span?.end   ?? -1,
+  }));
+}
 
 // ─── analyzeBlock ────────────────────────────────────────────────────────────
 
@@ -81,18 +140,18 @@ export function analyzeBlock(
   block: string,
   lang: LangCode,
   opts: BlockAnalysisOptions = {}
-): BlockAnalysis {
+): BlockAnalysisResult {
   const splitHemistich = opts.splitHemistich ?? true;
 
   const processedBlock = splitHemistich
     ? block.replace(/\s*\/\/\s*|\s+\/\s+/g, '\n')
     : block;
 
-  const { lines } = segmentVerses(processedBlock);
+  const { lines: rawLines } = segmentVerses(processedBlock);
 
   const langsArr = Array.isArray(opts.langs) ? opts.langs : [];
 
-  const lineItems = lines.map((vLine, i) => {
+  const lineItems = rawLines.map((vLine, i) => {
     const explicitLang = langsArr.length > i ? langsArr[i] : undefined;
     return {
       text: vLine.text,
@@ -101,7 +160,18 @@ export function analyzeBlock(
   });
 
   const scheme = detectRhymeSchemeMultiLang(lineItems, opts.window ?? 6);
-  return { scheme, lines: lineItems };
+  const lineSpans = buildLineSpans(lineItems, scheme);
+
+  // Collect code-switching warnings from pairScores
+  const csWarnings = scheme.warnings.filter(w => w.includes('lid-cs-hint'));
+
+  return {
+    lines: lineItems.map(l => l.text),
+    lineLangs: lineItems.map(l => l.lang),
+    lineSpans,
+    scheme,
+    csWarnings,
+  };
 }
 
 // ─── Algorithm Registry ───────────────────────────────────────────────────────
