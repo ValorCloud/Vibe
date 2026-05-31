@@ -36,7 +36,12 @@ const FR_SILENT_SUFFIX = /(?:aient|eront|iront|uront|aront|ent|es|e)$/i;
 // allons  → allon   (nucleus `on`) ✓
 // maisons → maison  via FR_MUTE_FINALS (s stripped separately) ✓  — not affected
 // chansons→ chanson via FR_MUTE_FINALS ✓  — not affected
-const FR_NASAL_VERBAL_FINAL = /(?<=on)[ts]$/i;
+//
+// NOTE: written WITHOUT a lookbehind. Lookbehind in a regex literal is a
+// syntax error on Safari/WebKit < 16.4 and crashes the whole module at parse
+// time. We capture `on` explicitly and remap the strip offset to just after it
+// (see `effectiveEnd = nasalMatch.index + 2` below).
+const FR_NASAL_VERBAL_FINAL = /on[ts]$/i;
 
 // ─── Whitelist: French words whose final consonant IS pronounced ──────────────
 // These must NOT have their consonants stripped by FR_MUTE_FINALS,
@@ -128,7 +133,9 @@ function normalizeFR(surface: string): { stripped: string; offsetMap: number[] }
     if (effectiveEnd === joined.length) {
       const nasalMatch = FR_NASAL_VERBAL_FINAL.exec(joined);
       if (nasalMatch && nasalMatch.index !== undefined) {
-        effectiveEnd = nasalMatch.index;
+        // Match is `on` + terminal t/s; preserve the `on` nucleus and strip
+        // only the terminal consonant → offset is match.index + length of 'on'.
+        effectiveEnd = nasalMatch.index + 2;
       }
     }
 

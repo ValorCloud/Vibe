@@ -126,3 +126,27 @@ describe('extractLineEndingUnit — segmentationMode', () => {
     expect(extractLineEndingUnit('مرحبا', 'ar').segmentationMode).toBe('rtl');
   });
 });
+
+// ─── extractLineEndingUnit — annotation stripping (regression) ───────────────
+// Parenthetical / bracketed annotations (backing vocals, chorus cues, harmony,
+// CJK asides) must be removed BEFORE token extraction so they never pollute the
+// rhyme surface. Parametric + multilingual to guard against silent regressions.
+describe('extractLineEndingUnit — annotation stripping', () => {
+  it.each([
+    // line                                           lang   expected surface
+    ['Je chante la nuit (backing vocals)',            'fr',  'nuit'],
+    ['Walking in the light [chorus]',                 'en',  'light'],
+    ['Le ciel est bleu {harmony}',                    'fr',  'bleu'],
+    ['Pure parenthese (au milieu) du vers',           'fr',  'vers'],
+    ['未来は明るい（コーラス）',                          'ja',  'い'],
+    ['우리의 길【반복】',                                'ko',  '길'],
+  ])('strips annotation from %s', (line, lang, expected) => {
+    expect(extractLineEndingUnit(line, lang).surface).toBe(expected);
+  });
+
+  it('returns original token when stripping would empty the line', () => {
+    // Whole line is an annotation → fallback keeps content rather than blanking.
+    const r = extractLineEndingUnit('(intro only)', 'en');
+    expect(r.surface).toBe('only');
+  });
+});

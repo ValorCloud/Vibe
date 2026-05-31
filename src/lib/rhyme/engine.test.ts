@@ -6,6 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { rhymeScore } from './engine';
 import { extractLineEndingUnit, normalizeInput } from './normalize';
+import { extractNucleusROM } from './algo-rom';
 import { routeToFamily } from './router';
 import { phonemeEditDistance, categorize, scoreKWANormalized } from './scoring';
 
@@ -219,6 +220,51 @@ describe('ROM rhyme engine', () => {
   it('ES: canción / corazón → rich+', () => {
     const r = rhymeScore('la canción', 'el corazón', 'es', 'es');
     expect(r.score).toBeGreaterThanOrEqual(0.70);
+  });
+});
+// ─── FR nasal verbal finals (-ont/-ons) — regression for Safari lookbehind ───
+// FR_NASAL_VERBAL_FINAL was rewritten without a regex lookbehind (which is a
+// syntax error that crashes WebKit/Safari < 16.4 at parse time). These
+// parametric cases lock in the stripping contract: the terminal t/s of a
+// verbal -ont/-ons form is dropped while the nasal `on` nucleus is preserved
+// (vowel o + coda n), and whitelisted pronounced finals keep their full coda.
+describe('ROM FR nasal verbal finals', () => {
+  const nucleus = (word: string) =>
+    extractNucleusROM(extractLineEndingUnit(word, 'fr'), 'fr');
+
+  it.each([
+    // -ons/-ont verbal forms: terminal t/s stripped, nasal `on` nucleus kept
+    ['allons'],
+    ['chantons'],
+    ['ont'],
+  ])('strips terminal t/s of %s but keeps nasal o+n nucleus', (word) => {
+    const n = nucleus(word);
+    expect(n.vowels).toBe('o');
+    expect(n.coda).toBe('n');
+  });
+
+  it.each([
+    // FR_PRONOUNCED_FINALS whitelist — final consonant realised, coda keeps `nt`
+    ['font'],
+    ['sont'],
+    ['pont'],
+    ['mont'],
+  ])('preserves pronounced final consonant of %s (coda nt)', (word) => {
+    const n = nucleus(word);
+    expect(n.vowels).toBe('o');
+    expect(n.coda).toBe('nt');
+  });
+
+  it('maisons → mute-final s stripped, nasal o+n nucleus preserved', () => {
+    const n = nucleus('maisons');
+    expect(n.vowels).toBe('o');
+    expect(n.coda).toBe('n');
+  });
+
+  it('FR: nous allons / une chanson → rhyme on shared nasal nucleus', () => {
+    const r = rhymeScore('nous allons', 'une chanson', 'fr', 'fr');
+    expect(r.family).toBe('ROM');
+    expect(['sufficient', 'rich', 'perfect']).toContain(r.category);
   });
 });
 // ─── Family: Germanic ────────────────────────────────────────────────────────
