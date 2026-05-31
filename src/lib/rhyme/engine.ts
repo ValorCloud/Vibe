@@ -167,6 +167,7 @@ export function analyzeBlock(
 
   return {
     lines: lineItems.map(l => l.text),
+    lineLangs: lineItems.map(l => l.lang),
     lineSpans,
     scheme,
     csWarnings,

@@ -138,6 +138,8 @@ export interface LineRhymeSpan {
 export interface BlockAnalysisResult {
   /** Cleaned verse lines extracted from the block */
   lines: string[];
+  /** Resolved language per extracted line (after opts.langs/default fallback). */
+  lineLangs?: LangCode[];
   /**
    * Per-line span data for UI highlighting.
    * Index i corresponds to lines[i].
