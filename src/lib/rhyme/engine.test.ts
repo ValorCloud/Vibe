@@ -9,6 +9,7 @@ import { extractLineEndingUnit, normalizeInput } from './normalize';
 import { extractNucleusROM } from './algo-rom';
 import { routeToFamily } from './router';
 import { phonemeEditDistance, categorize, scoreKWANormalized } from './scoring';
+import { detectRhymeScheme } from './rhymeSchemeDetector';
 
 // ─── Normalization ─────────────────────────────────────────────────────────
 describe('normalizeInput', () => {
@@ -265,6 +266,90 @@ describe('ROM FR nasal verbal finals', () => {
     const r = rhymeScore('nous allons', 'une chanson', 'fr', 'fr');
     expect(r.family).toBe('ROM');
     expect(['sufficient', 'rich', 'perfect']).toContain(r.category);
+  });
+});
+// ─── FR ie/ai/ei+rhotic merge regression (issue: algo-rom score bug) ─────────
+describe('ROM FR ie/ai/ei+rhotic phonetic merge', () => {
+  const nucleus = (word: string) =>
+    extractNucleusROM(extractLineEndingUnit(word, 'fr'), 'fr');
+
+  it('clair (ai+r) → vowels=e, coda=r', () => {
+    const n = nucleus('clair');
+    expect(n.vowels).toBe('e');
+    expect(n.coda).toBe('r');
+  });
+
+  it('hier (ie+r) → vowels=e, coda=r', () => {
+    const n = nucleus('hier');
+    expect(n.vowels).toBe('e');
+    expect(n.coda).toBe('r');
+  });
+
+  it('ciel (ie+l) → vowels=e, coda=l', () => {
+    const n = nucleus('ciel');
+    expect(n.vowels).toBe('e');
+    expect(n.coda).toBe('l');
+  });
+
+  it('clair / hier → perfect rhyme (score ≥ 0.95)', () => {
+    const r = rhymeScore('Un doux rayon clair', "Chasse l'ombre hier", 'fr', 'fr');
+    expect(r.family).toBe('ROM');
+    expect(r.score).toBeGreaterThanOrEqual(0.95);
+    expect(r.category).toBe('perfect');
+  });
+
+  it('chair / mer → rich+ rhyme (ai+r vs e+r → /ɛʁ/)', () => {
+    const r = rhymeScore('Pas de corps ni de chair', 'Au bord de la mer', 'fr', 'fr');
+    expect(r.family).toBe('ROM');
+    expect(r.score).toBeGreaterThanOrEqual(0.70);
+    expect(['rich', 'perfect']).toContain(r.category);
+  });
+
+  it('ciel / miel → perfect rhyme (ie+l → /ɛl/)', () => {
+    const r = rhymeScore('Sous le ciel', 'Un goût de miel', 'fr', 'fr');
+    expect(r.family).toBe('ROM');
+    expect(r.score).toBeGreaterThanOrEqual(0.95);
+    expect(r.category).toBe('perfect');
+  });
+
+  it('main / clair → NO rhyme (nasal -ain ≠ ai+r)', () => {
+    const r = rhymeScore('Tends-moi la main', 'Un doux rayon clair', 'fr', 'fr');
+    expect(r.score).toBeLessThan(0.60);
+    expect(['weak', 'none']).toContain(r.category);
+  });
+
+  it('clair / hier with actual issue text → perfect rhyme', () => {
+    // Exact text from the issue
+    const r = rhymeScore('Un doux rayon clair', "Chasse l'ombre hier", 'fr', 'fr');
+    console.log('clair/hier score:', r.score, 'category:', r.category);
+    console.log('nucleusA:', r.nucleusA);
+    console.log('nucleusB:', r.nucleusB);
+    expect(r.nucleusA.vowels).toBe('e');
+    expect(r.nucleusA.coda).toBe('r');
+    expect(r.nucleusB.vowels).toBe('e');
+    expect(r.nucleusB.coda).toBe('r');
+    expect(r.score).toBeGreaterThanOrEqual(0.95);
+    expect(r.category).toBe('perfect');
+  });
+
+  it('rhyme scheme detector: clair / hier should be assigned same letter', () => {
+    // Test the full rhyme scheme detection for the issue scenario
+    const lines = [
+      'Un doux rayon clair',
+      "Chasse l'ombre hier",
+    ];
+    const schemeResult = detectRhymeScheme(lines, 'fr');
+    console.log('Scheme letters:', schemeResult.letters);
+    console.log('Scheme label:', schemeResult.label);
+    console.log('Confidence:', schemeResult.confidence);
+    console.log('Pair scores:', schemeResult.pairScores.map(p => ({
+      i: p.i, j: p.j, score: p.result.score, category: p.result.category
+    })));
+
+    // Both lines should get the same letter (not X)
+    expect(schemeResult.letters[0]).toBe(schemeResult.letters[1]);
+    expect(schemeResult.letters[0]).not.toBe('X');
+    expect(schemeResult.confidence).toBeGreaterThan(0.85);
   });
 });
 // ─── Family: Germanic ────────────────────────────────────────────────────────
