@@ -461,6 +461,21 @@ const canonicalizeRhymeSuffix = (suffix: string, langCode?: string): string[] =>
   const isRomance = !family || family === 'ALGO-ROM';
 
   if (isRomance) {
+    // Rhotic / liquid mergers mirroring the phonetic ALGO-ROM rules so the
+    // graphemic safety-net agrees with the IPA pipeline:
+    //   ie + l/r → /ɛ/ : hier /jɛʁ/, fier /fjɛʁ/, ciel /sjɛl/, miel /mjɛl/
+    //   ai/ei + r → /ɛ/ : clair /klɛʁ/, chair /ʃɛʁ/, faire /fɛʁ/
+    // Restricted to a rhotic/liquid coda so -ai /aj/ (travail) and nasal -ain
+    // /ɛ̃/ (main) keep their own nucleus. A single canonical form is emitted
+    // (vowel replaced in place) so the bare vowel `e` never leaks out and
+    // over-matches mute-e tails.
+    const rhoticMerged = s
+      .replace(/^ie(?=[lr])/, 'e')
+      .replace(/^(?:ai|ei)(?=r)/, 'e');
+    if (rhoticMerged !== s) {
+      return [rhoticMerged];
+    }
+
     for (const [re, canon] of ROMANCE_VOWEL_MERGERS) {
       const match = re.exec(s);
       if (match) {
