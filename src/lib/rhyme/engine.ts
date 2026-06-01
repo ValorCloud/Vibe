@@ -317,12 +317,22 @@ export function rhymeScore(
     const scoreRaw = 1 - phonemeEditDistance(tailA, tailB);
     // Route through build() so charSpanA/B are computed (from unit.surface) —
     // returning a raw object here left them undefined, silently desyncing the UI.
-    return build(
-      scoreRaw, 'FALLBACK', resolvedLangA, resolvedLangB,
-      unitA, unitB, nucleusA, nucleusB,
-      true, warnings, position, csDetected,
-      lineA, lineB,
-    );
+    return build({
+      score: scoreRaw,
+      family: 'FALLBACK',
+      langA: resolvedLangA,
+      langB: resolvedLangB,
+      unitA,
+      unitB,
+      nucleusA,
+      nucleusB,
+      lowResourceFallback: true,
+      warnings,
+      position,
+      csDetected,
+      lineA,
+      lineB,
+    });
   }
 
   // ── Step 3: Family scoring ────────────────────────────────────────────────
@@ -378,12 +388,24 @@ export function rhymeScore(
   if (baseScore < threshold) warnings.push(`below-threshold:${position}:${threshold}`);
 
   const score = Math.max(0, Math.min(1, baseScore));
-  return build(
-    score, family, resolvedLangA, resolvedLangB,
-    unitA, unitB, nucleusA!, nucleusB!,
-    lowResource, warnings, position, csDetected,
-    lineA, lineB, rhymeTokenA, rhymeTokenB
-  );
+  return build({
+    score,
+    family,
+    langA: resolvedLangA,
+    langB: resolvedLangB,
+    unitA,
+    unitB,
+    nucleusA: nucleusA!,
+    nucleusB: nucleusB!,
+    lowResourceFallback: lowResource,
+    warnings,
+    position,
+    csDetected,
+    lineA,
+    lineB,
+    rhymeTokenA,
+    rhymeTokenB,
+  });
 }
 
 /**
@@ -440,24 +462,43 @@ function extractBestNucleus(
   return { vowels: '', coda: '', tone: '', onset: '', moraCount: 1 };
 }
 
-function build(
-  score: number,
-  family: RhymeResult['family'],
-  langA: LangCode,
-  langB: LangCode,
-  unitA: RhymeResult['unitA'],
-  unitB: RhymeResult['unitB'],
-  nucleusA: RhymeNucleus,
-  nucleusB: RhymeNucleus,
-  lowResourceFallback: boolean,
-  warnings: string[],
-  position?: RhymeResult['position'],
-  csDetected?: boolean,
-  lineA?: string,
-  lineB?: string,
-  rhymeTokenA?: string,
-  rhymeTokenB?: string
-): RhymeResult {
+interface BuildOptions {
+  score: number;
+  family: RhymeResult['family'];
+  langA: LangCode;
+  langB: LangCode;
+  unitA: RhymeResult['unitA'];
+  unitB: RhymeResult['unitB'];
+  nucleusA: RhymeNucleus;
+  nucleusB: RhymeNucleus;
+  lowResourceFallback: boolean;
+  warnings: string[];
+  position?: RhymeResult['position'];
+  csDetected?: boolean;
+  lineA?: string;
+  lineB?: string;
+  rhymeTokenA?: string | undefined;
+  rhymeTokenB?: string | undefined;
+}
+
+function build({
+  score,
+  family,
+  langA,
+  langB,
+  unitA,
+  unitB,
+  nucleusA,
+  nucleusB,
+  lowResourceFallback,
+  warnings,
+  position,
+  csDetected,
+  lineA,
+  lineB,
+  rhymeTokenA,
+  rhymeTokenB,
+}: BuildOptions): RhymeResult {
   const result: RhymeResult = {
     score: Math.max(0, Math.min(1, score)),
     category: categorize(score),
