@@ -23,7 +23,9 @@ afterEach(() => {
 describe('useAudioEngine', () => {
   it('defaults player volume to 50 percent', () => {
     const audio = makeMediaElement('audio');
-    vi.stubGlobal('Audio', vi.fn(() => audio.el));
+    vi.stubGlobal('Audio', vi.fn(function MockAudio(this: unknown) {
+      return audio.el;
+    }));
     const { result } = renderHook(() => useAudioEngine());
     expect(result.current.volume).toBe(0.5);
     expect(audio.el.volume).toBe(0.5);
@@ -31,7 +33,9 @@ describe('useAudioEngine', () => {
 
   it('loadTrack resolves after the audio element is ready', async () => {
     const audio = makeMediaElement('audio');
-    vi.stubGlobal('Audio', vi.fn(() => audio.el));
+    vi.stubGlobal('Audio', vi.fn(function MockAudio(this: unknown) {
+      return audio.el;
+    }));
     const { result } = renderHook(() => useAudioEngine());
 
     let loadPromise!: Promise<void>;
@@ -63,7 +67,9 @@ describe('useAudioEngine', () => {
     vi.useFakeTimers();
     const audio = makeMediaElement('audio');
     const video = makeMediaElement('video');
-    vi.stubGlobal('Audio', vi.fn(() => audio.el));
+    vi.stubGlobal('Audio', vi.fn(function MockAudio(this: unknown) {
+      return audio.el;
+    }));
     const { result } = renderHook(() => useAudioEngine());
 
     act(() => {
@@ -79,10 +85,14 @@ describe('useAudioEngine', () => {
   it('probes cloud audio metadata with a bounded range request', async () => {
     const audio = makeMediaElement('audio');
     Object.defineProperty(audio.el, 'duration', { value: 120, configurable: true });
-    vi.stubGlobal('Audio', vi.fn(() => audio.el));
+    vi.stubGlobal('Audio', vi.fn(function MockAudio(this: unknown) {
+      return audio.el;
+    }));
     const decodeAudioData = vi.fn().mockResolvedValue({ numberOfChannels: 6, sampleRate: 48000 });
     const close = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal('AudioContext', vi.fn(() => ({ decodeAudioData, close })));
+    vi.stubGlobal('AudioContext', vi.fn(function MockAudioContext(this: unknown) {
+      return { decodeAudioData, close };
+    }));
     const arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(16));
     const fetch = vi.fn().mockResolvedValue({
       status: 206,
@@ -126,9 +136,13 @@ describe('useAudioEngine', () => {
   it('does not buffer a full cloud response when range is ignored', async () => {
     const audio = makeMediaElement('audio');
     Object.defineProperty(audio.el, 'duration', { value: 10_000, configurable: true });
-    vi.stubGlobal('Audio', vi.fn(() => audio.el));
+    vi.stubGlobal('Audio', vi.fn(function MockAudio(this: unknown) {
+      return audio.el;
+    }));
     const decodeAudioData = vi.fn();
-    vi.stubGlobal('AudioContext', vi.fn(() => ({ decodeAudioData, close: vi.fn() })));
+    vi.stubGlobal('AudioContext', vi.fn(function MockAudioContext(this: unknown) {
+      return { decodeAudioData, close: vi.fn() };
+    }));
     const arrayBuffer = vi.fn().mockResolvedValue(new ArrayBuffer(1));
     const cancel = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
@@ -168,7 +182,9 @@ describe('useAudioEngine', () => {
 
   it('beep closes its AudioContext once the tone ends', () => {
     const audio = makeMediaElement('audio');
-    vi.stubGlobal('Audio', vi.fn(() => audio.el));
+    vi.stubGlobal('Audio', vi.fn(function MockAudio(this: unknown) {
+      return audio.el;
+    }));
 
     const osc = {
       type: 'sine' as OscillatorType,
@@ -190,7 +206,9 @@ describe('useAudioEngine', () => {
       createGain: vi.fn(() => gain),
       close,
     };
-    vi.stubGlobal('AudioContext', vi.fn(() => ctx));
+    vi.stubGlobal('AudioContext', vi.fn(function MockAudioContext(this: unknown) {
+      return ctx;
+    }));
 
     const { result } = renderHook(() => useAudioEngine());
     act(() => { result.current.beep(660, 'square', 0.05); });
