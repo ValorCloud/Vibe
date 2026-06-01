@@ -22,6 +22,24 @@ type MetaGroup = { kind: 'meta'; lines: Section['lines']; physicalCount: number 
 type LyricItem = { kind: 'lyric'; line: Section['lines'][number]; index: number };
 type RenderItem = MetaGroup | LyricItem;
 
+export function buildConfirmedPairPeerMap(
+  pairScores: Array<{ i: number; j: number }>,
+  letters: string[],
+): Map<number, Set<number>> {
+  const peers = new Map<number, Set<number>>();
+  for (const { i, j } of pairScores) {
+    const letterI = letters[i] ?? '';
+    const letterJ = letters[j] ?? '';
+    if (!letterI || !letterJ || letterI === 'X' || letterJ === 'X' || letterI !== letterJ) continue;
+
+    if (!peers.has(i)) peers.set(i, new Set<number>());
+    if (!peers.has(j)) peers.set(j, new Set<number>());
+    peers.get(i)!.add(j);
+    peers.get(j)!.add(i);
+  }
+  return peers;
+}
+
 function buildRenderItems(lines: Section['lines']): RenderItem[] {
   const items: RenderItem[] = [];
   let lyricIdx = 0;
@@ -146,6 +164,11 @@ export const SectionLineList = React.memo(function SectionLineList({
       .map(it => getSchemeLetterForLine(section, it.index, effectiveRhymeScheme) ?? '');
   }, [schemeResult, renderItems, section, effectiveRhymeScheme]);
 
+  const confirmedPairPeers = useMemo(() => {
+    if (!schemeResult) return new Map<number, Set<number>>();
+    return buildConfirmedPairPeerMap(schemeResult.pairScores, dynamicLetters);
+  }, [schemeResult, dynamicLetters]);
+
   const selectedLine = useMemo(() => {
     if (!selectedLineId) return null;
     const item = renderItems.find(
@@ -188,12 +211,16 @@ export const SectionLineList = React.memo(function SectionLineList({
         const dynamicLetter = dynamicLetters[lyricIndex] ?? null;
         const schemeLabel = dynamicLetter || getSchemaLabelForLine(section, lyricIndex, effectiveRhymeScheme);
         const rhymeFamily = dynamicLetter || getSchemeLetterForLine(section, lyricIndex, effectiveRhymeScheme);
+        const confirmedPeers = confirmedPairPeers.get(lyricIndex);
         const rhymePeerTexts = rhymeFamily
           ? renderItems
             .filter((candidate): candidate is LyricItem =>
               candidate.kind === 'lyric'
               && candidate.line.id !== line.id
-              && (dynamicLetters[candidate.index] ?? getSchemeLetterForLine(section, candidate.index, effectiveRhymeScheme)) === rhymeFamily,
+              && (
+                confirmedPeers?.has(candidate.index)
+                || (dynamicLetters[candidate.index] ?? getSchemeLetterForLine(section, candidate.index, effectiveRhymeScheme)) === rhymeFamily
+              ),
             )
             .map(candidate => candidate.line.text)
           : [];
