@@ -711,16 +711,20 @@ const splitLineAtCanonicalSuffix = (
     const rawTail = word.normalizedWord.slice(group.start);
     const canonForms = canonicalizeRhymeSuffix(rawTail, langCode);
 
-    const isExactMatch = canonForms.some(f => f === canonicalSuffix);
-    const isEndsWithMatch = !isExactMatch && canonForms.some(f => f.endsWith(canonicalSuffix));
+    const matchingForm = canonForms.find(f => f === canonicalSuffix || f.endsWith(canonicalSuffix));
+    if (!matchingForm) continue;
 
-    if (!isExactMatch && !isEndsWithMatch) continue;
+    const isExactMatch = matchingForm === canonicalSuffix;
+    const prefixLen = isExactMatch ? 0 : matchingForm.length - canonicalSuffix.length;
 
     // Always anchor the split to the vowel-group onset (group.start).
     // Do NOT attempt to locate the canonical suffix string inside rawTail —
     // after family normalization the canonical form may not literally appear
     // in the raw orthography, making indexOf unreliable.
-    const splitPos = group.start;
+    //
+    // When the match is not exact (e.g., canonical "ier" ends with target "er"),
+    // we advance by prefixLen chars in the raw text to skip the extra prefix.
+    const splitPos = group.start + prefixLen;
     const effectiveStart = isTonalLanguage(langCode || '')
       ? splitPos
       : extendToVowelOnset(word.normalizedWord, splitPos);

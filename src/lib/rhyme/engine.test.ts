@@ -228,8 +228,9 @@ describe('ROM rhyme engine', () => {
     const r = rhymeScore(lineA, lineB, 'fr', 'fr');
     expect(r.charSpanA).toBeDefined();
     expect(r.charSpanB).toBeDefined();
-    expect(lineA.slice(r.charSpanA!.start, r.charSpanA!.end)).toBe('amour');
-    expect(lineB.slice(r.charSpanB!.start, r.charSpanB!.end)).toBe('toujours');
+    // After fix(engine): charSpan now points to nucleus suffix, not full rhyme token
+    expect(lineA.slice(r.charSpanA!.start, r.charSpanA!.end)).toBe('our');
+    expect(lineB.slice(r.charSpanB!.start, r.charSpanB!.end)).toBe('our');
   });
 });
 // ─── FR nasal verbal finals (-ont/-ons) — regression for Safari lookbehind ───
@@ -725,8 +726,9 @@ describe('cross-family fallback', () => {
     expect(r.family).toBe('FALLBACK');
     expect(r.charSpanA).toBeDefined();
     expect(r.charSpanB).toBeDefined();
-    expect(lineA.slice(r.charSpanA!.start, r.charSpanA!.end)).toBe('night');
-    expect(lineB.slice(r.charSpanB!.start, r.charSpanB!.end)).toBe('nuit');
+    // After fix(engine): charSpan now points to nucleus suffix, not full rhyme token
+    expect(lineA.slice(r.charSpanA!.start, r.charSpanA!.end)).toBe('ight');
+    expect(lineB.slice(r.charSpanB!.start, r.charSpanB!.end)).toBe('ui');
   });
   it('FALLBACK: surface is NFC-normalised (no broken multi-byte slice)', () => {
     const r = rhymeScore('\u0645\u0633\u0627\u0621', '\u0645\u0633\u0627\u0621', 'ar', 'ar');
