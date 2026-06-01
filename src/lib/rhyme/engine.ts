@@ -19,6 +19,11 @@
  *  - analyzeBlock now returns full BlockAnalysisResult with lineSpans populated
  *  - lineSpans derived from scheme.pairScores charSpanA/B — no heuristic fallback
  *  - Lines with no rhyming partner receive charSpanStart/End = -1
+ *
+ * v4.3 fixes:
+ *  - charSpan now points to the nucleus suffix inside the token, not the full token
+ *  - nucleus.charSpanStart/End (vowel onset within token) combined with token
+ *    position in line → UI highlights exact rhyming suffix (esse, isse, ace…)
  */
 
 import type {
@@ -230,6 +235,30 @@ function computeCharSpan(line: string, token: string): RhymeCharSpan | undefined
   const idx = normLine.lastIndexOf(normToken);
   if (idx === -1) return undefined;
   return { start: idx, end: idx + normToken.length };
+}
+
+/**
+ * Refine a word-level span to the exact nucleus suffix inside that word.
+ *
+ * `tokenSpan`  — absolute position of the rhyme token in the full line
+ *                (from computeCharSpan).
+ * `nucleus`    — nucleus extracted by the algo; charSpanStart/End are offsets
+ *                relative to the token string (set by extractNucleusData).
+ *
+ * Returns the nucleus span in line-absolute coordinates, or `tokenSpan` when
+ * nucleus offsets are absent/invalid (non-ROM families, fallback path).
+ */
+function refineSpanWithNucleus(
+  tokenSpan: RhymeCharSpan,
+  nucleus: RhymeNucleus
+): RhymeCharSpan {
+  const nsStart = nucleus.charSpanStart ?? -1;
+  const nsEnd   = nucleus.charSpanEnd   ?? -1;
+  if (nsStart < 0 || nsEnd <= nsStart) return tokenSpan;
+  return {
+    start: tokenSpan.start + nsStart,
+    end:   tokenSpan.start + nsEnd,
+  };
 }
 
 // ─── Core pairwise scorer ─────────────────────────────────────────────────────
@@ -508,17 +537,26 @@ function build({
   if (csDetected !== undefined) result.csDetected = csDetected;
 
   // ── charSpan computation ─────────────────────────────────────────────────
-  // For ROM family we have the exact rhyme token; for other families we fall
-  // back to unit.surface (which is already the last word / position unit).
+  // Step 1: locate the rhyme token in the full line (word-level span).
+  // Step 2: refine to the nucleus suffix within that token using
+  //         nucleus.charSpanStart/End (vowel-onset offsets set by
+  //         extractNucleusData / algo-rom normalizeFR).
+  // This ensures the UI highlights the exact rhyming suffix (esse, isse,
+  // ace…) rather than the full word, fixing the missing-colour regression
+  // on monoryme sections (FR lines 12, 22, etc.).
   if (lineA) {
     const tokenA = rhymeTokenA ?? unitA.surface;
-    const span = computeCharSpan(lineA, tokenA);
-    if (span) result.charSpanA = span;
+    const rawSpanA = computeCharSpan(lineA, tokenA);
+    if (rawSpanA) {
+      result.charSpanA = refineSpanWithNucleus(rawSpanA, nucleusA);
+    }
   }
   if (lineB) {
     const tokenB = rhymeTokenB ?? unitB.surface;
-    const span = computeCharSpan(lineB, tokenB);
-    if (span) result.charSpanB = span;
+    const rawSpanB = computeCharSpan(lineB, tokenB);
+    if (rawSpanB) {
+      result.charSpanB = refineSpanWithNucleus(rawSpanB, nucleusB);
+    }
   }
 
   return result;
