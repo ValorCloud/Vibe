@@ -677,6 +677,25 @@ const splitLineAtNormalizedSuffix = (text: string, normalizedSuffix: string, lan
   };
 };
 
+/**
+ * Split a line at the vowel-group onset that produced a given canonical suffix.
+ *
+ * The split position is always `group.start` — the onset of the matching
+ * vowel group in the normalized word — regardless of whether the match is
+ * exact or an endsWith match. Using `rawTail.lastIndexOf(canonicalSuffix)`
+ * was wrong because the canonical suffix (produced by family normalization
+ * tables) is often shorter than the raw orthography and does not literally
+ * appear in `rawTail`, causing lastIndexOf to return -1 and Math.max to
+ * collapse the offset to 0, which either highlighted nothing or highlighted
+ * too much. Examples that were broken before this fix:
+ *   "choose" → OOSE  (GER: oose→"us", "us" not in "oose" → offset 0)
+ *   "breeze" → EEZE  (GER: eeze→"ez", "ez" not in "eeze" → offset 0)
+ *   "soul"   → OLE   (ROM: ole→"ol",  offset was fine but extendToVowelOnset
+ *                      was applied from pos 0 unnecessarily)
+ *
+ * extendToVowelOnset is still applied for non-tonal languages so digraph
+ * boundaries (ou, ai, ei …) are respected across all supported families.
+ */
 const splitLineAtCanonicalSuffix = (
   text: string,
   canonicalSuffix: string,
@@ -697,15 +716,11 @@ const splitLineAtCanonicalSuffix = (
 
     if (!isExactMatch && !isEndsWithMatch) continue;
 
-    // For exact canonical matches start from the vowel-group onset (current behaviour).
-    // For endsWith matches, locate the canonical suffix inside the raw tail so that
-    // the highlighted portion begins at the right boundary (e.g. "ition" not "tion",
-    // "ette" not "iette", "aite" not "te").
-    const rawSplitOffset = isExactMatch
-      ? 0
-      : Math.max(0, rawTail.lastIndexOf(canonicalSuffix));
-
-    const splitPos = group.start + rawSplitOffset;
+    // Always anchor the split to the vowel-group onset (group.start).
+    // Do NOT attempt to locate the canonical suffix string inside rawTail —
+    // after family normalization the canonical form may not literally appear
+    // in the raw orthography, making indexOf unreliable.
+    const splitPos = group.start;
     const effectiveStart = isTonalLanguage(langCode || '')
       ? splitPos
       : extendToVowelOnset(word.normalizedWord, splitPos);
