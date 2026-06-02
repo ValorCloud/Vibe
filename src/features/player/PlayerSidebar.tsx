@@ -4,9 +4,9 @@ import { GlobeIcon, DatabaseIcon, SparkleIcon, TrashIcon, UploadIcon } from './P
 import { CLOUD_PROVIDER_OPTIONS, SCAN_PROTOCOLS, useSidebarContext } from './SidebarContext';
 import type { TrackEntry, ScanProtocol } from './types';
 
-// Raised from 0.08 → 0.20 for readability over textured background
+// Raised from 0.08 → 0.20 → 0.40 for readability over textured background (especially light mode)
 const LCARS_BOX_COLORS = [
-  'rgba(255,153,0,0.20)',
+  'rgba(255,153,0,0.40)',
 ];
 
 const SPOTIFY_GREEN = '#1DB954';
@@ -154,7 +154,7 @@ function ConnectorRow({ connector, onActivate }: ConnectorRowProps) {
         width: '100%',
         padding: '7px 8px',
         background: 'transparent',
-        border: `1px solid ${connector.color}44`,
+        border: `1px solid ${connector.color}88`,
         borderRadius: 3,
         color: connector.disabled ? LCARS.mutedText : connector.color,
         cursor: connector.disabled ? 'not-allowed' : 'pointer',
@@ -163,7 +163,7 @@ function ConnectorRow({ connector, onActivate }: ConnectorRowProps) {
         transition: 'background 140ms, border-color 140ms',
       }}
       onMouseEnter={e => {
-        if (!connector.disabled) (e.currentTarget as HTMLButtonElement).style.background = `${connector.color}18`;
+        if (!connector.disabled) (e.currentTarget as HTMLButtonElement).style.background = `${connector.color}33`;
       }}
       onMouseLeave={e => {
         (e.currentTarget as HTMLButtonElement).style.background = 'transparent';

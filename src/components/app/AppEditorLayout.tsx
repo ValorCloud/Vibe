@@ -227,18 +227,21 @@ export function AppEditorLayout({
       <InsightsBarProvider value={insightsBarValue}>
         <SuggestionsProvider spellCheck={spellCheck}>
           <div className="flex-1 flex overflow-hidden min-h-0 lcars-lyrics-area">
-            {/* ── Left panel ──────────────────────────────────────────────────── */}
-            <ErrorBoundary label="Left panel">
-              <Suspense fallback={<LazyFallback />}>
-                <LeftSettingsPanel
-                  isMobileOverlay={isMobileOrTablet}
-                  isLeftPanelOpen={isLeftPanelOpen}
-                  setIsLeftPanelOpen={setIsLeftPanelOpen}
-                  onGenerateSong={handleGenerateSongFromLeftPanel}
-                  onRegenerateSong={handleGlobalRegenerate}
-                />
-              </Suspense>
-            </ErrorBoundary>
+            {/* ── Left panel ────────────────────────────────────────────────────  */}
+            {/* Hide lyrics generator sidebar in PLAYER mode */}
+            {appState.activeTab !== 'player' && (
+              <ErrorBoundary label="Left panel">
+                <Suspense fallback={<LazyFallback />}>
+                  <LeftSettingsPanel
+                    isMobileOverlay={isMobileOrTablet}
+                    isLeftPanelOpen={isLeftPanelOpen}
+                    setIsLeftPanelOpen={setIsLeftPanelOpen}
+                    onGenerateSong={handleGenerateSongFromLeftPanel}
+                    onRegenerateSong={handleGlobalRegenerate}
+                  />
+                </Suspense>
+              </ErrorBoundary>
+            )}
 
             {/* ── Center column ───────────────────────────────────────────────── */}
             <div className="flex-1 flex flex-col min-w-0 bg-fluent-bg relative">

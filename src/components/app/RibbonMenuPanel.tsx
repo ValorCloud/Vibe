@@ -115,12 +115,6 @@ export function RibbonMenuPanel({
     >
       {/* ── Create ─────────────────────────────────────────────────────── */}
       <div className="px-4 pt-2 pb-1 text-[10px] uppercase tracking-[0.24em] text-[var(--text-secondary)]">{t.menu?.create ?? 'Create'}</div>
-      <Tooltip title={t.tooltips.newLyricsGeneration ?? 'Generate new lyrics using AI'}>
-        <button onClick={() => run(onOpenNewGeneration)} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
-          <WandSparkles className="w-4 h-4 text-[var(--text-secondary)]" />
-          {t.menu?.newLyricsGeneration ?? 'New Lyrics Generation'}
-        </button>
-      </Tooltip>
       <Tooltip title={t.tooltips.newSong ?? 'Create a new empty song'}>
         <button onClick={() => run(onOpenNewEmpty)} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
           <FilePlus className="w-4 h-4 text-[var(--text-secondary)]" />
@@ -164,9 +158,9 @@ export function RibbonMenuPanel({
         </button>
       </Tooltip>
 
-      {/* ── Workspace ──────────────────────────────────────────────────── */}
+      {/* ── Mode ──────────────────────────────────────────────────── */}
       <div className="h-px bg-[var(--border-color)] mx-3 my-1" />
-      <div className="px-4 pt-1 pb-1 text-[10px] uppercase tracking-[0.24em] text-[var(--text-secondary)]">{t.menu?.workspace ?? 'Workspace'}</div>
+      <div className="px-4 pt-1 pb-1 text-[10px] uppercase tracking-[0.24em] text-[var(--text-secondary)]">{t.menu?.mode ?? 'Mode'}</div>
       <Tooltip title={t.tooltips.lyricsTab ?? 'Open the lyrics editor'}>
         <button onClick={() => run(() => setActiveTab('lyrics'))} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
           <AlignLeft className="w-4 h-4 text-[var(--text-secondary)]" />
@@ -179,6 +173,12 @@ export function RibbonMenuPanel({
           {t.ribbon.musical}
         </button>
       </Tooltip>
+      <Tooltip title="Open the audio player">
+        <button onClick={() => run(() => setActiveTab('player'))} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
+          <Music className="w-4 h-4 text-[var(--text-secondary)]" />
+          {t.mobileNav?.player ?? 'Player'}
+        </button>
+      </Tooltip>
       <Tooltip title={t.tooltips.browseLibrary ?? 'Save or browse your song library'}>
         <button onClick={() => run(openLibrary)} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
           <Library className="w-4 h-4 text-[var(--text-secondary)]" />
@@ -189,6 +189,12 @@ export function RibbonMenuPanel({
       {/* ── Tools ──────────────────────────────────────────────────────── */}
       <div className="h-px bg-[var(--border-color)] mx-3 my-1" />
       <div className="px-4 pt-1 pb-1 text-[10px] uppercase tracking-[0.24em] text-[var(--text-secondary)]">{t.menu?.tools ?? 'Tools'}</div>
+      <Tooltip title={t.tooltips.reset}>
+        <button onClick={() => run(openResetModal)} disabled={song.length === 0} className={`${menuActionClass} text-red-400 hover:bg-red-500/10 disabled:opacity-50`}>
+          <Trash2 className="w-4 h-4" />
+          {t.ribbon.reset}
+        </button>
+      </Tooltip>
       <Tooltip title={t.tooltips.versions}>
         <button onClick={() => run(openVersionsModal)} className={`${menuActionClass} text-[var(--text-primary)] hover:bg-[var(--accent-color)]/10`}>
           <History className="w-4 h-4 text-[var(--text-secondary)]" />

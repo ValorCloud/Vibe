@@ -72,10 +72,9 @@
   },
   "menu": {
     "create": "Créer",
-    "workspace": "Espace de travail",
+    "mode": "Mode",
     "tools": "Outils",
     "app": "Application",
-    "newLyricsGeneration": "Nouvelle génération de paroles",
     "newSong": "Nouvelle chanson",
     "about": "À propos",
     "sponsor": "Sponsoriser"

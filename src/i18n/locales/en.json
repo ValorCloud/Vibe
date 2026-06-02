@@ -73,11 +73,10 @@
   },
   "menu": {
     "create": "Create",
-    "workspace": "Workspace",
+    "mode": "Mode",
     "tools": "Tools",
     "app": "Application",
-    "newLyricsGeneration": "New lyrics generation",
-    "newSong": "New song",
+    "newSong": "New Song",
     "about": "About",
     "sponsor": "Sponsor"
   },
