@@ -739,19 +739,65 @@ const splitLineAtCanonicalSuffix = (
   return null;
 };
 
+/**
+ * Pick the vowel-group index that carries the rhyme nucleus.
+ *
+ * For families with a silent word-final 'e' (Romance, Germanic/English) a
+ * trailing lone 'e' (optionally followed by a final 's': "homes", "choose")
+ * is not the rhyme nucleus, so we step back to the preceding vowel group.
+ * This is what lets the fallback highlight the full orthographic rhyme:
+ *   "choose" → OOSE  (not the silent final E)
+ *   "whole"  → OLE
+ *   "breeze" → EEZE
+ * Languages where final 'e' is pronounced (Finnish, etc.) keep the last group.
+ */
+const pickRhymeVowelGroupIndex = (
+  normalizedWord: string,
+  vowelGroups: VowelSpan[],
+  langCode?: string,
+): number => {
+  let pickIndex = vowelGroups.length - 1;
+  if (pickIndex <= 0) return pickIndex;
+
+  const family = langCode ? getAlgoFamily(langCode) : undefined;
+  const hasSilentFinalE = !family || family === 'ALGO-ROM' || family === 'ALGO-GER';
+  if (!hasSilentFinalE) return pickIndex;
+
+  const last = vowelGroups[pickIndex]!;
+  const tail = normalizedWord.slice(last.end);
+  const isSilentFinal =
+    last.end - last.start === 1
+    && normalizedWord[last.start] === 'e'
+    && /^s?$/.test(tail);
+  if (isSilentFinal) pickIndex--;
+  return pickIndex;
+};
+
 const getFallbackRhymingSuffix = (text: string, langCode?: string): { before: string; rhyme: string } | null => {
   const word = extractLastWord(text, langCode);
   if (!word) return null;
 
-  const suffix = getLastVowelGroupSuffix(word.normalizedWord, langCode);
-  if (!suffix) {
+  const vowelGroups = getVowelGroups(word.normalizedWord);
+  if (vowelGroups.length === 0) {
     return {
       before: text.slice(0, word.wordStart),
       rhyme: text.slice(word.wordStart),
     };
   }
 
-  return splitLineAtNormalizedSuffix(text, suffix, langCode);
+  // Anchor the split to the raw vowel-group onset rather than re-locating a
+  // canonicalized suffix (which may not appear literally in the orthography,
+  // e.g. GER "seas" → canonical "ee", lastIndexOf("ee") === -1 → null).
+  const group = vowelGroups[pickRhymeVowelGroupIndex(word.normalizedWord, vowelGroups, langCode)]!;
+  const splitPos = isTonalLanguage(langCode || '')
+    ? group.start
+    : extendToVowelOnset(word.normalizedWord, group.start);
+
+  const absoluteStart = word.wordStart + splitPos;
+  return {
+    before: text.slice(0, absoluteStart),
+    rhyme: text.slice(absoluteStart),
+  };
 };
 
 const removeTrailingToken = (text: string): string => text.trimEnd().replace(/\s+\S+$/, '');

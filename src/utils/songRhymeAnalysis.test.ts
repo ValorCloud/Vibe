@@ -188,6 +188,42 @@ describe('rhymeDetection Step-0 matching', () => {
     expect(split?.rhyme).not.toContain('avec');
   });
 
+  it('marks the full orthographic rhyme past a silent final -e (English)', () => {
+    // Regression: trailing silent 'e' forms its own vowel group; the fallback
+    // must step back to the real nucleus instead of highlighting just "e".
+    const choose = splitRhymingSuffix(
+      'And witnessed futures, countless paths they choose.',
+      ['The shifting seasons painted vibrant hues.'],
+      'en',
+    );
+    expect(choose?.rhyme).toBe('oose.');
+
+    const whole = splitRhymingSuffix(
+      'And teach us patience, making spirits whole.',
+      ['They offer shelter to the weary soul.'],
+      'en',
+    );
+    expect(whole?.rhyme).toBe('ole.');
+
+    const breeze = splitRhymingSuffix(
+      'They share their secrets with the flowing breeze.',
+      ['Among the mountains, forests, and the seas.'],
+      'en',
+    );
+    expect(breeze?.rhyme).toBe('eeze.');
+  });
+
+  it('anchors the split to the raw vowel onset when the canonical form differs (seas)', () => {
+    // Regression: canonical suffix "ee" does not appear literally in "seas",
+    // which previously made the fallback return null (no highlight at all).
+    const seas = splitRhymingSuffix(
+      'Among the mountains, forests, and the seas.',
+      ['They share their secrets with the flowing breeze.'],
+      'en',
+    );
+    expect(seas?.rhyme).toBe('eas.');
+  });
+
   it('handles a word with no vowels after NFD normalization without crashing', () => {
     // Simulates a degenerate edge case: a token that normalizes to all consonants.
     // splitRhymingSuffix must return a non-null result (fallback whole-word split)
