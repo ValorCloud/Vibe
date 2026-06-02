@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, Moon, Settings, Sun } from '../ui/icons';
+import { Info, Moon, Settings, Sun, FileText } from '../ui/icons';
 import { Tooltip } from '../ui/Tooltip';
 import { StorageGauge } from '../ui/StorageGauge';
 import { StatusBarLanguagePicker } from './StatusBarLanguagePicker';
@@ -204,6 +204,30 @@ export function StatusBar({
             </span>
           </>
         )}
+      </div>
+
+      {/* Center: Legal links (hidden on mobile) */}
+      <div className="hidden lg:flex items-center gap-3">
+        <a
+          href="/privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Privacy Policy"
+          className="lcars-meta-btn flex items-center gap-1 text-[10px] uppercase tracking-widest"
+        >
+          <Info className="w-3 h-3" />
+          <span>Privacy</span>
+        </a>
+        <a
+          href="/terms.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Terms of Service"
+          className="lcars-meta-btn flex items-center gap-1 text-[10px] uppercase tracking-widest"
+        >
+          <FileText className="w-3 h-3" />
+          <span>Terms</span>
+        </a>
       </div>
 
       {/* Right: settings + theme + version */}

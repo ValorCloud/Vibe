@@ -297,33 +297,6 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
                   </span>
                 </a>
               </div>
-
-              {/* Legal */}
-              <div className="about-sweep-item pt-3 border-t border-[var(--border-color)] flex items-center justify-center gap-4">
-                <div className="about-sweep-content flex items-center justify-center gap-4">
-                  <a
-                    href="/privacy.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Privacy Policy"
-                    className="ux-interactive flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                  >
-                    <Info className="w-3 h-3" />
-                    <span>Privacy Policy</span>
-                  </a>
-                  <span className="text-[var(--border-color)]">·</span>
-                  <a
-                    href="/terms.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Terms of Service"
-                    className="ux-interactive flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
-                  >
-                    <FileText className="w-3 h-3" />
-                    <span>Terms of Service</span>
-                  </a>
-                </div>
-              </div>
             </div>
           </div>
         </div>

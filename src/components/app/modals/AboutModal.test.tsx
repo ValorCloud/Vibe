@@ -21,8 +21,6 @@ describe('AboutModal', () => {
       'https://network.landr.com/users/emmanueldk',
       'https://music.amazon.com/artists/B0DKW3BNL7/emmanuel-kerhoz',
       'https://music.apple.com/artist/emmanuel-kerhoz/1776965137',
-      '/privacy.html',
-      '/terms.html',
     ];
     const renderedHrefs = screen.getAllByRole('link').map((link) => link.getAttribute('href'));
     const donationLink = screen.getByText('Donation (Github Sponsor)').closest('a');
