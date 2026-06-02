@@ -717,13 +717,6 @@ const splitLineAtCanonicalSuffix = (
     const isExactMatch = matchingForm === canonicalSuffix;
     const prefixLen = isExactMatch ? 0 : matchingForm.length - canonicalSuffix.length;
 
-    // Always anchor the split to the vowel-group onset (group.start).
-    // Do NOT attempt to locate the canonical suffix string inside rawTail —
-    // after family normalization the canonical form may not literally appear
-    // in the raw orthography, making indexOf unreliable.
-    //
-    // When the match is not exact (e.g., canonical "ier" ends with target "er"),
-    // we advance by prefixLen chars in the raw text to skip the extra prefix.
     const splitPos = group.start + prefixLen;
     const effectiveStart = isTonalLanguage(langCode || '')
       ? splitPos
@@ -743,7 +736,7 @@ const splitLineAtCanonicalSuffix = (
  * Pick the vowel-group index that carries the rhyme nucleus.
  *
  * For families with a silent word-final 'e' (Romance, Germanic/English) a
- * trailing lone 'e' (optionally followed by a final 's': "homes", "choose")
+ * trailing lone 'e' (optionally followed by a final 's': "homes", "chooses")
  * is not the rhyme nucleus, so we step back to the preceding vowel group.
  * This is what lets the fallback highlight the full orthographic rhyme:
  *   "choose" → OOSE  (not the silent final E)
