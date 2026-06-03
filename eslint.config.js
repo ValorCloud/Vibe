@@ -21,7 +21,7 @@ export default [
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
-      '@typescript-eslint/no-shadow': 'error',
+      '@typescript-eslint/no-shadow': ['error', { ignoreOnInitialization: true }],
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
@@ -36,7 +36,7 @@ export default [
       parser: tsParser,
     },
     rules: {
-      '@typescript-eslint/no-shadow': 'error',
+      '@typescript-eslint/no-shadow': ['error', { ignoreOnInitialization: true }],
       'no-eval': 'error',
       'no-implied-eval': 'error',
       'no-new-func': 'error',
