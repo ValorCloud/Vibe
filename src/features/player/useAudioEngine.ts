@@ -14,7 +14,7 @@ export interface TrackInfo {
 }
 
 export interface AudioEngineState {
-  audioRef: React.RefObject<HTMLMediaElement>;
+  audioRef: React.RefObject<HTMLMediaElement | null>;
   isPlaying: boolean;
   currentTime: number;
   duration: number;

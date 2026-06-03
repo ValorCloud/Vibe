@@ -5,7 +5,7 @@ interface FrequencyVisualizerProps {
   isPlaying: boolean;
   analyser: FrequencyAnalyserState;
   // FIX #1: ref is HTMLMediaElement, not just HTMLAudioElement
-  audioRef: React.RefObject<HTMLMediaElement>;
+  audioRef: React.RefObject<HTMLMediaElement | null>;
 }
 
 export function FrequencyVisualizer({ isPlaying, analyser, audioRef }: FrequencyVisualizerProps) {

@@ -82,8 +82,8 @@ export interface SidebarContextValue {
   setScanProtocol: (p: ScanConfig['accept']) => void;
   scanPattern: string;
   setScanPattern: (p: string) => void;
-  uploadInputRef: RefObject<HTMLInputElement>;
-  folderInputRef: RefObject<HTMLInputElement>;
+  uploadInputRef: RefObject<HTMLInputElement | null>;
+  folderInputRef: RefObject<HTMLInputElement | null>;
   buildAccept: (p: ScanConfig['accept']) => string;
   handleUplinkFiles: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleScanFolder: (e: React.ChangeEvent<HTMLInputElement>) => void;

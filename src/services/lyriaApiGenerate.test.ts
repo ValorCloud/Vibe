@@ -58,9 +58,12 @@ describe('/api/lyria/generate', () => {
     mockGoogleGenAI.mockReset();
     // Re-establish constructor behaviour after reset so each fresh import of
     // api/lyria/generate (which calls `new GoogleGenAI(...)`) gets a usable client.
-    mockGoogleGenAI.mockImplementation(() => ({
-      models: { generateContent: mockGenerateContent },
-    }));
+    // Must be a classic function (not an arrow) so it is constructible with `new`.
+    mockGoogleGenAI.mockImplementation(function () {
+      return {
+        models: { generateContent: mockGenerateContent },
+      };
+    });
     mockCheckRateLimit.mockResolvedValue({ allowed: true });
     delete process.env.LYRIA_INTERNAL_TOKEN;
     mockGenerateContent.mockResolvedValue({

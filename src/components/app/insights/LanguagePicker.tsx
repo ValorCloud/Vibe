@@ -14,7 +14,7 @@ interface LanguagePickerProps {
   defaultLanguage?: string | undefined;
   onSetDefaultLanguage: (langCode: string) => void;
   closePicker: () => void;
-  popoverRef: React.RefObject<HTMLDivElement>;
+  popoverRef: React.RefObject<HTMLDivElement | null>;
 }
 
 export function LanguagePicker({

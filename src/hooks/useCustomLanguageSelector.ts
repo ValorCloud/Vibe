@@ -158,7 +158,7 @@ export interface UseCustomLanguageSelectorOptions {
 export interface UseCustomLanguageSelectorResult {
   selectValue: string;
   customText: string;
-  customInputRef: React.RefObject<HTMLInputElement>;
+  customInputRef: React.RefObject<HTMLInputElement | null>;
   showCustomInput: boolean;
   effectiveLang: string;
   languageOptions: ReturnType<typeof buildGroupedLanguageOptions>;

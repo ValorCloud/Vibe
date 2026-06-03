@@ -9,7 +9,7 @@ import type { FrequencyAnalyserState } from './useFrequencyAnalyser';
 interface VideoPlayerProps {
   src: string;
   isPlaying: boolean;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   contentWidth: string;
 }
 
@@ -123,7 +123,7 @@ export interface VoxNovaArtworkProps {
   isPlaying: boolean;
   /** Present when isSpotify=false and the track is a video file. */
   videoSrc?: string | undefined;
-  videoRef?: React.RefObject<HTMLVideoElement> | undefined;
+  videoRef?: React.RefObject<HTMLVideoElement | null> | undefined;
   /** Present when isSpotify=true and a track is playing. */
   spotifyImageUrl?: string | undefined;
   spotifyTrackName?: string | undefined;
@@ -178,7 +178,7 @@ export interface VoxNovaFrequencyPanelProps {
   isVideo?: boolean | undefined;
   isPlaying: boolean;
   analyser: FrequencyAnalyserState;
-  audioRef: React.RefObject<HTMLMediaElement>;
+  audioRef: React.RefObject<HTMLMediaElement | null>;
 }
 
 export function VoxNovaFrequencyPanel({

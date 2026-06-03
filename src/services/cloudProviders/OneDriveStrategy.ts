@@ -51,7 +51,7 @@ function getMsalApp(): PublicClientApplication | null {
   if (!_msalApp) {
     const config: Configuration = {
       auth: { clientId: MSAL_CLIENT_ID, authority: MSAL_AUTHORITY },
-      cache: { cacheLocation: 'sessionStorage', storeAuthStateInCookie: false },
+      cache: { cacheLocation: 'sessionStorage' },
     };
     _msalApp = new PublicClientApplication(config);
   }

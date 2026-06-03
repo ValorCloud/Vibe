@@ -93,6 +93,10 @@ vi.mock('./modals/CloudStoragePickerModal', () => ({
   CloudStoragePickerModal: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div>Cloud storage modal</div> : null),
 }));
 
+vi.mock('./modals/CloudSaveModal', () => ({
+  CloudSaveModal: () => null,
+}));
+
 function createUiState(overrides: Partial<UIStateBag> = {}): UIStateBag {
   return {
     setIsAboutOpen: vi.fn(),
