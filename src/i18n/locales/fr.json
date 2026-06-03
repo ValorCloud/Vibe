@@ -49,7 +49,7 @@
     "similarity": "Similarité",
     "load_import": "Charger / Importer",
     "save_export": "Enregistrer / Exporter",
-    "versions": "Versions des paroles",
+    "versions": "Gestion des versions",
     "undo": "Annuler",
     "redo": "Rétablir",
     "reset": "Réinitialiser",
@@ -68,14 +68,14 @@
     "compose": "Composer",
     "composeAria": "Ouvrir le panneau de génération de paroles",
     "generateShort": "Gén",
-    "player": "Lecteur"
+    "player": "LECTEUR"
   },
   "menu": {
     "create": "Créer",
     "mode": "Mode",
     "tools": "Outils",
     "app": "Application",
-    "newSong": "Nouvelle chanson",
+    "newSong": "Imaginer une chanson",
     "about": "À propos",
     "sponsor": "Sponsoriser"
   },
@@ -109,7 +109,7 @@
       "title": "Prêt à écrire votre prochain chef-d'œuvre ?",
       "description": "Configurez les paramètres de votre chanson dans la barre latérale ou importez des paroles existantes pour commencer.",
       "loadSession": "Charger la dernière session",
-      "pasteLyrics": "Coller les paroles",
+      "pasteLyrics": "Coller des paroles",
       "generateSong": "Générer des paroles"
     },
     "markupMode": {
@@ -332,7 +332,7 @@
     "cancel": "Annuler"
   },
   "paste": {
-    "title": "Coller les paroles",
+    "title": "Coller des paroles",
     "description": "Collez vos paroles existantes ci-dessous. Notre IA les analysera pour extraire la structure, le schéma de rime, le nombre de syllabes et les concepts clés pour les intégrer dans l'éditeur.",
     "placeholder": "Collez vos paroles ici...",
     "cancel": "Annuler",
@@ -536,7 +536,7 @@
     "viewMode": "Basculer entre les différents modes d'édition des paroles",
     "newLyricsGeneration": "Générer de nouvelles paroles avec l'IA",
     "newSong": "Créer une nouvelle chanson vide",
-    "pasteAvailable": "Coller les paroles depuis le presse-papier",
+    "pasteAvailable": "Coller des paroles depuis le presse-papier",
     "pasteUnavailable": "Aucune parole détectée dans le presse-papier",
     "browseLibrary": "Enregistrer ou parcourir votre bibliothèque de chansons",
     "openSettings": "Ouvrir les paramètres de l'application",
