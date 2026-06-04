@@ -327,6 +327,10 @@ export interface Translations {
     vibeBoard?: string;
     vibeBoardDescription?: string;
     subStyle?: string;
+    /** Badge text when a musical prompt is filled and ready */
+    promptReady?: string;
+    /** Badge text when no musical prompt has been defined yet */
+    promptEmpty?: string;
   };
 
   /** Strings for the Lyria 3 preview panel */

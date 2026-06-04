@@ -29,8 +29,7 @@
     "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
     "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "ignoreDeprecations": "5.0"
+    "noFallthroughCasesInSwitch": true
   },
   "exclude": [
     "sauvegardes",

@@ -185,7 +185,9 @@
     "rhythmPresets": "RITMOS PREDEFINIDOS",
     "vibeBoard": "PAINEL DE HUMOR",
     "vibeBoardDescription": "Selecione seu gênero para definir automaticamente BPM e instrumentos",
-    "subStyle": "SUBESTILO"
+    "subStyle": "SUBESTILO",
+    "promptReady": "PROMPT PRONTO",
+    "promptEmpty": "SEM PROMPT"
   },
   "analysis": {
     "title": "Relatório de Análise da Música",

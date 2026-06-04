@@ -199,7 +199,9 @@
     "rhythmPresets": "节奏预设",
     "vibeBoard": "情绪板",
     "vibeBoardDescription": "选择您的风格以自动设置 BPM 和乐器",
-    "subStyle": "子风格"
+    "subStyle": "子风格",
+    "promptReady": "提示就绪",
+    "promptEmpty": "无提示"
   },
   "analysis": {
     "title": "歌曲分析报告",

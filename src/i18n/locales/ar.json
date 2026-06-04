@@ -185,7 +185,9 @@
     "rhythmPresets": "أنماط الإيقاع",
     "vibeBoard": "لوحة المزاج",
     "vibeBoardDescription": "اختر نوعك الموسيقي لضبط BPM والآلات تلقائيًا",
-    "subStyle": "النمط الفرعي"
+    "subStyle": "النمط الفرعي",
+    "promptReady": "الموجّه جاهز",
+    "promptEmpty": "لا يوجد موجّه"
   },
   "analysis": {
     "title": "تقرير تحليل الأغنية",

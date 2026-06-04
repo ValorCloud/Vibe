@@ -185,7 +185,9 @@
     "rhythmPresets": "RHYTHMUS-VOREINSTELLUNGEN",
     "vibeBoard": "STIMMUNGSBOARD",
     "vibeBoardDescription": "Wähle dein Genre, um BPM & Instrumente automatisch einzustellen",
-    "subStyle": "SUBSTIL"
+    "subStyle": "SUBSTIL",
+    "promptReady": "PROMPT BEREIT",
+    "promptEmpty": "KEIN PROMPT"
   },
   "analysis": {
     "title": "Song-Analysebericht",

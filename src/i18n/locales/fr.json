@@ -235,7 +235,9 @@
     "rhythmPresets": "PRÉRÉGLAGES DE RYTHME",
     "vibeBoard": "SÉLECTION DE GENRE",
     "vibeBoardDescription": "Sélectionnez votre genre pour définir automatiquement le BPM et les instruments",
-    "subStyle": "SOUS-STYLE"
+    "subStyle": "SOUS-STYLE",
+    "promptReady": "PROMPT PRÊT",
+    "promptEmpty": "AUCUN PROMPT"
   },
   "lyria": {
     "musicalParamsLabel": "PARAMÈTRES MUSICAUX (DEPUIS MUSICALPARAMSPANEL)",

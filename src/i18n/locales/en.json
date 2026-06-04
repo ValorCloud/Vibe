@@ -245,7 +245,9 @@
     "rhythmPresets": "RHYTHM PRESETS",
     "vibeBoard": "GENRE SELECTION",
     "vibeBoardDescription": "Select your genre to automatically set BPM and instruments",
-    "subStyle": "SUB-STYLE"
+    "subStyle": "SUB-STYLE",
+    "promptReady": "PROMPT READY",
+    "promptEmpty": "NO PROMPT"
   },
     "lyria": {
     "musicalParamsLabel": "MUSICAL PARAMS (FROM MUSICALPARAMSPANEL)",

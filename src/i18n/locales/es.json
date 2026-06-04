@@ -185,7 +185,9 @@
     "rhythmPresets": "RITMOS PREDEFINIDOS",
     "vibeBoard": "TABLERO DE AMBIENTE",
     "vibeBoardDescription": "Selecciona tu género para configurar automáticamente el BPM e instrumentos",
-    "subStyle": "SUBESTILO"
+    "subStyle": "SUBESTILO",
+    "promptReady": "PROMPT LISTO",
+    "promptEmpty": "SIN PROMPT"
   },
   "analysis": {
     "title": "Informe de Análisis de Canción",
