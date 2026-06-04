@@ -56,25 +56,35 @@ export const BPM_PRESETS = [
 export const INSTRUMENT_FAMILIES: { emoji: string; label: string; instruments: InstrumentOption[] }[] = [
   { emoji: '\uD83C\uDFBA', label: 'Brass', instruments: [
     { name: 'Trumpet', icon: '🎺' }, { name: 'Trombone', icon: '🎺' }, { name: 'French Horn', icon: '📯' },
-    { name: 'Tuba', icon: '🎺' }, { name: 'Cornet', icon: '🎺' },
+    { name: 'Tuba', icon: '🎺' }, { name: 'Cornet', icon: '🎺' }, { name: 'Flugelhorn', icon: '🎺' },
+    { name: 'Euphonium', icon: '🎺' }, { name: 'Sousaphone', icon: '🎺' }, { name: 'Brass Section', icon: '🎺' },
+    { name: 'Muted Trumpet', icon: '🎺' },
   ] },
   { emoji: '\uD83C\uDFBB', label: 'Strings', instruments: [
     { name: 'Violin', icon: '🎻' }, { name: 'Alto Violin', icon: '🎻' }, { name: 'Viola', icon: '🎻' },
     { name: 'Cello', icon: '🎻' }, { name: 'Double Bass', icon: '🎻' }, { name: 'Harp', icon: '🎼' },
     { name: 'Mandolin', icon: '🪕' }, { name: 'Banjo', icon: '🪕' }, { name: 'Ukulele', icon: '🎸' },
+    { name: 'Fiddle', icon: '🎻' }, { name: 'String Ensemble', icon: '🎻' }, { name: 'Pizzicato Strings', icon: '🎻' },
+    { name: 'Lute', icon: '🪕' }, { name: 'Lyre', icon: '🎼' },
   ] },
   { emoji: '\uD83C\uDFB8', label: 'Guitar', instruments: [
     { name: 'Acoustic Guitar', icon: '🎸' }, { name: 'Electric Guitar', icon: '⚡️' },
     { name: 'Bass Guitar', icon: '🎸' }, { name: 'Twelve-String Guitar', icon: '🎸' }, { name: 'Baritone Guitar', icon: '🎸' },
+    { name: 'Nylon Guitar', icon: '🎸' }, { name: 'Slide Guitar', icon: '🎸' }, { name: 'Resonator Guitar', icon: '🎸' },
+    { name: 'Pedal Steel Guitar', icon: '🎸' }, { name: 'Lap Steel Guitar', icon: '🎸' }, { name: 'Classical Guitar', icon: '🎸' },
   ] },
   { emoji: '\uD83C\uDFB9', label: 'Keys', instruments: [
     { name: 'Grand Piano', icon: '🎹' }, { name: 'Piano', icon: '🎹' }, { name: 'Rhodes', icon: '🎹' },
     { name: 'Organ', icon: '🎹' }, { name: 'Synth', icon: '🎛️' }, { name: 'Celesta', icon: '✨' },
-    { name: 'Accordion', icon: '🪗' }, { name: 'Keytar', icon: '🎹' },
+    { name: 'Accordion', icon: '🪗' }, { name: 'Keytar', icon: '🎹' }, { name: 'Upright Piano', icon: '🎹' },
+    { name: 'Harpsichord', icon: '🎹' }, { name: 'Clavinet', icon: '🎹' }, { name: 'Wurlitzer', icon: '🎹' },
+    { name: 'Mellotron', icon: '🎹' }, { name: 'Hammond Organ', icon: '🎹' }, { name: 'Toy Piano', icon: '🎹' },
   ] },
   { emoji: '\uD83C\uDFB7', label: 'Woodwinds', instruments: [
     { name: 'Saxophone', icon: '🎷' }, { name: 'Flute', icon: '🎶' }, { name: 'Clarinet', icon: '🎶' },
     { name: 'Oboe', icon: '🎶' }, { name: 'Piccolo', icon: '🎶' }, { name: 'Tin Whistle', icon: '🎶' },
+    { name: 'Soprano Sax', icon: '🎷' }, { name: 'Baritone Sax', icon: '🎷' }, { name: 'Bass Clarinet', icon: '🎶' },
+    { name: 'Bassoon', icon: '🎶' }, { name: 'English Horn', icon: '🎶' }, { name: 'Recorder', icon: '🎶' },
   ] },
   { emoji: '\uD83E\uDD41', label: 'Percussion', instruments: [
     { name: 'Standard Drum Kit', icon: '🥁' }, { name: 'Afrobeat Kit', icon: '🥁' }, { name: 'Electronic Kit', icon: '🎛️' },
@@ -83,20 +93,39 @@ export const INSTRUMENT_FAMILIES: { emoji: string; label: string; instruments: I
     { name: 'Shaker', icon: '🪇' }, { name: 'Cowbell', icon: '🛎️' }, { name: 'Conga', icon: '🪘' },
     { name: 'Bongos', icon: '🪘' }, { name: 'Cajón', icon: '🪵' }, { name: 'Tubular Bells', icon: '🔔' },
     { name: 'Glockenspiel', icon: '🎶' }, { name: 'Xylophone', icon: '🎶' }, { name: 'Marimba', icon: '🎶' },
+    { name: 'Timpani', icon: '🥁' }, { name: 'Djembe', icon: '🪘' }, { name: 'Timbales', icon: '🪘' },
+    { name: 'Steel Drums', icon: '🛢️' }, { name: 'Handpan', icon: '🛸' }, { name: 'Vibraphone', icon: '🎶' },
+    { name: 'Castanets', icon: '🪇' }, { name: 'Claves', icon: '🥢' }, { name: 'Woodblock', icon: '🪵' },
+    { name: 'Frame Drum', icon: '🪘' }, { name: 'Cabasa', icon: '🪇' }, { name: 'Taiko Drums', icon: '🥁' },
   ] },
   { emoji: '\uD83C\uDFA4', label: 'Vocals', instruments: [
     { name: 'Lead Vocals', icon: '🎤' }, { name: 'Backing Vocals', icon: '🎶' }, { name: 'Choir', icon: '🎵' },
+    { name: 'Gospel Choir', icon: '🎵' }, { name: 'Falsetto', icon: '🎤' }, { name: 'Whisper Vocals', icon: '🤫' },
+    { name: 'Spoken Word', icon: '🗣️' }, { name: 'Vocal Chops', icon: '🎚️' }, { name: 'Vocoder', icon: '🤖' },
+    { name: 'Beatbox', icon: '🎤' }, { name: 'Harmony Stacks', icon: '🎶' },
   ] },
   { emoji: '\uD83C\uDF9B\uFE0F', label: 'Electronic', instruments: [
     { name: 'Synthesizer', icon: '🎛️' }, { name: 'Sampler', icon: '🎚️' }, { name: '808', icon: '🎚️' },
     { name: 'TR-909', icon: '🎚️' }, { name: 'Moog Bass', icon: '🎛️' }, { name: 'Arp Synth', icon: '🎛️' },
-    { name: 'FM Bass', icon: '🎛️' },
+    { name: 'FM Bass', icon: '🎛️' }, { name: 'Sub Bass', icon: '🔊' }, { name: 'Reese Bass', icon: '🔊' },
+    { name: 'Acid Bass (TB-303)', icon: '🎛️' }, { name: 'Supersaw Lead', icon: '🎛️' }, { name: 'Pluck Synth', icon: '🎛️' },
+    { name: 'Wavetable Pad', icon: '🎛️' }, { name: 'Granular Pad', icon: '🌫️' }, { name: 'Drum Machine', icon: '🎚️' },
+  ] },
+  { emoji: '\uD83C\uDFBC', label: 'Cinematic', instruments: [
+    { name: 'Cinematic Strings', icon: '🎻' }, { name: 'Epic Brass', icon: '🎺' }, { name: 'Choir Pad', icon: '🎵' },
+    { name: 'Cinematic Drums', icon: '🥁' }, { name: 'Sub Boom', icon: '💥' }, { name: 'Riser', icon: '📈' },
+    { name: 'Atmospheric Pad', icon: '🌌' }, { name: 'Drone', icon: '🌫️' }, { name: 'Braam', icon: '💥' },
+    { name: 'Music Box', icon: '🎶' },
   ] },
   { emoji: '\uD83E\uDE97', label: 'Folk / Ethnic', instruments: [
     { name: 'Alto Harmonica', icon: '🎶' }, { name: 'Kazoo', icon: '🎶' }, { name: 'Jaw Harp', icon: '🎶' },
     { name: 'Pan Flute', icon: '🎶' }, { name: 'Tribal Percussion', icon: '🪘' }, { name: 'Bouzouki', icon: '🪕' },
     { name: 'Sitar', icon: '🪕' }, { name: 'Duduk', icon: '🎶' }, { name: 'Bodhrán', icon: '🪘' }, { name: 'Whistle', icon: '🎶' },
-    { name: 'Bagpipes', icon: '🎶' },
+    { name: 'Bagpipes', icon: '🎶' }, { name: 'Erhu', icon: '🎻' }, { name: 'Koto', icon: '🪕' },
+    { name: 'Shamisen', icon: '🪕' }, { name: 'Guzheng', icon: '🪕' }, { name: 'Oud', icon: '🪕' },
+    { name: 'Kora', icon: '🪕' }, { name: 'Balalaika', icon: '🪕' }, { name: 'Charango', icon: '🪕' },
+    { name: 'Didgeridoo', icon: '🎶' }, { name: 'Shakuhachi', icon: '🎶' }, { name: 'Mbira', icon: '🎶' },
+    { name: 'Hammered Dulcimer', icon: '🎼' },
   ] },
 ];
 
@@ -199,6 +228,34 @@ export const SUB_STYLE_DATA: Record<string, SubStyleEntry[]> = {
     { name: 'Amapiano', description: 'Log-drum bounce, airy pads, South African club feel.', bpmOffset: +2, mood: 'Groovy', signature: 'Log drum bass, shaker rolls, gentle keys', addInstruments: ['Afrobeat Kit', 'Sampler'] },
     { name: 'Afro House', description: 'Four-on-the-floor meets Afro rhythms, chant hooks.', bpmOffset: +10, mood: 'Driving', signature: 'Percussive loops, synth stabs, vocal chops', addInstruments: ['Latin Percussion', 'Synthesizer'] },
   ],
+  'Country': [
+    { name: 'Modern', description: 'Polished arena country with pop-leaning hooks and big drums.', bpmOffset: +5, mood: 'Uplifting', signature: 'Stacked vocals, punchy snare, clean electric leads', addInstruments: ['Electric Guitar', 'Lead Vocals'] },
+    { name: 'Outlaw', description: 'Rugged, rebellious storytelling with a raw honky-tonk edge.', bpmOffset: 0, mood: 'Gritty', signature: 'Twangy Telecaster, brushed drums, baritone vocals', addInstruments: ['Pedal Steel Guitar', 'Acoustic Guitar'] },
+    { name: 'Country Pop', description: 'Crossover sheen, sing-along choruses, radio polish.', bpmOffset: +8, mood: 'Bright', signature: 'Bright acoustics, claps, anthemic hooks', addInstruments: ['Acoustic Guitar', 'Backing Vocals'] },
+    { name: 'Honky-Tonk', description: 'Barroom shuffle, weeping steel, two-step groove.', bpmOffset: +10, mood: 'Rowdy', signature: 'Walking bass, pedal steel cries, piano triplets', addInstruments: ['Pedal Steel Guitar', 'Piano'] },
+    { name: 'Alt-Country', description: 'Roots-rock grit blended with introspective songwriting.', bpmOffset: -5, mood: 'Wistful', signature: 'Jangly guitars, organ pads, weathered vocals', addInstruments: ['Electric Guitar', 'Hammond Organ'] },
+  ],
+  'Folk': [
+    { name: 'Singer-Songwriter', description: 'Intimate confessional storytelling, fingerpicked warmth.', bpmOffset: -5, mood: 'Tender', signature: 'Fingerstyle guitar, close vocals, sparse arrangement', addInstruments: ['Acoustic Guitar', 'Lead Vocals'] },
+    { name: 'Indie Folk', description: 'Layered acoustics, hushed harmonies, organic textures.', bpmOffset: 0, mood: 'Wistful', signature: 'Banjo/mandolin layers, group harmonies, soft kick', addInstruments: ['Banjo', 'Mandolin'] },
+    { name: 'Celtic', description: 'Lilting melodies, jigs and reels, misty atmosphere.', bpmOffset: +10, mood: 'Spirited', signature: 'Tin whistle, fiddle, bodhrán pulse', addInstruments: ['Tin Whistle', 'Fiddle'] },
+    { name: 'Bluegrass', description: 'High-lonesome harmonies, breakneck picking, front-porch energy.', bpmOffset: +20, mood: 'Lively', signature: 'Banjo rolls, fiddle breaks, upright bass slap', addInstruments: ['Banjo', 'Fiddle'] },
+    { name: 'Americana', description: 'Roots-blend of folk, country and blues with road-worn soul.', bpmOffset: 0, mood: 'Earthy', signature: 'Slide guitar, brushed drums, warm vocals', addInstruments: ['Slide Guitar', 'Acoustic Guitar'] },
+  ],
+  'Latin': [
+    { name: 'Salsa', description: 'Fiery clave-driven horns, montuno piano, dance-floor heat.', bpmOffset: +10, mood: 'Fiery', signature: 'Horn stabs, montuno piano, conga & timbales', addInstruments: ['Trumpet', 'Timbales'] },
+    { name: 'Bachata', description: 'Romantic guitar arpeggios, swaying bongó groove.', bpmOffset: -10, mood: 'Romantic', signature: 'Requinto lead, bongó, güira shuffle', addInstruments: ['Nylon Guitar', 'Bongos'] },
+    { name: 'Reggaeton', description: 'Dembow bounce, catchy hooks, club-ready energy.', bpmOffset: 0, mood: 'Hype', signature: 'Dembow rhythm, synth stabs, vocal hooks', addInstruments: ['Electronic Kit', 'Synthesizer'] },
+    { name: 'Cumbia', description: 'Rolling güira groove, accordion melodies, hip-swaying pulse.', bpmOffset: -5, mood: 'Festive', signature: 'Accordion lines, guacharaca scrape, steady bass', addInstruments: ['Accordion', 'Latin Percussion'] },
+    { name: 'Latin Pop', description: 'Crossover hooks over warm Latin rhythms and bright production.', bpmOffset: +5, mood: 'Sunny', signature: 'Acoustic strums, percussion layers, anthemic choruses', addInstruments: ['Nylon Guitar', 'Backing Vocals'] },
+    { name: 'Merengue', description: 'Breakneck two-step, blazing horns, relentless joy.', bpmOffset: +30, mood: 'Euphoric', signature: 'Fast tambora, saxophone riffs, marching bass', addInstruments: ['Saxophone', 'Latin Percussion'] },
+  ],
+  'Ambient': [
+    { name: 'Cinematic', description: 'Sweeping orchestral textures built for screen and scale.', bpmOffset: 0, mood: 'Epic', signature: 'String swells, brass braams, deep sub booms', addInstruments: ['Cinematic Strings', 'Sub Boom'] },
+    { name: 'Drone', description: 'Slow-evolving sustained tones, deep immersion.', bpmOffset: -20, mood: 'Meditative', signature: 'Layered drones, slow filter sweeps, no percussion', addInstruments: ['Drone', 'Atmospheric Pad'] },
+    { name: 'Space Ambient', description: 'Vast, weightless pads evoking the cosmos.', bpmOffset: -10, mood: 'Weightless', signature: 'Reverb-soaked pads, twinkling bells, sub drones', addInstruments: ['Atmospheric Pad', 'Music Box'] },
+    { name: 'Neoclassical', description: 'Solo piano and strings, fragile and emotive.', bpmOffset: 0, mood: 'Reflective', signature: 'Felt piano, intimate strings, room ambience', addInstruments: ['Grand Piano', 'Cinematic Strings'] },
+  ],
 };
 
 /** Flat name-only map derived from SUB_STYLE_DATA. */
@@ -221,7 +278,14 @@ export const TILE_SUBSTYLE_FALLBACK: Record<string, string> = {
   'Synth-Pop': 'Pop',
   'Bossa Nova': 'Jazz',
   'Tango': 'Jazz',
-  'Reggaeton': 'Afrobeat',
+  'Bluegrass': 'Folk',
+  'Americana': 'Folk',
+  'Salsa': 'Latin',
+  'Reggaeton': 'Latin',
+  'Bachata': 'Latin',
+  'Cumbia': 'Latin',
+  'Cinematic': 'Ambient',
+  'Lo-Fi': 'Hip-Hop',
 };
 
 // ─── Vibe categories ──────────────────────────────────────────────────────────
@@ -233,6 +297,9 @@ export const VIBE_CATEGORIES: VibeCategory[] = [
   { id: 'soul-jazz', label: 'SOUL / JAZZ', color: '#8b5cf6', summary: 'Expressive harmony, groove depth, and human warmth anchored by feel.', artists: ['Amy Winehouse', 'Anderson .Paak', 'Esperanza Spalding'], moods: ['Warm', 'Playful', 'Intimate'], era: 'Timeless heritage with modern neo-soul finesse', tiles: [{ name: 'Jazz', emoji: '\uD83C\uDFB7', bpm: 165, rhythm: 'Jazz Swing', instruments: ['Saxophone', 'Piano', 'Double Bass', 'Standard Drum Kit'] }, { name: 'Blues', emoji: '\uD83C\uDFB5', bpm: 75, rhythm: 'Blues', instruments: ['Electric Guitar', 'Piano', 'Standard Drum Kit'] }, { name: 'Soul', emoji: '\u2764\uFE0F', bpm: 80, rhythm: 'Funk', instruments: ['Rhodes', 'Lead Vocals', 'Backing Vocals'] }, { name: 'Funk', emoji: '\uD83D\uDD7A', bpm: 105, rhythm: 'Funk', instruments: ['Electric Guitar', 'Standard Drum Kit', 'Bass Guitar', 'Rhodes'] }, { name: 'Gospel', emoji: '\uD83D\uDE4F', bpm: 85, rhythm: 'Blues', instruments: ['Piano', 'Choir', 'Lead Vocals'] }] },
   { id: 'world', label: 'WORLD', color: '#14b8a6', summary: 'Regional rhythms and acoustic character blended with strong cultural signatures.', artists: ['Buena Vista Social Club', 'Rosalía', 'Fela Kuti'], moods: ['Organic', 'Sunlit', 'Transportive'], era: 'Tradition-informed grooves with global-pop openness', tiles: [{ name: 'Reggae', emoji: '\uD83C\uDF34', bpm: 75, rhythm: 'Reggae', instruments: ['Electric Guitar', 'Standard Drum Kit', 'Bass Guitar'] }, { name: 'Samba', emoji: '\uD83E\uDD41', bpm: 100, rhythm: 'Samba', instruments: ['Latin Percussion', 'Standard Drum Kit'] }, { name: 'Bossa Nova', emoji: '\uD83C\uDFB8', bpm: 130, rhythm: 'Bossa Nova', instruments: ['Acoustic Guitar', 'Double Bass'] }, { name: 'Flamenco', emoji: '\uD83D\uDC83', bpm: 120, rhythm: 'Flamenco', instruments: ['Acoustic Guitar', 'Latin Percussion'] }, { name: 'Tango', emoji: '\uD83C\uDF39', bpm: 120, rhythm: 'Tango', instruments: ['Violin', 'Piano', 'Double Bass'] }] },
   { id: 'pop', label: 'POP', color: '#f59e0b', summary: 'Direct hooks, polished toplines, and wide-audience accessibility.', artists: ['Dua Lipa', 'The Weeknd', 'Caroline Polachek'], moods: ['Bright', 'Catchy', 'Cinematic'], era: '80s sheen to current chart-ready production', tiles: [{ name: 'Pop', emoji: '\u2B50', bpm: 120, rhythm: 'Disco', instruments: ['Synthesizer', 'Electronic Kit', 'Lead Vocals', 'Backing Vocals'] }, { name: 'Indie Pop', emoji: '\uD83C\uDF1F', bpm: 110, rhythm: 'Rock', instruments: ['Acoustic Guitar', 'Electronic Kit', 'Lead Vocals'] }, { name: 'K-Pop', emoji: '\u2728', bpm: 128, rhythm: 'Electronic (4/4)', instruments: ['Synthesizer', 'Electronic Kit', 'Lead Vocals', 'Backing Vocals'] }, { name: 'Synth-Pop', emoji: '\uD83C\uDFB9', bpm: 120, rhythm: 'Disco', instruments: ['Synthesizer', 'Sampler', 'Lead Vocals'] }] },
+  { id: 'country-folk', label: 'COUNTRY / FOLK', color: '#d97706', summary: 'Acoustic storytelling, roots rhythms, and heartfelt vocal character.', artists: ['Chris Stapleton', 'Zach Bryan', 'The Lumineers'], moods: ['Earthy', 'Nostalgic', 'Heartfelt'], era: 'Front-porch tradition meets modern Americana', tiles: [{ name: 'Country', emoji: '\uD83E\uDD20', bpm: 110, rhythm: 'Country', instruments: ['Acoustic Guitar', 'Pedal Steel Guitar', 'Standard Drum Kit', 'Lead Vocals'] }, { name: 'Folk', emoji: '\uD83C\uDF3E', bpm: 95, rhythm: 'Folk', instruments: ['Acoustic Guitar', 'Banjo', 'Lead Vocals'] }, { name: 'Bluegrass', emoji: '\uD83E\uDE95', bpm: 140, rhythm: 'Bluegrass', instruments: ['Banjo', 'Fiddle', 'Mandolin', 'Double Bass'] }, { name: 'Americana', emoji: '\uD83D\uDEE3\uFE0F', bpm: 100, rhythm: 'Folk', instruments: ['Slide Guitar', 'Acoustic Guitar', 'Standard Drum Kit'] }] },
+  { id: 'latin', label: 'LATIN', color: '#e11d48', summary: 'Clave-driven grooves, vibrant horns, and irresistible dance energy.', artists: ['Bad Bunny', 'Marc Anthony', 'Rosalía'], moods: ['Fiery', 'Romantic', 'Festive'], era: 'Tropical heritage with reggaeton-era crossover', tiles: [{ name: 'Salsa', emoji: '\uD83D\uDC83', bpm: 100, rhythm: 'Salsa', instruments: ['Trumpet', 'Piano', 'Timbales', 'Conga'] }, { name: 'Reggaeton', emoji: '\uD83D\uDD25', bpm: 95, rhythm: 'Reggaeton', instruments: ['Electronic Kit', 'Synthesizer', 'Lead Vocals'] }, { name: 'Bachata', emoji: '\uD83C\uDF39', bpm: 130, rhythm: 'Bachata', instruments: ['Nylon Guitar', 'Bongos', 'Bass Guitar'] }, { name: 'Cumbia', emoji: '\uD83C\uDFB6', bpm: 95, rhythm: 'Cumbia', instruments: ['Accordion', 'Latin Percussion', 'Bass Guitar'] }, { name: 'Latin', emoji: '\uD83C\uDF1E', bpm: 110, rhythm: 'Rumba', instruments: ['Nylon Guitar', 'Latin Percussion', 'Backing Vocals'] }] },
+  { id: 'ambient-cinematic', label: 'AMBIENT / CINEMATIC', color: '#0ea5e9', summary: 'Atmospheric textures, slow-evolving pads, and widescreen emotion.', artists: ['Brian Eno', 'Jon Hopkins', 'Hans Zimmer'], moods: ['Meditative', 'Expansive', 'Dreamlike'], era: 'Ambient pioneers through modern cinematic scoring', tiles: [{ name: 'Ambient', emoji: '\uD83C\uDF0C', bpm: 80, rhythm: 'Ambient', instruments: ['Atmospheric Pad', 'Drone', 'Music Box'] }, { name: 'Cinematic', emoji: '\uD83C\uDFAC', bpm: 90, rhythm: 'Cinematic', instruments: ['Cinematic Strings', 'Epic Brass', 'Cinematic Drums', 'Sub Boom'] }, { name: 'Lo-Fi', emoji: '\uD83C\uDF19', bpm: 75, rhythm: 'Hip-Hop', instruments: ['Rhodes', 'Sampler', 'Electronic Kit'] }] },
   { id: 'classical', label: 'CLASSIQUE', color: '#6366f1', summary: 'Composed dynamics, orchestral detail, and cinematic movement over groove-first writing.', artists: ['Max Richter', 'Ólafur Arnalds', 'Hans Zimmer'], moods: ['Elegant', 'Expansive', 'Reflective'], era: 'Classical foundations with modern soundtrack sensibility', tiles: [{ name: 'Orchestral', emoji: '\uD83C\uDFBB', bpm: 100, rhythm: 'Waltz', instruments: ['Violin', 'Viola', 'Cello', 'French Horn', 'Trumpet'] }, { name: 'Baroque', emoji: '\uD83C\uDFBC', bpm: 120, rhythm: 'Waltz', instruments: ['Violin', 'Cello', 'Organ', 'Flute'] }, { name: 'Contemporary', emoji: '\uD83C\uDFB5', bpm: 80, rhythm: 'Waltz', instruments: ['Grand Piano', 'Violin', 'Cello'] }] },
 ];
 
@@ -242,13 +309,19 @@ export const RHYTHM_SUGGESTIONS = [
   'Steady 4/4 pulse', 'Syncopated groove', 'Half-time feel', 'Shuffle',
   'Swing', 'Double-time', 'Triplet feel', 'Polyrhythmic',
   'Laid-back groove', 'Driving pulse', 'Breakbeat', 'Waltz 3/4',
+  'Four-on-the-floor', 'Dembow', 'Clave (son/rumba)', 'Two-step',
+  'One-drop', 'Boom-bap swing', 'Trap hi-hat rolls', 'Motorik (krautrock)',
+  'Second-line groove', 'Galloping rhythm', 'Bossa clave', 'Odd meter (7/8, 5/4)',
 ] as const;
 
 export const NARRATIVE_SUGGESTIONS = [
   'Cinematic build', 'Melancholic introspection', 'Anthemic release',
   'Dark & moody', 'Euphoric energy', 'Nostalgic warmth', 'Aggressive intensity',
   'Dreamy atmosphere', 'Intimate & raw', 'Epic journey', 'Playful & upbeat',
-  'Haunting & ethereal',
+  'Haunting & ethereal', 'Triumphant & bold', 'Bittersweet & tender',
+  'Hypnotic & trance-like', 'Romantic & sensual', 'Rebellious & defiant',
+  'Hopeful & uplifting', 'Mysterious & noir', 'Festive & celebratory',
+  'Reflective & cinematic', 'Gritty & streetwise',
 ] as const;
 
 // ─── Pure helper functions ────────────────────────────────────────────────────

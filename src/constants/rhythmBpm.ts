@@ -24,4 +24,13 @@ export const RHYTHM_BPM: Record<string, number> = {
   'Flamenco':         120,
   'Electronic (4/4)': 128,
   'Breakbeat':        140,
+  'Country':          110,
+  'Folk':              95,
+  'Bluegrass':        140,
+  'Salsa':            100,
+  'Bachata':          130,
+  'Reggaeton':         95,
+  'Merengue':         140,
+  'Ambient':           80,
+  'Cinematic':         90,
 };

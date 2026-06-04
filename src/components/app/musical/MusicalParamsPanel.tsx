@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Activity, Guitar, Drum, ListMusic, Play, Pause, Music, ChevronDown, Check, Sparkles, Compass, Copy } from '../../ui/icons';
+import { Activity, Guitar, Drum, ListMusic, Play, Pause, Music, ChevronDown, Check, Sparkles, Compass, Copy, Search, X } from '../../ui/icons';
 import { Tooltip } from '../../ui/Tooltip';
 import { useTranslation } from '../../../i18n';
 import { useMetronome } from '../../../hooks/useMetronome';
@@ -40,6 +40,7 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
   const AMBER_MUTED = '#c4b5fd';
 
   const [expandedFamily, setExpandedFamily] = useState<string | null>(null);
+  const [instrumentQuery, setInstrumentQuery] = useState('');
   const [selectedVibeTile, setSelectedVibeTile] = useState<VibeTile | null>(null);
   const [selectedSubStyle, setSelectedSubStyle] = useState<string>('');
   const [isRhythmDropdownOpen, setIsRhythmDropdownOpen] = useState(false);
@@ -64,6 +65,29 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
     const idx = current.indexOf(instrument);
     setInstrumentation(idx >= 0 ? current.filter(i => i !== instrument).join(', ') : [...current, instrument].join(', '));
   }, [instrumentation, setInstrumentation]);
+
+  const removeInstrument = useCallback((instrument: string) => {
+    setInstrumentation(parseInstrumentation(instrumentation).filter(i => i !== instrument).join(', '));
+  }, [instrumentation, setInstrumentation]);
+
+  const clearInstruments = useCallback(() => setInstrumentation(''), [setInstrumentation]);
+
+  // Filter instrument families by the live search query. An empty query keeps
+  // every family; a non-empty query keeps only matching instruments (and the
+  // families that contain at least one match), and is matched case-insensitively
+  // against the family label too so "perc" reveals the whole Percussion family.
+  const normalizedQuery = instrumentQuery.trim().toLowerCase();
+  const filteredFamilies = normalizedQuery
+    ? INSTRUMENT_FAMILIES
+        .map(family => {
+          const familyMatches = family.label.toLowerCase().includes(normalizedQuery);
+          const instruments = familyMatches
+            ? family.instruments
+            : family.instruments.filter(i => i.name.toLowerCase().includes(normalizedQuery));
+          return { ...family, instruments };
+        })
+        .filter(family => family.instruments.length > 0)
+    : INSTRUMENT_FAMILIES;
 
   const handleVibeTileSelect = useCallback((tile: VibeTile) => {
     if (selectedVibeTile?.name === tile.name) { setSelectedVibeTile(null); setSelectedSubStyle(''); return; }
@@ -368,11 +392,61 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
             <div className="flex items-center gap-2">
               <Guitar className="w-4 h-4" style={{ color: AMBER_PRIMARY }} />
               <label className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.instruments ?? 'INSTRUMENTS'}</label>
-              {selectedInstruments.length > 0 && <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5" style={{ borderRadius: '6px 2px 6px 2px', background: `${AMBER_PRIMARY}22`, color: AMBER_PRIMARY }}>{selectedInstruments.length}</span>}
+              {selectedInstruments.length > 0 && (
+                <>
+                  <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5" style={{ borderRadius: '6px 2px 6px 2px', background: `${AMBER_PRIMARY}22`, color: AMBER_PRIMARY }}>{selectedInstruments.length}</span>
+                  <button
+                    onClick={clearInstruments}
+                    className="ux-interactive text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 border text-[var(--text-secondary)] border-[var(--border-color)] hover:text-[var(--text-primary)] transition-colors"
+                    style={{ borderRadius: '6px 2px 6px 2px' }}
+                  >{m.clearAll ?? 'Clear all'}</button>
+                </>
+              )}
             </div>
+
+            {/* Selected instruments — removable chips so users can see and prune
+                their full instrumentation at a glance without scanning families. */}
+            {selectedInstruments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {selectedInstruments.map(name => (
+                  <span key={name} className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium border" style={{ borderRadius: '8px 2px 8px 2px', background: `${AMBER_PRIMARY}1f`, borderColor: `${AMBER_PRIMARY}55`, color: AMBER_PRIMARY }}>
+                    <span>{name}</span>
+                    <button onClick={() => removeInstrument(name)} aria-label={`${m.removeInstrument ?? 'Remove'} ${name}`} className="ux-interactive inline-flex items-center justify-center hover:opacity-70 transition-opacity">
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Instrument search — filters all families at once so the expanded
+                instrument library stays navigable. */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--text-secondary)]" aria-hidden="true" />
+              <input
+                type="text"
+                value={instrumentQuery}
+                onChange={e => setInstrumentQuery(e.target.value)}
+                placeholder={m.searchInstruments ?? 'Search instruments...'}
+                aria-label={m.searchInstruments ?? 'Search instruments'}
+                className="w-full bg-transparent border border-[var(--border-color)] pl-8 pr-7 py-1.5 text-[11px] text-[var(--text-primary)] placeholder-[var(--text-secondary)] lcars-glow-focus transition-colors"
+                style={{ borderRadius: '10px 3px 10px 3px' }}
+              />
+              {instrumentQuery && (
+                <button onClick={() => setInstrumentQuery('')} aria-label={m.clearSearch ?? 'Clear search'} className="ux-interactive absolute right-2 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
             <div className="space-y-1.5">
-              {INSTRUMENT_FAMILIES.map(family => {
-                const isExpanded = expandedFamily === family.label;
+              {filteredFamilies.length === 0 && (
+                <p className="text-[10px] text-[var(--text-secondary)] opacity-70 px-1 py-2">{m.noInstrumentsFound ?? 'No instruments match your search.'}</p>
+              )}
+              {filteredFamilies.map(family => {
+                // While searching, force-expand every matching family so results
+                // are visible without an extra click.
+                const isExpanded = normalizedQuery ? true : expandedFamily === family.label;
                 const familySelected = family.instruments.filter(i => selectedInstruments.includes(i.name));
                 return (
                   <div key={family.label}>

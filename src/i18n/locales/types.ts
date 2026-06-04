@@ -323,6 +323,16 @@ export interface Translations {
     metronomeStop: string;
     instruments?: string;
     instrumentsPlaceholder?: string;
+    /** Placeholder for the instrument search field */
+    searchInstruments?: string;
+    /** aria-label for clearing the instrument search field */
+    clearSearch?: string;
+    /** Shown when no instruments match the search query */
+    noInstrumentsFound?: string;
+    /** Button label to clear all selected instruments */
+    clearAll?: string;
+    /** aria-label prefix for removing a selected instrument chip */
+    removeInstrument?: string;
     rhythmPresets?: string;
     vibeBoard?: string;
     vibeBoardDescription?: string;

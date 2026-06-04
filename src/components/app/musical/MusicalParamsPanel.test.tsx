@@ -62,4 +62,58 @@ describe('MusicalParamsPanel', () => {
     expect(screen.getByRole('button', { name: 'Shaker' })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Tubular Bells/i })).toBeTruthy();
   });
+
+  it('filters instruments across families via the search field', () => {
+    render(
+      <LanguageProvider>
+        <MusicalParamsPanel
+          genre=""
+          setGenre={vi.fn()}
+          tempo={120}
+          setTempo={vi.fn()}
+          instrumentation=""
+          setInstrumentation={vi.fn()}
+          rhythm=""
+          setRhythm={vi.fn()}
+          narrative=""
+          setNarrative={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText(/Search instruments/i), { target: { value: 'sitar' } });
+
+    // Matching instrument is auto-revealed without expanding its family.
+    expect(screen.getByRole('button', { name: 'Sitar' })).toBeTruthy();
+    // Non-matching instruments are filtered out.
+    expect(screen.queryByRole('button', { name: 'Trumpet' })).toBeNull();
+  });
+
+  it('shows selected instruments as removable chips and clears them all', () => {
+    const setInstrumentation = vi.fn();
+    render(
+      <LanguageProvider>
+        <MusicalParamsPanel
+          genre=""
+          setGenre={vi.fn()}
+          tempo={120}
+          setTempo={vi.fn()}
+          instrumentation="Violin, Cello"
+          setInstrumentation={setInstrumentation}
+          rhythm=""
+          setRhythm={vi.fn()}
+          narrative=""
+          setNarrative={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+
+    // Removing a single chip keeps the rest of the selection.
+    fireEvent.click(screen.getByRole('button', { name: /Remove Violin/i }));
+    expect(setInstrumentation).toHaveBeenCalledWith('Cello');
+
+    // Clear all wipes the instrumentation string.
+    fireEvent.click(screen.getByRole('button', { name: /Clear all/i }));
+    expect(setInstrumentation).toHaveBeenCalledWith('');
+  });
 });
