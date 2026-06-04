@@ -450,7 +450,7 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
                 const familySelected = family.instruments.filter(i => selectedInstruments.includes(i.name));
                 return (
                   <div key={family.label}>
-                    <button onClick={() => setExpandedFamily(isExpanded ? null : family.label)}
+                    <button onClick={() => { if (!normalizedQuery) setExpandedFamily(isExpanded ? null : family.label); }}
                       className="ux-interactive w-full flex items-center gap-2 px-2.5 py-1.5 text-[10px] font-medium tracking-wide border text-left"
                       style={familySelected.length > 0 ? { borderRadius: '10px 3px 10px 3px', background: `${AMBER_PRIMARY}1a`, borderColor: `${AMBER_PRIMARY}55`, color: AMBER_PRIMARY } : { borderRadius: '10px 3px 10px 3px', background: 'transparent', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
                     >
