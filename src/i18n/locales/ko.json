@@ -25,6 +25,7 @@
   "ribbon": {
     "lyrics": "가사",
     "musical": "음악",
+    "player": "플레이어",
     "similarity": "유사도",
     "load_import": "불러오기 / 가져오기",
     "save_export": "저장 / 내보내기",

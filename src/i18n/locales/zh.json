@@ -26,6 +26,7 @@
   "ribbon": {
     "lyrics": "歌词",
     "musical": "音乐",
+    "player": "播放器",
     "similarity": "相似度",
     "load_import": "加载 / 导入",
     "save_export": "保存 / 导出",

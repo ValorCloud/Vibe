@@ -46,6 +46,7 @@
   "ribbon": {
     "lyrics": "PAROLES",
     "musical": "MUSIQUE",
+    "player": "LECTEUR",
     "similarity": "Similarité",
     "load_import": "Charger / Importer",
     "save_export": "Enregistrer / Exporter",

@@ -22,6 +22,7 @@
   "ribbon": {
     "lyrics": "TEXTE",
     "musical": "MUSIK",
+    "player": "Player",
     "similarity": "Ähnlichkeit",
     "load_import": "Laden / Importieren",
     "save_export": "Speichern / Exportieren",

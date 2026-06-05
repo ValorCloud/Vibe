@@ -48,10 +48,11 @@
   "ribbon": {
     "lyrics": "LYRICS",
     "musical": "MUSICAL",
+    "player": "PLAYER",
     "similarity": "Similarity",
     "load_import": "Load / Import",
     "save_export": "Save / Export",
-    "versions": "Lyrics versions",
+    "versions": "Version Management",
     "undo": "Undo",
     "redo": "Redo",
     "reset": "Reset",
@@ -78,7 +79,7 @@
     "mode": "Mode",
     "tools": "Tools",
     "app": "Application",
-    "newSong": "New Song",
+    "newSong": "Imagine a Song",
     "about": "About",
     "sponsor": "Sponsor"
   },

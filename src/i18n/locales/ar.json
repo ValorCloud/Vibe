@@ -22,6 +22,7 @@
   "ribbon": {
     "lyrics": "الكلمات",
     "musical": "موسيقى",
+    "player": "مشغل",
     "similarity": "التشابه",
     "load_import": "تحميل / استيراد",
     "save_export": "حفظ / تصدير",
