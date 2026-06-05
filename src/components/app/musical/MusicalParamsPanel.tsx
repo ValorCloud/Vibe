@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Activity, Guitar, Drum, ListMusic, Play, Pause, Music, ChevronDown, Check, Sparkles, Compass, Copy, Search, X } from '../../ui/icons';
 import { Tooltip } from '../../ui/Tooltip';
 import { useTranslation } from '../../../i18n';
@@ -58,7 +58,7 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
   const bpmValue = tempo || 120;
   const metronome = useMetronome(bpmValue);
   const bpmPercent = Math.min(100, Math.max(0, ((bpmValue - 40) / (220 - 40)) * 100));
-  const selectedInstruments = parseInstrumentation(instrumentation);
+  const selectedInstruments = useMemo(() => parseInstrumentation(instrumentation), [instrumentation]);
 
   const toggleInstrument = useCallback((instrument: string) => {
     const current = parseInstrumentation(instrumentation);
@@ -77,17 +77,19 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
   // families that contain at least one match), and is matched case-insensitively
   // against the family label too so "perc" reveals the whole Percussion family.
   const normalizedQuery = instrumentQuery.trim().toLowerCase();
-  const filteredFamilies = normalizedQuery
-    ? INSTRUMENT_FAMILIES
-        .map(family => {
-          const familyMatches = family.label.toLowerCase().includes(normalizedQuery);
-          const instruments = familyMatches
-            ? family.instruments
-            : family.instruments.filter(i => i.name.toLowerCase().includes(normalizedQuery));
-          return { ...family, instruments };
-        })
-        .filter(family => family.instruments.length > 0)
-    : INSTRUMENT_FAMILIES;
+  const filteredFamilies = useMemo(() => (
+    normalizedQuery
+      ? INSTRUMENT_FAMILIES
+          .map(family => {
+            const familyMatches = family.label.toLowerCase().includes(normalizedQuery);
+            const instruments = familyMatches
+              ? family.instruments
+              : family.instruments.filter(i => i.name.toLowerCase().includes(normalizedQuery));
+            return { ...family, instruments };
+          })
+          .filter(family => family.instruments.length > 0)
+      : INSTRUMENT_FAMILIES
+  ), [normalizedQuery]);
 
   const handleVibeTileSelect = useCallback((tile: VibeTile) => {
     if (selectedVibeTile?.name === tile.name) { setSelectedVibeTile(null); setSelectedSubStyle(''); return; }
@@ -397,6 +399,7 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
                   <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5" style={{ borderRadius: '6px 2px 6px 2px', background: `${AMBER_PRIMARY}22`, color: AMBER_PRIMARY }}>{selectedInstruments.length}</span>
                   <button
                     onClick={clearInstruments}
+                    aria-label={m.clearAllInstruments ?? 'Clear all instruments'}
                     className="ux-interactive text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 border text-[var(--text-secondary)] border-[var(--border-color)] hover:text-[var(--text-primary)] transition-colors"
                     style={{ borderRadius: '6px 2px 6px 2px' }}
                   >{m.clearAll ?? 'Clear all'}</button>

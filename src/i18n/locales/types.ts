@@ -331,6 +331,8 @@ export interface Translations {
     noInstrumentsFound?: string;
     /** Button label to clear all selected instruments */
     clearAll?: string;
+    /** aria-label for the clear-all-instruments button (more descriptive than the visible label) */
+    clearAllInstruments?: string;
     /** aria-label prefix for removing a selected instrument chip */
     removeInstrument?: string;
     rhythmPresets?: string;

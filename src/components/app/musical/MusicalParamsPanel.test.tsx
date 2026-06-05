@@ -116,4 +116,66 @@ describe('MusicalParamsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: /Clear all/i }));
     expect(setInstrumentation).toHaveBeenCalledWith('');
   });
+
+  it('gives the clear-all instruments button a descriptive aria-label', () => {
+    render(
+      <LanguageProvider>
+        <MusicalParamsPanel
+          genre=""
+          setGenre={vi.fn()}
+          tempo={120}
+          setTempo={vi.fn()}
+          instrumentation="Violin, Cello"
+          setInstrumentation={vi.fn()}
+          rhythm=""
+          setRhythm={vi.fn()}
+          narrative=""
+          setNarrative={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+
+    const clearAll = screen.getByRole('button', { name: /Clear all instruments/i });
+    expect(clearAll.getAttribute('aria-label')).toBe('Clear all instruments');
+  });
+
+  it('expands families on click and does not persist search-driven auto-expansion', () => {
+    render(
+      <LanguageProvider>
+        <MusicalParamsPanel
+          genre=""
+          setGenre={vi.fn()}
+          tempo={120}
+          setTempo={vi.fn()}
+          instrumentation=""
+          setInstrumentation={vi.fn()}
+          rhythm=""
+          setRhythm={vi.fn()}
+          narrative=""
+          setNarrative={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+
+    // Families render collapsed, so individual instruments are hidden.
+    expect(screen.queryByRole('button', { name: 'Trumpet' })).toBeNull();
+
+    // Clicking a family header toggles it open…
+    const brassHeader = screen.getByRole('button', { name: /Brass/i });
+    fireEvent.click(brassHeader);
+    expect(screen.getByRole('button', { name: 'Trumpet' })).toBeTruthy();
+
+    // …and closed again.
+    fireEvent.click(brassHeader);
+    expect(screen.queryByRole('button', { name: 'Trumpet' })).toBeNull();
+
+    // Searching force-expands matching families without mutating expandedFamily,
+    // so clearing the query collapses everything back (the expandedFamily fix).
+    const search = screen.getByLabelText(/Search instruments/i);
+    fireEvent.change(search, { target: { value: 'sitar' } });
+    expect(screen.getByRole('button', { name: 'Sitar' })).toBeTruthy();
+
+    fireEvent.change(search, { target: { value: '' } });
+    expect(screen.queryByRole('button', { name: 'Sitar' })).toBeNull();
+  });
 });
