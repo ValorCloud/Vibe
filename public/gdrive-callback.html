@@ -20,10 +20,27 @@
       msg.error = params['error'] || 'NO_TOKEN';
     }
 
-    if (window.opener) {
-      window.opener.postMessage(msg, window.location.origin);
+    // Check if window.opener or window.parent exists before posting message
+    // window.opener is used for popup auth, window.parent for iframe auth
+    var target = window.opener || window.parent;
+    if (target && target !== window) {
+      try {
+        target.postMessage(msg, window.location.origin);
+      } catch (e) {
+        // PostMessage failed - log to console for debugging
+        console.error('[gdrive-callback] Failed to post message:', e);
+      }
+    } else {
+      // No valid parent/opener - show error in console and document
+      console.error('[gdrive-callback] No window.opener or window.parent available');
+      document.body.innerHTML = '<div style="padding:20px;font-family:sans-serif;color:#c00;">Authentication failed: unable to communicate with parent window. Please try again or check your popup blocker settings.</div>';
     }
-    window.close();
+
+    // Only close if we have a valid opener (popup case)
+    // Don't close for iframe case (parent !== window but opener is null)
+    if (window.opener) {
+      window.close();
+    }
   })();
 </script>
 </body>

@@ -214,14 +214,30 @@ function popupSignIn(scope: string, preOpenedWindow: Window | null): Promise<str
     // and messageHandler fire in the same tick (race condition on popup.close).
     let settled = false;
 
+    const POPUP_TIMEOUT_MS = 90_000; // 90 seconds timeout for popup auth
+    let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
     const closedCheck = setInterval(() => {
       if (!popup.closed) return;
       if (settled) { clearInterval(closedCheck); return; }
       settled = true;
       clearInterval(closedCheck);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
       window.removeEventListener('message', messageHandler);
       reject(new Error('GDRIVE_AUTH_CANCELLED'));
     }, 500);
+
+    // Add timeout to catch cases where popup doesn't close or communicate
+    timeoutTimer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      clearInterval(closedCheck);
+      window.removeEventListener('message', messageHandler);
+      if (!popup.closed) {
+        try { popup.close(); } catch { /* ignore */ }
+      }
+      reject(new Error('GDRIVE_AUTH_TIMEOUT: Authentication took too long. Please check your popup blocker settings and try again.'));
+    }, POPUP_TIMEOUT_MS);
 
     const messageHandler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
@@ -231,6 +247,7 @@ function popupSignIn(scope: string, preOpenedWindow: Window | null): Promise<str
       settled = true;
 
       clearInterval(closedCheck);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
       window.removeEventListener('message', messageHandler);
 
       if (data.error || !data.access_token) {
@@ -274,6 +291,21 @@ export async function signIn(write = false): Promise<string> {
   // On iOS Safari, window.open() is only allowed synchronously during a
   // user-gesture handler. We open about:blank now and redirect later if needed.
   const preOpenedWindow = window.open('about:blank', 'GDriveAuth', 'width=520,height=640,toolbar=0,scrollbars=1');
+
+  // Check if popup was blocked immediately
+  if (preOpenedWindow === null) {
+    throw new Error('GDRIVE_POPUP_BLOCKED: Popup was blocked by the browser. Please allow popups for this site and try again.');
+  }
+
+  // Verify the popup is actually accessible (some browsers return a non-null but unusable window)
+  try {
+    // Try to set a property to verify we have access
+    void preOpenedWindow.document;
+  } catch (e) {
+    // Cross-origin or blocked - close and report error
+    try { preOpenedWindow.close(); } catch { /* ignore */ }
+    throw new Error('GDRIVE_POPUP_BLOCKED: Unable to access popup window. Please check your popup blocker settings.');
+  }
 
   // 1. Try silent refresh
   try {
