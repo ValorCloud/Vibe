@@ -182,6 +182,9 @@ function silentRefresh(scope: string): Promise<string> {
  * once the URL is built. If the pre-opened handle is null (truly blocked),
  * we throw GDRIVE_POPUP_BLOCKED as before.
  *
+ * Security: event.source is checked against the popup handle to prevent any
+ * same-origin frame from injecting a spoofed GDRIVE_TOKEN message.
+ *
  * @param scope   OAuth2 scope string.
  * @param preOpenedWindow  A pre-opened window handle obtained synchronously
  *                         in the user-gesture context. May be null if the
@@ -241,6 +244,8 @@ function popupSignIn(scope: string, preOpenedWindow: Window | null): Promise<str
 
     const messageHandler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
+      // Guard against spoofed messages from other same-origin frames.
+      if (event.source !== popup) return;
       const data = event.data as { type?: string; access_token?: string; expires_in?: number; error?: string };
       if (data.type !== 'GDRIVE_TOKEN') return;
       if (settled) return;
@@ -282,7 +287,7 @@ function popupSignIn(scope: string, preOpenedWindow: Window | null): Promise<str
  * Throws GDRIVE_AUTH_CANCELLED | GDRIVE_POPUP_BLOCKED on user abort.
  */
 export async function signIn(write = false): Promise<string> {
-  if (isTokenValid()) return _cachedToken!;
+  if (isTokenValid()) return _cachedToken as string;
   if (!CLIENT_ID) throw new Error('[googleDriveService] VITE_GDRIVE_CLIENT_ID is not set.');
 
   const scope = write ? SCOPE_WRITE : SCOPE_READ;
@@ -292,26 +297,16 @@ export async function signIn(write = false): Promise<string> {
   // user-gesture handler. We open about:blank now and redirect later if needed.
   const preOpenedWindow = window.open('about:blank', 'GDriveAuth', 'width=520,height=640,toolbar=0,scrollbars=1');
 
-  // Check if popup was blocked immediately
+  // null means the browser hard-blocked the popup.
   if (preOpenedWindow === null) {
     throw new Error('GDRIVE_POPUP_BLOCKED: Popup was blocked by the browser. Please allow popups for this site and try again.');
-  }
-
-  // Verify the popup is actually accessible (some browsers return a non-null but unusable window)
-  try {
-    // Try to set a property to verify we have access
-    void preOpenedWindow.document;
-  } catch (e) {
-    // Cross-origin or blocked - close and report error
-    try { preOpenedWindow.close(); } catch { /* ignore */ }
-    throw new Error('GDRIVE_POPUP_BLOCKED: Unable to access popup window. Please check your popup blocker settings.');
   }
 
   // 1. Try silent refresh
   try {
     const token = await silentRefresh(scope);
     // Silent succeeded — close the pre-opened window without user impact.
-    if (preOpenedWindow && !preOpenedWindow.closed) preOpenedWindow.close();
+    if (!preOpenedWindow.closed) preOpenedWindow.close();
     return token;
   } catch {
     // Silent failed (no active session, interaction_required, timeout) — fall through to popup
