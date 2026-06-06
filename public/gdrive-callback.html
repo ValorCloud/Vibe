@@ -3,29 +3,33 @@
 <head><meta charset="utf-8"><title>Google Drive Auth</title></head>
 <body>
 <script>
-  // Parse the access_token from the URL fragment and postMessage it to the opener.
+  // Parse the authorization code (or error) from the URL query parameters and postMessage it to the opener.
+  // PKCE flow: callback receives ?code=... or ?error=..., not #access_token.
   (function () {
-    var hash = window.location.hash.slice(1);
+    var search = window.location.search.slice(1);
     var params = {};
-    hash.split('&').forEach(function (pair) {
+    search.split('&').forEach(function (pair) {
       var parts = pair.split('=');
       if (parts.length === 2) params[decodeURIComponent(parts[0])] = decodeURIComponent(parts[1]);
     });
 
-    var msg = { type: 'GDRIVE_TOKEN' };
-    if (params['access_token']) {
-      msg.access_token = params['access_token'];
-      msg.expires_in   = parseInt(params['expires_in'] || '3600', 10);
+    var msg = { type: 'GDRIVE_CODE' };
+    if (params['code']) {
+      msg.code = params['code'];
     } else {
-      msg.error = params['error'] || 'NO_TOKEN';
+      msg.error = params['error'] || 'NO_CODE';
     }
+
+    // Validate origin before posting message (CSP: only post to same origin)
+    var expectedOrigin = window.location.origin;
 
     // Check if window.opener or window.parent exists before posting message
     // window.opener is used for popup auth, window.parent for iframe auth
     var target = window.opener || window.parent;
     if (target && target !== window) {
       try {
-        target.postMessage(msg, window.location.origin);
+        // Validate that target origin matches expected origin to prevent token leakage
+        target.postMessage(msg, expectedOrigin);
       } catch (e) {
         // PostMessage failed - log to console for debugging
         console.error('[gdrive-callback] Failed to post message:', e);
