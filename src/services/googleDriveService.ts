@@ -74,25 +74,23 @@ export interface GDriveFile {
 
 let _cachedToken: string | null = null;
 let _tokenExpiry = 0;
-let _cachedScope: string = SCOPE_READ;
 let _proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let _refreshToken: string | null = null;
+/** P2: track active scope to use in proactive silent refresh (avoids scope drift). */
+let _cachedScope: string = SCOPE_READ;
 
 function isTokenValid(): boolean {
   return !!_cachedToken && Date.now() < _tokenExpiry - 60_000;
 }
 
-/**
- * Store an access token with its expiry and the scope it was granted for.
- * The proactive refresh reuses the same scope so a write-scoped session is
- * never silently downgraded to read-only mid-session.
- */
+/** P2: accepts scope so the proactive refresh reuses the same scope as the stored token. */
 function storeToken(token: string, expiresInSeconds: number, scope: string): void {
   _cachedToken = token;
   _tokenExpiry = Date.now() + expiresInSeconds * 1000;
   _cachedScope = scope;
 
   // Proactive silent refresh 5 min before expiry to avoid mid-session 401s.
+  // Uses _cachedScope instead of hardcoded SCOPE_READ to prevent write→read drift.
   if (_proactiveRefreshTimer !== null) clearTimeout(_proactiveRefreshTimer);
   _proactiveRefreshTimer = setTimeout(
     () => { void silentRefresh(_cachedScope).catch(() => {}); },
@@ -103,8 +101,8 @@ function storeToken(token: string, expiresInSeconds: number, scope: string): voi
 export function clearToken(): void {
   _cachedToken = null;
   _tokenExpiry = 0;
-  _cachedScope = SCOPE_READ;
   _refreshToken = null;
+  _cachedScope = SCOPE_READ;
   if (_proactiveRefreshTimer !== null) {
     clearTimeout(_proactiveRefreshTimer);
     _proactiveRefreshTimer = null;
@@ -116,21 +114,18 @@ export function getStoredToken(): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Type guard for postMessage data
+// P3: Type guard for postMessage data — prevents unsafe casts on non-object payloads.
 // ---------------------------------------------------------------------------
 
-/**
- * Narrow event.data to the shape expected by GDRIVE message handlers.
- * Prevents silent failures when event.data is null, a number, or a string
- * (all valid postMessage payloads from other origins or browser extensions).
- */
-function isGDriveMessage(data: unknown): data is {
+type GDriveMessageData = {
   type?: string;
   code?: string;
   access_token?: string;
   expires_in?: number;
   error?: string;
-} {
+};
+
+function isGDriveMessage(data: unknown): data is GDriveMessageData {
   return typeof data === 'object' && data !== null;
 }
 
@@ -167,14 +162,11 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 
 /**
  * Exchange authorization code for access + refresh tokens via Google's /token endpoint.
- * Also calls storeToken() with the resolved scope so the proactive refresh
- * inherits the correct scope (P2 — scope drift fix).
  */
 async function exchangeCodeForToken(
   code: string,
   codeVerifier: string,
-  redirectUri: string,
-  scope: string,
+  redirectUri: string
 ): Promise<{ access_token: string; expires_in: number; refresh_token?: string }> {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -195,10 +187,7 @@ async function exchangeCodeForToken(
     throw new Error(`Token exchange failed ${res.status}: ${body.slice(0, 200)}`);
   }
 
-  const tokenData = (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string };
-  storeToken(tokenData.access_token, tokenData.expires_in, scope);
-  if (tokenData.refresh_token) _refreshToken = tokenData.refresh_token;
-  return tokenData;
+  return (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string };
 }
 
 // ---------------------------------------------------------------------------
@@ -252,6 +241,7 @@ async function silentRefresh(scope: string): Promise<string> {
 
     const messageHandler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
+      // P3: guard against non-object payloads before property access.
       if (!isGDriveMessage(event.data)) return;
       const data = event.data;
       if (data.type !== 'GDRIVE_CODE') return;
@@ -263,7 +253,10 @@ async function silentRefresh(scope: string): Promise<string> {
         reject(new Error(data.error ?? 'GDRIVE_NO_CODE'));
       } else {
         try {
-          const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri, scope);
+          const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri);
+          // P2: pass scope so storeToken tracks it for proactive refresh.
+          storeToken(tokenData.access_token, tokenData.expires_in, scope);
+          if (tokenData.refresh_token) _refreshToken = tokenData.refresh_token;
           resolve(tokenData.access_token);
         } catch (err) {
           reject(err);
@@ -320,18 +313,18 @@ async function popupSignIn(scope: string, preOpenedWindow: Window | null): Promi
     });
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
+    // Redirect the pre-opened blank window to the actual auth URL.
     preOpenedWindow.location.href = authUrl;
     const popup = preOpenedWindow;
 
     let settled = false;
-
     const POPUP_TIMEOUT_MS = 90_000;
     let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // Consolidated cleanup — single source of truth for all timer/listener teardown.
+    // P4: centralized cleanup — called from all three settlement paths.
     const cleanupPopup = () => {
       clearInterval(closedCheck);
-      if (timeoutTimer) clearTimeout(timeoutTimer);
+      if (timeoutTimer !== null) clearTimeout(timeoutTimer);
       window.removeEventListener('message', messageHandler);
     };
 
@@ -356,6 +349,7 @@ async function popupSignIn(scope: string, preOpenedWindow: Window | null): Promi
     const messageHandler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       if (event.source !== popup) return;
+      // P3: guard against non-object payloads before property access.
       if (!isGDriveMessage(event.data)) return;
       const data = event.data;
       if (data.type !== 'GDRIVE_CODE') return;
@@ -370,7 +364,10 @@ async function popupSignIn(scope: string, preOpenedWindow: Window | null): Promi
       }
 
       try {
-        const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri, scope);
+        const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri);
+        // P2: pass scope so storeToken tracks it for proactive refresh.
+        storeToken(tokenData.access_token, tokenData.expires_in, scope);
+        if (tokenData.refresh_token) _refreshToken = tokenData.refresh_token;
         resolve(tokenData.access_token);
       } catch (err) {
         reject(err);
@@ -406,21 +403,24 @@ export async function signIn(write = false): Promise<string> {
 
   const scope = write ? SCOPE_WRITE : SCOPE_READ;
 
+  // Pre-open a blank popup synchronously inside the user-gesture tick.
   const preOpenedWindow = window.open('about:blank', 'GDriveAuth', 'width=520,height=640,toolbar=0,scrollbars=1');
 
   if (preOpenedWindow === null) {
     throw new Error('GDRIVE_POPUP_BLOCKED: Popup was blocked by the browser. Please allow popups for this site and try again.');
   }
 
+  // 1. Try silent refresh
   try {
     const token = await silentRefresh(scope);
     if (!preOpenedWindow.closed) preOpenedWindow.close();
     return token;
   } catch (err) {
+    // P6: log in dev to ease diagnosis (CSP block, network, etc.) without polluting prod.
     if (import.meta.env.DEV) console.debug('[gdrive] silent refresh failed:', err);
-    // Fall through to interactive popup.
   }
 
+  // 2. Interactive popup — reuse the pre-opened window handle.
   return popupSignIn(scope, preOpenedWindow);
 }
 
@@ -521,7 +521,7 @@ export async function createAudioBlobUrl(fileId: string, token: string): Promise
 
 /**
  * Download file content as text.
- * Uses blob.text() — available in all target environments, no FileReader boilerplate.
+ * For Google Docs, exports as plain text; for binary files uses alt=media.
  */
 export async function downloadFile(fileId: string, token: string): Promise<string> {
   const res = await fetch(
@@ -532,7 +532,8 @@ export async function downloadFile(fileId: string, token: string): Promise<strin
     const body = await res.text().catch(() => '');
     throw new Error(`Drive download ${res.status}: ${body.slice(0, 200)}`);
   }
-  return (await res.blob()).text();
+  // P5: blob.text() replaces FileReader callback — same semantics, no boilerplate.
+  return res.blob().then(blob => blob.text());
 }
 
 // ---------------------------------------------------------------------------
