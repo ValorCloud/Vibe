@@ -19,15 +19,6 @@ function isAudioFile(name: string): boolean {
   return AUDIO_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
 }
 
-async function readBlobAsText(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(blob);
-  });
-}
-
 async function pickDropbox(mode: PickMode, signal?: AbortSignal): Promise<CloudFile | null> {
   if (!DROPBOX_APP_KEY) return null;
   if (mode === 'player') throw new Error('Dropbox folder crawl not yet supported');
@@ -65,8 +56,8 @@ async function pickDropbox(mode: PickMode, signal?: AbortSignal): Promise<CloudF
           if (!file) { resolve(null); return; }
           if (!isLyricsFile(file.name)) { resolve(null); return; }
           const resp = await fetch(file.link);
-          const blob = await resp.blob();
-          const content = await readBlobAsText(blob);
+          // P1: blob.text() remplace FileReader callback — même sémantique, ES2020.
+          const content = await resp.blob().then(b => b.text());
           resolve({ name: file.name, content });
         } catch (err) { reject(err); }
       },

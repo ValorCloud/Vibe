@@ -20,6 +20,7 @@ import {
   PublicClientApplication,
   type Configuration,
 } from '@azure/msal-browser';
+import { logger } from '../utils/logger';
 
 // ─── Types publics ────────────────────────────────────────────────────────────
 
@@ -114,7 +115,9 @@ async function getMsalWriteToken(): Promise<string | null> {
     try {
       const result = await app.acquireTokenPopup({ scopes });
       return result.accessToken;
-    } catch {
+    } catch (err) {
+      // P4: log pour conserver la trace en prod — logger.warn survit hors DEV.
+      logger.warn('[cloudStorage] MSAL acquireTokenPopup fallback failed:', err);
       return null;
     }
   }
