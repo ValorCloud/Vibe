@@ -47,17 +47,42 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
   const [isNarrativeDropdownOpen, setIsNarrativeDropdownOpen] = useState(false);
   const [referencesCopied, setReferencesCopied] = useState(false);
 
-  const selectedCategory = selectedVibeTile ? VIBE_CATEGORIES.find(cat => cat.tiles.some(tile => tile.name === selectedVibeTile.name)) ?? null : null;
-  const selectedAccent = selectedCategory?.color ?? AMBER_PRIMARY;
-  const genreBlueprint = selectedVibeTile ? (selectedSubStyle ? `${selectedVibeTile.name} / ${selectedSubStyle}` : selectedVibeTile.name) : genre;
-  const suggestedSubStyles = selectedVibeTile ? getSubStyleNames(selectedVibeTile.name) : [];
-  const selectedSubStyleEntry = selectedVibeTile && selectedSubStyle
-    ? getSubStyleEntries(selectedVibeTile.name).find(e => e.name === selectedSubStyle) ?? null
-    : null;
+  // Memoize derived values to prevent unnecessary re-renders
+  const selectedCategory = useMemo(
+    () => selectedVibeTile ? VIBE_CATEGORIES.find(cat => cat.tiles.some(tile => tile.name === selectedVibeTile.name)) ?? null : null,
+    [selectedVibeTile]
+  );
 
-  const bpmValue = tempo || 120;
+  const selectedAccent = useMemo(
+    () => selectedCategory?.color ?? AMBER_PRIMARY,
+    [selectedCategory]
+  );
+
+  const genreBlueprint = useMemo(
+    () => selectedVibeTile ? (selectedSubStyle ? `${selectedVibeTile.name} / ${selectedSubStyle}` : selectedVibeTile.name) : genre,
+    [selectedVibeTile, selectedSubStyle, genre]
+  );
+
+  const suggestedSubStyles = useMemo(
+    () => selectedVibeTile ? getSubStyleNames(selectedVibeTile.name) : [],
+    [selectedVibeTile]
+  );
+
+  const selectedSubStyleEntry = useMemo(
+    () => selectedVibeTile && selectedSubStyle
+      ? getSubStyleEntries(selectedVibeTile.name).find(e => e.name === selectedSubStyle) ?? null
+      : null,
+    [selectedVibeTile, selectedSubStyle]
+  );
+
+  // Memoize BPM calculations
+  const bpmValue = useMemo(() => tempo || 120, [tempo]);
+  const bpmPercent = useMemo(
+    () => Math.min(100, Math.max(0, ((bpmValue - 40) / (220 - 40)) * 100)),
+    [bpmValue]
+  );
+
   const metronome = useMetronome(bpmValue);
-  const bpmPercent = Math.min(100, Math.max(0, ((bpmValue - 40) / (220 - 40)) * 100));
   const selectedInstruments = useMemo(() => parseInstrumentation(instrumentation), [instrumentation]);
 
   const toggleInstrument = useCallback((instrument: string) => {
@@ -129,13 +154,14 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
   const handleCopyReferences = useCallback(() => {
     if (!selectedCategory) return;
     const refs = selectedCategory.artists.join(', ');
-    // Use the shared clipboard helper — `navigator.clipboard?.writeText(...).then(...)`
-    // crashes with `TypeError: undefined.then` when `clipboard` is undefined
-    // (non-secure context, sandboxed iframe, older browsers).
-    void copyToClipboard(refs).then((ok) => {
+    // Use the shared clipboard helper — copyToClipboard returns Promise<boolean>
+    // and never rejects, so .then() is safe even in non-secure contexts.
+    copyToClipboard(refs).then((ok) => {
       if (!ok) return;
       setReferencesCopied(true);
       setTimeout(() => setReferencesCopied(false), 1600);
+    }).catch(() => {
+      // copyToClipboard never rejects, but add catch for robustness
     });
   }, [selectedCategory]);
 
@@ -145,10 +171,10 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
       <GBPanel>
         <div className="p-4 space-y-3">
           <div className="flex items-center gap-2">
-            <Music className="w-4 h-4" style={{ color: AMBER_PRIMARY }} />
+            <Music className="w-4 h-4" style={{ color: AMBER_PRIMARY }} aria-hidden="true" />
             <label className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.vibeBoard ?? 'VIBE BOARD'}</label>
             {selectedVibeTile && (
-              <span className="ml-auto flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5" style={{ borderRadius: '8px 2px 8px 2px', background: `${selectedAccent}22`, color: selectedAccent }}>
+              <span className="ml-auto flex items-center gap-1.5 text-[10px] font-medium px-2 py-0.5" style={{ borderRadius: '8px 2px 8px 2px', background: `${selectedAccent}22`, color: selectedAccent }} role="status" aria-live="polite">
                 {selectedVibeTile.emoji} {genreBlueprint}
               </span>
             )}
@@ -172,11 +198,13 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
                         >
                           <button onClick={() => handleVibeTileSelect(tile)}
                             className="ux-interactive flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-medium tracking-wide border"
+                            aria-pressed={isSelected}
+                            aria-label={`${isSelected ? 'Deselect' : 'Select'} ${tile.name} genre`}
                             style={isSelected
                               ? { borderRadius: '12px 4px 12px 4px', background: `${category.color}22`, borderColor: category.color, color: category.color, boxShadow: `0 0 8px ${category.color}55`, transform: 'scale(1.04)' }
                               : { borderRadius: '12px 4px 12px 4px', background: 'transparent', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
                           >
-                            <span>{tile.emoji}</span><span>{tile.name}</span>
+                            <span aria-hidden="true">{tile.emoji}</span><span>{tile.name}</span>
                           </button>
                         </Tooltip>
                       );
@@ -207,6 +235,8 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
                       <button
                         onClick={() => handleSubStyleSelect(entry.name)}
                         className="ux-interactive w-full text-left border px-3 py-2.5"
+                        aria-pressed={isSelected}
+                        aria-label={`${isSelected ? 'Deselect' : 'Select'} ${entry.name} sub-style`}
                         style={isSelected
                           ? { borderRadius: '12px 4px 12px 4px', background: `${selectedAccent}33`, borderColor: selectedAccent, color: 'var(--text-primary)', boxShadow: `0 0 10px ${selectedAccent}44` }
                           : { borderRadius: '12px 4px 12px 4px', background: 'transparent', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
@@ -296,37 +326,45 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
           <div className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Activity className="w-4 h-4" style={{ color: AMBER_PRIMARY }} />
-                <label className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.tempo}</label>
+                <Activity className="w-4 h-4" style={{ color: AMBER_PRIMARY }} aria-hidden="true" />
+                <label htmlFor="tempo-input" className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.tempo}</label>
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center justify-center px-2 py-1 text-sm font-mono font-bold border transition-all"
+                  role="status"
+                  aria-live="polite"
+                  aria-label={`Current tempo: ${bpmValue} beats per minute`}
                   style={metronome.isBeat
                     ? { borderRadius: '8px 2px 8px 2px', color: AMBER_PRIMARY, borderColor: AMBER_PRIMARY, boxShadow: `0 0 8px ${AMBER_PRIMARY}88`, background: `${AMBER_PRIMARY}22` }
                     : { borderRadius: '8px 2px 8px 2px', color: 'var(--text-primary)', borderColor: 'var(--border-color)', background: 'transparent' }}>
                   {bpmValue}
                 </span>
-                <input type="number" value={tempo} onChange={e => setTempo(parseInt(e.target.value, 10) || 120)} min="40" max="220"
+                <input id="tempo-input" type="number" value={tempo} onChange={e => setTempo(parseInt(e.target.value, 10) || 120)} min="40" max="220"
+                  aria-label="Tempo in beats per minute"
                   className="w-16 bg-transparent border border-[var(--border-color)] px-2 py-1 text-sm text-center text-[var(--text-primary)] lcars-glow-focus transition-colors"
                   style={{ borderRadius: '8px 2px 8px 2px' }}
                 />
-                <span className="text-xs text-[var(--text-secondary)]">BPM</span>
+                <span className="text-xs text-[var(--text-secondary)]" aria-hidden="true">BPM</span>
                 <button onClick={metronome.toggle}
+                  aria-label={metronome.isPlaying ? 'Stop metronome' : 'Start metronome'}
+                  aria-pressed={metronome.isPlaying}
                   className={`ux-interactive flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-medium tracking-wide border ${metronome.isPlaying ? 'border-transparent metronome-active' : 'border-[var(--border-color)] text-[var(--text-secondary)]'}`}
                   style={metronome.isPlaying ? { borderRadius: '10px 3px 10px 3px', background: AMBER_PRIMARY, borderColor: AMBER_PRIMARY, color: '#000' } : { borderRadius: '10px 3px 10px 3px' }}
                 >
-                  {metronome.isPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                  {metronome.isPlaying ? <Pause className="w-3 h-3" aria-hidden="true" /> : <Play className="w-3 h-3" aria-hidden="true" />}
                   <span className="hidden sm:inline">{m.metronome ?? 'Metronome'}</span>
                 </button>
               </div>
             </div>
-            <div className="relative h-2 bg-[var(--border-color)] rounded-full overflow-hidden">
-              <div className="absolute left-0 top-0 h-full rounded-full transition-all" style={{ width: `${bpmPercent}%`, background: AMBER_PRIMARY }} />
+            <div className="relative h-2 bg-[var(--border-color)] rounded-full overflow-hidden" role="presentation">
+              <div className="absolute left-0 top-0 h-full rounded-full transition-all" style={{ width: `${bpmPercent}%`, background: AMBER_PRIMARY }} aria-hidden="true" />
             </div>
-            <input type="range" min="40" max="220" value={bpmValue} onChange={e => setTempo(parseInt(e.target.value, 10) || 120)} className="w-full h-2 opacity-0 cursor-pointer -mt-4 relative z-10" />
+            <input type="range" min="40" max="220" value={bpmValue} onChange={e => setTempo(parseInt(e.target.value, 10) || 120)} className="w-full h-2 opacity-0 cursor-pointer -mt-4 relative z-10" aria-label="Tempo slider" />
             <div className="flex flex-wrap gap-1.5">
               {BPM_PRESETS.map(({ label, value }) => (
                 <button key={value} onClick={() => setTempo(value)}
+                  aria-label={`Set tempo to ${label}`}
+                  aria-pressed={tempo === value}
                   className={`ux-interactive px-2.5 py-1 text-[10px] font-medium tracking-wide border ${tempo === value ? 'border-transparent' : 'bg-transparent text-[var(--text-secondary)] border-[var(--border-color)]'}`}
                   style={tempo === value ? { borderRadius: '8px 2px 8px 2px', background: AMBER_PRIMARY, borderColor: AMBER_PRIMARY, color: '#000' } : { borderRadius: '8px 2px 8px 2px' }}
                 >{label}</button>
@@ -335,26 +373,30 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
             {/* Rhythm & Groove */}
             <div className="pt-3 border-t border-[var(--border-color)] space-y-2">
               <div className="flex items-center gap-2">
-                <Drum className="w-3.5 h-3.5" style={{ color: AMBER_PRIMARY }} />
-                <label className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.rhythm}</label>
+                <Drum className="w-3.5 h-3.5" style={{ color: AMBER_PRIMARY }} aria-hidden="true" />
+                <label htmlFor="rhythm-textarea" className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.rhythm}</label>
                 <button
                   onClick={() => setIsRhythmDropdownOpen(!isRhythmDropdownOpen)}
+                  aria-label={isRhythmDropdownOpen ? 'Hide rhythm suggestions' : 'Show rhythm suggestions'}
+                  aria-expanded={isRhythmDropdownOpen}
                   className="ml-auto p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isRhythmDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isRhythmDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
               </div>
               {isRhythmDropdownOpen && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5" role="list">
                   {RHYTHM_SUGGESTIONS.map(s => (
                     <button key={s} onClick={() => { setRhythm(rhythm ? `${rhythm}, ${s}` : s); setIsRhythmDropdownOpen(false); }}
+                      aria-label={`Add ${s} to rhythm`}
                       className="ux-interactive px-2 py-0.5 text-[9px] font-medium tracking-wide border bg-transparent text-[var(--text-secondary)] border-[var(--border-color)] hover:border-[var(--accent-color)]/40 hover:text-[var(--text-primary)] transition-colors"
                       style={{ borderRadius: '8px 2px 8px 2px' }}
                     >{s}</button>
                   ))}
                 </div>
               )}
-              <textarea value={rhythm} onChange={e => setRhythm(e.target.value)} placeholder={m.rhythmPlaceholder} rows={2}
+              <textarea id="rhythm-textarea" value={rhythm} onChange={e => setRhythm(e.target.value)} placeholder={m.rhythmPlaceholder} rows={2}
+                aria-label="Rhythm and groove description"
                 className="w-full bg-transparent border border-[var(--border-color)] px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] lcars-glow-focus transition-colors resize-none"
                 style={{ borderRadius: '10px 3px 10px 3px' }}
               />
@@ -362,26 +404,30 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
             {/* Narrative / Vibe */}
             <div className="pt-3 border-t border-[var(--border-color)] space-y-2">
               <div className="flex items-center gap-2">
-                <ListMusic className="w-3.5 h-3.5" style={{ color: AMBER_PRIMARY }} />
-                <label className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.narrative}</label>
+                <ListMusic className="w-3.5 h-3.5" style={{ color: AMBER_PRIMARY }} aria-hidden="true" />
+                <label htmlFor="narrative-textarea" className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.narrative}</label>
                 <button
                   onClick={() => setIsNarrativeDropdownOpen(!isNarrativeDropdownOpen)}
+                  aria-label={isNarrativeDropdownOpen ? 'Hide narrative suggestions' : 'Show narrative suggestions'}
+                  aria-expanded={isNarrativeDropdownOpen}
                   className="ml-auto p-0.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                 >
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isNarrativeDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isNarrativeDropdownOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                 </button>
               </div>
               {isNarrativeDropdownOpen && (
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5" role="list">
                   {NARRATIVE_SUGGESTIONS.map(s => (
                     <button key={s} onClick={() => { setNarrative(narrative ? `${narrative}, ${s}` : s); setIsNarrativeDropdownOpen(false); }}
+                      aria-label={`Add ${s} to narrative`}
                       className="ux-interactive px-2 py-0.5 text-[9px] font-medium tracking-wide border bg-transparent text-[var(--text-secondary)] border-[var(--border-color)] hover:border-[var(--accent-color)]/40 hover:text-[var(--text-primary)] transition-colors"
                       style={{ borderRadius: '8px 2px 8px 2px' }}
                     >{s}</button>
                   ))}
                 </div>
               )}
-              <textarea value={narrative} onChange={e => setNarrative(e.target.value)} placeholder={m.narrativePlaceholder} rows={2}
+              <textarea id="narrative-textarea" value={narrative} onChange={e => setNarrative(e.target.value)} placeholder={m.narrativePlaceholder} rows={2}
+                aria-label="Narrative and vibe description"
                 className="w-full bg-transparent border border-[var(--border-color)] px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] lcars-glow-focus transition-colors resize-none"
                 style={{ borderRadius: '10px 3px 10px 3px' }}
               />
@@ -392,11 +438,11 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
         <GBPanel>
           <div className="p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <Guitar className="w-4 h-4" style={{ color: AMBER_PRIMARY }} />
-              <label className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.instruments ?? 'INSTRUMENTS'}</label>
+              <Guitar className="w-4 h-4" style={{ color: AMBER_PRIMARY }} aria-hidden="true" />
+              <label htmlFor="instrumentation-textarea" className="text-[10px] font-bold tracking-widest uppercase text-[var(--text-secondary)]">{m.instruments ?? 'INSTRUMENTS'}</label>
               {selectedInstruments.length > 0 && (
                 <>
-                  <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5" style={{ borderRadius: '6px 2px 6px 2px', background: `${AMBER_PRIMARY}22`, color: AMBER_PRIMARY }}>{selectedInstruments.length}</span>
+                  <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5" style={{ borderRadius: '6px 2px 6px 2px', background: `${AMBER_PRIMARY}22`, color: AMBER_PRIMARY }} role="status" aria-live="polite" aria-label={`${selectedInstruments.length} instruments selected`}>{selectedInstruments.length}</span>
                   <button
                     onClick={clearInstruments}
                     aria-label={m.clearAllInstruments ?? 'Clear all instruments'}
@@ -454,12 +500,14 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
                 return (
                   <div key={family.label}>
                     <button onClick={() => { if (!normalizedQuery) setExpandedFamily(isExpanded ? null : family.label); }}
+                      aria-expanded={isExpanded}
+                      aria-label={`${family.label} instrument family. ${familySelected.length} selected`}
                       className="ux-interactive w-full flex items-center gap-2 px-2.5 py-1.5 text-[10px] font-medium tracking-wide border text-left"
                       style={familySelected.length > 0 ? { borderRadius: '10px 3px 10px 3px', background: `${AMBER_PRIMARY}1a`, borderColor: `${AMBER_PRIMARY}55`, color: AMBER_PRIMARY } : { borderRadius: '10px 3px 10px 3px', background: 'transparent', borderColor: 'var(--border-color)', color: 'var(--text-secondary)' }}
                     >
-                      <span>{family.emoji}</span><span>{family.label}</span>
-                      {familySelected.length > 0 && <span className="ml-1 text-[9px] font-bold px-1" style={{ borderRadius: '4px', background: AMBER_PRIMARY, color: '#000' }}>{familySelected.length}</span>}
-                      <span className="ml-auto opacity-50">{isExpanded ? '▾' : '▸'}</span>
+                      <span aria-hidden="true">{family.emoji}</span><span>{family.label}</span>
+                      {familySelected.length > 0 && <span className="ml-1 text-[9px] font-bold px-1" style={{ borderRadius: '4px', background: AMBER_PRIMARY, color: '#000' }} aria-hidden="true">{familySelected.length}</span>}
+                      <span className="ml-auto opacity-50" aria-hidden="true">{isExpanded ? '▾' : '▸'}</span>
                     </button>
                     {isExpanded && (
                       <div className="flex flex-wrap gap-1.5 mt-1.5 pl-2">
@@ -467,6 +515,8 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
                           const sel = selectedInstruments.includes(instrument.name);
                           return (
                             <button key={instrument.name} onClick={() => toggleInstrument(instrument.name)}
+                              aria-pressed={sel}
+                              aria-label={`${sel ? 'Deselect' : 'Select'} ${instrument.name}`}
                               className={`ux-interactive flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-medium tracking-wide border ${sel ? 'border-transparent' : 'bg-transparent text-[var(--text-secondary)] border-[var(--border-color)]'}`}
                               style={sel ? { borderRadius: '8px 2px 8px 2px', background: `${AMBER_PRIMARY}33`, borderColor: AMBER_PRIMARY, color: AMBER_PRIMARY } : { borderRadius: '8px 2px 8px 2px' }}
                             >
@@ -487,7 +537,8 @@ export function MusicalParamsPanel({ genre, setGenre, tempo, setTempo, instrumen
                 );
               })}
             </div>
-            <textarea value={instrumentation} onChange={e => setInstrumentation(e.target.value)} placeholder={m.instrumentationPlaceholder} rows={2}
+            <textarea id="instrumentation-textarea" value={instrumentation} onChange={e => setInstrumentation(e.target.value)} placeholder={m.instrumentationPlaceholder} rows={2}
+              aria-label="Instrumentation description"
               className="w-full bg-transparent border border-[var(--border-color)] px-3 py-2 text-xs text-[var(--text-primary)] placeholder-[var(--text-secondary)] lcars-glow-focus transition-colors resize-none"
               style={{ borderRadius: '10px 3px 10px 3px' }}
             />

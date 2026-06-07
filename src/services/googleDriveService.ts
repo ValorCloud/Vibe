@@ -1,7 +1,8 @@
 /**
- * googleDriveService.ts — Google Drive REST v3, OAuth2 implicit (SPA, no backend)
+ * googleDriveService.ts — Google Drive REST v3, OAuth2 PKCE (SPA)
  *
  * Auth flow : silent iframe refresh (prompt=none) → fallback popup (select_account)
+ * OAuth2    : PKCE flow (Authorization Code with code_verifier/code_challenge)
  * Scopes    : https://www.googleapis.com/auth/drive.file
  *             (read+write files created by this app; cannot read arbitrary Drive files)
  *
@@ -13,9 +14,9 @@
  *
  * No external SDK dependency. Pure REST + window.open popup.
  *
- * SECURITY: OAuth2 implicit flow (response_type=token) est déprécié (RFC 9700).
- * Migration vers PKCE (Authorization Code + code_verifier) requiert un backend
- * ou un service worker. À planifier avant mise en production.
+ * SECURITY: Uses OAuth2 PKCE flow (RFC 7636) instead of deprecated implicit flow.
+ * code_verifier is generated client-side; code_challenge (SHA-256) is sent to auth endpoint.
+ * Token exchange happens via /token endpoint with the verifier.
  */
 
 // ---------------------------------------------------------------------------
@@ -74,6 +75,7 @@ export interface GDriveFile {
 let _cachedToken: string | null = null;
 let _tokenExpiry = 0;
 let _proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+let _refreshToken: string | null = null;
 
 function isTokenValid(): boolean {
   return !!_cachedToken && Date.now() < _tokenExpiry - 60_000;
@@ -94,6 +96,7 @@ function storeToken(token: string, expiresInSeconds: number): void {
 export function clearToken(): void {
   _cachedToken = null;
   _tokenExpiry = 0;
+  _refreshToken = null;
   if (_proactiveRefreshTimer !== null) {
     clearTimeout(_proactiveRefreshTimer);
     _proactiveRefreshTimer = null;
@@ -105,27 +108,92 @@ export function getStoredToken(): string | null {
 }
 
 // ---------------------------------------------------------------------------
+// PKCE helpers (RFC 7636)
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a cryptographically secure random code verifier.
+ * Per RFC 7636: 43-128 characters from [A-Z, a-z, 0-9, -, ., _, ~]
+ */
+function generateCodeVerifier(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return btoa(String.fromCharCode.apply(null, Array.from(array)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+/**
+ * Generate code_challenge from code_verifier using SHA-256.
+ * Per RFC 7636: BASE64URL(SHA256(ASCII(code_verifier)))
+ */
+async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(hash))))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+/**
+ * Exchange authorization code for access + refresh tokens via Google's /token endpoint.
+ */
+async function exchangeCodeForToken(
+  code: string,
+  codeVerifier: string,
+  redirectUri: string
+): Promise<{ access_token: string; expires_in: number; refresh_token?: string }> {
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID,
+    code,
+    code_verifier: codeVerifier,
+    grant_type: 'authorization_code',
+    redirect_uri: redirectUri,
+  });
+
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Token exchange failed ${res.status}: ${body.slice(0, 200)}`);
+  }
+
+  return (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string };
+}
+
+// ---------------------------------------------------------------------------
 // Silent refresh via hidden iframe (prompt=none)
 // ---------------------------------------------------------------------------
 
 /**
- * Attempt a silent token refresh using a hidden iframe.
+ * Attempt a silent token refresh using a hidden iframe with PKCE.
  * Google resolves immediately if the user is already signed-in to the same
  * account; rejects with `access_denied` / `interaction_required` otherwise.
  * Times out after 8 s to avoid hanging.
  */
-function silentRefresh(scope: string): Promise<string> {
-  return new Promise((resolve, reject) => {
+async function silentRefresh(scope: string): Promise<string> {
+  return new Promise(async (resolve, reject) => {
     if (!CLIENT_ID) { reject(new Error('GDRIVE_NOT_CONFIGURED')); return; }
 
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
     const redirectUri = `${window.location.origin}/gdrive-callback.html`;
     const params = new URLSearchParams({
       client_id:              CLIENT_ID,
       redirect_uri:           redirectUri,
-      response_type:          'token',
+      response_type:          'code',
       scope,
       include_granted_scopes: 'true',
       prompt:                 'none',
+      code_challenge:         codeChallenge,
+      code_challenge_method:  'S256',
     });
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
@@ -149,19 +217,25 @@ function silentRefresh(scope: string): Promise<string> {
       reject(new Error('GDRIVE_SILENT_TIMEOUT'));
     }, TIMEOUT_MS);
 
-    const messageHandler = (event: MessageEvent) => {
+    const messageHandler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; access_token?: string; expires_in?: number; error?: string };
-      if (data.type !== 'GDRIVE_TOKEN') return;
+      const data = event.data as { type?: string; code?: string; error?: string };
+      if (data.type !== 'GDRIVE_CODE') return;
       if (settled) return;
       settled = true;
       clearTimeout(timer);
       cleanup();
-      if (data.error || !data.access_token) {
-        reject(new Error(data.error ?? 'GDRIVE_NO_TOKEN'));
+      if (data.error || !data.code) {
+        reject(new Error(data.error ?? 'GDRIVE_NO_CODE'));
       } else {
-        storeToken(data.access_token, data.expires_in ?? 3600);
-        resolve(data.access_token);
+        try {
+          const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri);
+          storeToken(tokenData.access_token, tokenData.expires_in);
+          if (tokenData.refresh_token) _refreshToken = tokenData.refresh_token;
+          resolve(tokenData.access_token);
+        } catch (err) {
+          reject(err);
+        }
       }
     };
 
@@ -174,7 +248,7 @@ function silentRefresh(scope: string): Promise<string> {
 // ---------------------------------------------------------------------------
 
 /**
- * Complete an interactive OAuth2 popup sign-in.
+ * Complete an interactive OAuth2 popup sign-in with PKCE.
  *
  * iOS Safari fix: window.open() must be called synchronously inside the
  * user-gesture tick. signIn() pre-opens a blank window (about:blank) before
@@ -182,28 +256,35 @@ function silentRefresh(scope: string): Promise<string> {
  * once the URL is built. If the pre-opened handle is null (truly blocked),
  * we throw GDRIVE_POPUP_BLOCKED as before.
  *
- * Security: event.source is checked against the popup handle to prevent any
- * same-origin frame from injecting a spoofed GDRIVE_TOKEN message.
+ * Security:
+ * - event.source is checked against the popup handle to prevent any
+ *   same-origin frame from injecting a spoofed GDRIVE_CODE message.
+ * - PKCE code_verifier is stored in memory and never exposed to the popup.
+ * - Authorization code is exchanged for tokens via secure /token endpoint.
  *
  * @param scope   OAuth2 scope string.
  * @param preOpenedWindow  A pre-opened window handle obtained synchronously
  *                         in the user-gesture context. May be null if the
  *                         browser blocked the popup.
  */
-function popupSignIn(scope: string, preOpenedWindow: Window | null): Promise<string> {
-  return new Promise((resolve, reject) => {
+async function popupSignIn(scope: string, preOpenedWindow: Window | null): Promise<string> {
+  return new Promise(async (resolve, reject) => {
     if (!CLIENT_ID) { reject(new Error('GDRIVE_NOT_CONFIGURED')); return; }
 
     if (!preOpenedWindow) { reject(new Error('GDRIVE_POPUP_BLOCKED')); return; }
 
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = await generateCodeChallenge(codeVerifier);
     const redirectUri = `${window.location.origin}/gdrive-callback.html`;
     const params = new URLSearchParams({
       client_id:              CLIENT_ID,
       redirect_uri:           redirectUri,
-      response_type:          'token',
+      response_type:          'code',
       scope,
       include_granted_scopes: 'true',
       prompt:                 'select_account',
+      code_challenge:         codeChallenge,
+      code_challenge_method:  'S256',
     });
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
@@ -242,12 +323,12 @@ function popupSignIn(scope: string, preOpenedWindow: Window | null): Promise<str
       reject(new Error('GDRIVE_AUTH_TIMEOUT: Authentication took too long. Please check your popup blocker settings and try again.'));
     }, POPUP_TIMEOUT_MS);
 
-    const messageHandler = (event: MessageEvent) => {
+    const messageHandler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       // Guard against spoofed messages from other same-origin frames.
       if (event.source !== popup) return;
-      const data = event.data as { type?: string; access_token?: string; expires_in?: number; error?: string };
-      if (data.type !== 'GDRIVE_TOKEN') return;
+      const data = event.data as { type?: string; code?: string; error?: string };
+      if (data.type !== 'GDRIVE_CODE') return;
       if (settled) return;
       settled = true;
 
@@ -255,12 +336,19 @@ function popupSignIn(scope: string, preOpenedWindow: Window | null): Promise<str
       if (timeoutTimer) clearTimeout(timeoutTimer);
       window.removeEventListener('message', messageHandler);
 
-      if (data.error || !data.access_token) {
-        reject(new Error(data.error ?? 'GDRIVE_NO_TOKEN'));
+      if (data.error || !data.code) {
+        reject(new Error(data.error ?? 'GDRIVE_NO_CODE'));
         return;
       }
-      storeToken(data.access_token, data.expires_in ?? 3600);
-      resolve(data.access_token);
+
+      try {
+        const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri);
+        storeToken(tokenData.access_token, tokenData.expires_in);
+        if (tokenData.refresh_token) _refreshToken = tokenData.refresh_token;
+        resolve(tokenData.access_token);
+      } catch (err) {
+        reject(err);
+      }
     };
 
     window.addEventListener('message', messageHandler);

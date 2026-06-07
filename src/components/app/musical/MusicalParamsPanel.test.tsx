@@ -56,10 +56,10 @@ describe('MusicalParamsPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Percussion/i }));
 
-    expect(screen.getByRole('button', { name: 'Tambourine' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Guiro' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Triangle' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Shaker' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Tambourine/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Guiro/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Triangle/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Shaker/i })).toBeTruthy();
     expect(screen.getByRole('button', { name: /Tubular Bells/i })).toBeTruthy();
   });
 
@@ -84,9 +84,9 @@ describe('MusicalParamsPanel', () => {
     fireEvent.change(screen.getByLabelText(/Search instruments/i), { target: { value: 'sitar' } });
 
     // Matching instrument is auto-revealed without expanding its family.
-    expect(screen.getByRole('button', { name: 'Sitar' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Select Sitar/i })).toBeTruthy();
     // Non-matching instruments are filtered out.
-    expect(screen.queryByRole('button', { name: 'Trumpet' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Trumpet/i })).toBeNull();
   });
 
   it('shows selected instruments as removable chips and clears them all', () => {
@@ -158,24 +158,24 @@ describe('MusicalParamsPanel', () => {
     );
 
     // Families render collapsed, so individual instruments are hidden.
-    expect(screen.queryByRole('button', { name: 'Trumpet' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Trumpet/i })).toBeNull();
 
     // Clicking a family header toggles it open…
     const brassHeader = screen.getByRole('button', { name: /Brass/i });
     fireEvent.click(brassHeader);
-    expect(screen.getByRole('button', { name: 'Trumpet' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Select Trumpet/i })).toBeTruthy();
 
     // …and closed again.
     fireEvent.click(brassHeader);
-    expect(screen.queryByRole('button', { name: 'Trumpet' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Trumpet/i })).toBeNull();
 
     // Searching force-expands matching families without mutating expandedFamily,
     // so clearing the query collapses everything back (the expandedFamily fix).
     const search = screen.getByLabelText(/Search instruments/i);
     fireEvent.change(search, { target: { value: 'sitar' } });
-    expect(screen.getByRole('button', { name: 'Sitar' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Select Sitar/i })).toBeTruthy();
 
     fireEvent.change(search, { target: { value: '' } });
-    expect(screen.queryByRole('button', { name: 'Sitar' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Sitar/i })).toBeNull();
   });
 });
