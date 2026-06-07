@@ -167,6 +167,8 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 
 /**
  * Exchange authorization code for access + refresh tokens via Google's /token endpoint.
+ * Also calls storeToken() with the resolved scope so the proactive refresh
+ * inherits the correct scope (P2 — scope drift fix).
  */
 async function exchangeCodeForToken(
   code: string,
@@ -519,7 +521,7 @@ export async function createAudioBlobUrl(fileId: string, token: string): Promise
 
 /**
  * Download file content as text.
- * For Google Docs, exports as plain text; for binary files uses alt=media.
+ * Uses blob.text() — available in all target environments, no FileReader boilerplate.
  */
 export async function downloadFile(fileId: string, token: string): Promise<string> {
   const res = await fetch(
@@ -530,13 +532,7 @@ export async function downloadFile(fileId: string, token: string): Promise<strin
     const body = await res.text().catch(() => '');
     throw new Error(`Drive download ${res.status}: ${body.slice(0, 200)}`);
   }
-  const blob = await res.blob();
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload  = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(blob);
-  });
+  return (await res.blob()).text();
 }
 
 // ---------------------------------------------------------------------------
