@@ -74,6 +74,7 @@ export interface GDriveFile {
 
 let _cachedToken: string | null = null;
 let _tokenExpiry = 0;
+let _cachedScope: string = SCOPE_READ;
 let _proactiveRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 let _refreshToken: string | null = null;
 
@@ -81,14 +82,20 @@ function isTokenValid(): boolean {
   return !!_cachedToken && Date.now() < _tokenExpiry - 60_000;
 }
 
-function storeToken(token: string, expiresInSeconds: number): void {
+/**
+ * Store an access token with its expiry and the scope it was granted for.
+ * The proactive refresh reuses the same scope so a write-scoped session is
+ * never silently downgraded to read-only mid-session.
+ */
+function storeToken(token: string, expiresInSeconds: number, scope: string): void {
   _cachedToken = token;
   _tokenExpiry = Date.now() + expiresInSeconds * 1000;
+  _cachedScope = scope;
 
   // Proactive silent refresh 5 min before expiry to avoid mid-session 401s.
   if (_proactiveRefreshTimer !== null) clearTimeout(_proactiveRefreshTimer);
   _proactiveRefreshTimer = setTimeout(
-    () => { void silentRefresh(SCOPE_READ).catch(() => {}); },
+    () => { void silentRefresh(_cachedScope).catch(() => {}); },
     Math.max(0, expiresInSeconds - 300) * 1000,
   );
 }
@@ -96,6 +103,7 @@ function storeToken(token: string, expiresInSeconds: number): void {
 export function clearToken(): void {
   _cachedToken = null;
   _tokenExpiry = 0;
+  _cachedScope = SCOPE_READ;
   _refreshToken = null;
   if (_proactiveRefreshTimer !== null) {
     clearTimeout(_proactiveRefreshTimer);
@@ -105,6 +113,25 @@ export function clearToken(): void {
 
 export function getStoredToken(): string | null {
   return isTokenValid() ? _cachedToken : null;
+}
+
+// ---------------------------------------------------------------------------
+// Type guard for postMessage data
+// ---------------------------------------------------------------------------
+
+/**
+ * Narrow event.data to the shape expected by GDRIVE message handlers.
+ * Prevents silent failures when event.data is null, a number, or a string
+ * (all valid postMessage payloads from other origins or browser extensions).
+ */
+function isGDriveMessage(data: unknown): data is {
+  type?: string;
+  code?: string;
+  access_token?: string;
+  expires_in?: number;
+  error?: string;
+} {
+  return typeof data === 'object' && data !== null;
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +171,8 @@ async function generateCodeChallenge(verifier: string): Promise<string> {
 async function exchangeCodeForToken(
   code: string,
   codeVerifier: string,
-  redirectUri: string
+  redirectUri: string,
+  scope: string,
 ): Promise<{ access_token: string; expires_in: number; refresh_token?: string }> {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
@@ -165,7 +193,10 @@ async function exchangeCodeForToken(
     throw new Error(`Token exchange failed ${res.status}: ${body.slice(0, 200)}`);
   }
 
-  return (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string };
+  const tokenData = (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string };
+  storeToken(tokenData.access_token, tokenData.expires_in, scope);
+  if (tokenData.refresh_token) _refreshToken = tokenData.refresh_token;
+  return tokenData;
 }
 
 // ---------------------------------------------------------------------------
@@ -219,7 +250,8 @@ async function silentRefresh(scope: string): Promise<string> {
 
     const messageHandler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; code?: string; error?: string };
+      if (!isGDriveMessage(event.data)) return;
+      const data = event.data;
       if (data.type !== 'GDRIVE_CODE') return;
       if (settled) return;
       settled = true;
@@ -229,9 +261,7 @@ async function silentRefresh(scope: string): Promise<string> {
         reject(new Error(data.error ?? 'GDRIVE_NO_CODE'));
       } else {
         try {
-          const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri);
-          storeToken(tokenData.access_token, tokenData.expires_in);
-          if (tokenData.refresh_token) _refreshToken = tokenData.refresh_token;
+          const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri, scope);
           resolve(tokenData.access_token);
         } catch (err) {
           reject(err);
@@ -288,35 +318,33 @@ async function popupSignIn(scope: string, preOpenedWindow: Window | null): Promi
     });
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 
-    // Redirect the pre-opened blank window to the actual auth URL.
-    // This works because the window handle was obtained synchronously during
-    // the user-gesture tick; only the URL assignment is deferred.
     preOpenedWindow.location.href = authUrl;
     const popup = preOpenedWindow;
 
-    // `settled` guard prevents double-resolve/reject when both closedCheck
-    // and messageHandler fire in the same tick (race condition on popup.close).
     let settled = false;
 
-    const POPUP_TIMEOUT_MS = 90_000; // 90 seconds timeout for popup auth
+    const POPUP_TIMEOUT_MS = 90_000;
     let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+    // Consolidated cleanup — single source of truth for all timer/listener teardown.
+    const cleanupPopup = () => {
+      clearInterval(closedCheck);
+      if (timeoutTimer) clearTimeout(timeoutTimer);
+      window.removeEventListener('message', messageHandler);
+    };
 
     const closedCheck = setInterval(() => {
       if (!popup.closed) return;
       if (settled) { clearInterval(closedCheck); return; }
       settled = true;
-      clearInterval(closedCheck);
-      if (timeoutTimer) clearTimeout(timeoutTimer);
-      window.removeEventListener('message', messageHandler);
+      cleanupPopup();
       reject(new Error('GDRIVE_AUTH_CANCELLED'));
     }, 500);
 
-    // Add timeout to catch cases where popup doesn't close or communicate
     timeoutTimer = setTimeout(() => {
       if (settled) return;
       settled = true;
-      clearInterval(closedCheck);
-      window.removeEventListener('message', messageHandler);
+      cleanupPopup();
       if (!popup.closed) {
         try { popup.close(); } catch { /* ignore */ }
       }
@@ -325,16 +353,14 @@ async function popupSignIn(scope: string, preOpenedWindow: Window | null): Promi
 
     const messageHandler = async (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      // Guard against spoofed messages from other same-origin frames.
       if (event.source !== popup) return;
-      const data = event.data as { type?: string; code?: string; error?: string };
+      if (!isGDriveMessage(event.data)) return;
+      const data = event.data;
       if (data.type !== 'GDRIVE_CODE') return;
       if (settled) return;
       settled = true;
 
-      clearInterval(closedCheck);
-      if (timeoutTimer) clearTimeout(timeoutTimer);
-      window.removeEventListener('message', messageHandler);
+      cleanupPopup();
 
       if (data.error || !data.code) {
         reject(new Error(data.error ?? 'GDRIVE_NO_CODE'));
@@ -342,9 +368,7 @@ async function popupSignIn(scope: string, preOpenedWindow: Window | null): Promi
       }
 
       try {
-        const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri);
-        storeToken(tokenData.access_token, tokenData.expires_in);
-        if (tokenData.refresh_token) _refreshToken = tokenData.refresh_token;
+        const tokenData = await exchangeCodeForToken(data.code, codeVerifier, redirectUri, scope);
         resolve(tokenData.access_token);
       } catch (err) {
         reject(err);
@@ -380,27 +404,21 @@ export async function signIn(write = false): Promise<string> {
 
   const scope = write ? SCOPE_WRITE : SCOPE_READ;
 
-  // Pre-open a blank popup synchronously inside the user-gesture tick.
-  // On iOS Safari, window.open() is only allowed synchronously during a
-  // user-gesture handler. We open about:blank now and redirect later if needed.
   const preOpenedWindow = window.open('about:blank', 'GDriveAuth', 'width=520,height=640,toolbar=0,scrollbars=1');
 
-  // null means the browser hard-blocked the popup.
   if (preOpenedWindow === null) {
     throw new Error('GDRIVE_POPUP_BLOCKED: Popup was blocked by the browser. Please allow popups for this site and try again.');
   }
 
-  // 1. Try silent refresh
   try {
     const token = await silentRefresh(scope);
-    // Silent succeeded — close the pre-opened window without user impact.
     if (!preOpenedWindow.closed) preOpenedWindow.close();
     return token;
-  } catch {
-    // Silent failed (no active session, interaction_required, timeout) — fall through to popup
+  } catch (err) {
+    if (import.meta.env.DEV) console.debug('[gdrive] silent refresh failed:', err);
+    // Fall through to interactive popup.
   }
 
-  // 2. Interactive popup — reuse the pre-opened window handle.
   return popupSignIn(scope, preOpenedWindow);
 }
 
