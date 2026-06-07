@@ -33,15 +33,6 @@ function isAudioFile(name: string): boolean {
   return AUDIO_EXTENSIONS.some(ext => name.toLowerCase().endsWith(ext));
 }
 
-async function readBlobAsText(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(blob);
-  });
-}
-
 // ─── MSAL singleton (shared across personal + business instances) ─────────────
 
 let _msalApp: PublicClientApplication | null = null;
@@ -76,7 +67,9 @@ async function getMsalToken(scopes: string[]): Promise<string | null> {
     try {
       const result = await app.acquireTokenPopup({ scopes });
       return result.accessToken;
-    } catch {
+    } catch (err) {
+      // P4: log pour conserver la trace en prod — logger.warn survit hors DEV.
+      logger.warn('[OneDriveStrategy] MSAL acquireTokenPopup fallback failed:', err);
       return null;
     }
   }
@@ -203,6 +196,9 @@ async function pickOneDrive(
 
     const messageHandler = async (event: MessageEvent) => {
       if (!isAllowedOneDriveOrigin(event.origin)) return;
+      // P3: défense en profondeur — s'assurer que le message vient bien de
+      // la fenêtre picker ouverte, pas d'une autre frame OneDrive tierce.
+      if (event.source !== pickerWindow) return;
 
       const msg = event.data as {
         type?: string;
@@ -280,8 +276,8 @@ async function pickOneDrive(
         if (downloadUrl) {
           const resp = await fetch(downloadUrl);
           if (!resp.ok) throw new Error(`Download failed: ${resp.status}`);
-          const blob = await resp.blob();
-          const content = await readBlobAsText(blob);
+          // P2: blob.text() remplace FileReader callback.
+          const content = await resp.blob().then(b => b.text());
           resolve({ name: item.name, content });
         } else if (item.id) {
           const resp = await fetch(
@@ -289,8 +285,8 @@ async function pickOneDrive(
             { headers: { Authorization: `Bearer ${token}` } },
           );
           if (!resp.ok) throw new Error(`Graph download failed: ${resp.status}`);
-          const blob = await resp.blob();
-          const content = await readBlobAsText(blob);
+          // P2: blob.text() remplace FileReader callback.
+          const content = await resp.blob().then(b => b.text());
           resolve({ name: item.name, content });
         } else {
           resolve(null);
