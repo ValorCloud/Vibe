@@ -133,6 +133,28 @@ function isGDriveMessage(data: unknown): data is GDriveMessageData {
 }
 
 // ---------------------------------------------------------------------------
+// Token response type guard
+// ---------------------------------------------------------------------------
+
+type TokenResponse = {
+  access_token: string;
+  expires_in: number;
+  refresh_token?: string;
+};
+
+function isValidTokenResponse(data: unknown): data is TokenResponse {
+  if (typeof data !== 'object' || data === null) return false;
+  const obj = data as Record<string, unknown>;
+  return (
+    typeof obj.access_token === 'string' &&
+    obj.access_token.length > 0 &&
+    typeof obj.expires_in === 'number' &&
+    obj.expires_in > 0 &&
+    (obj.refresh_token === undefined || typeof obj.refresh_token === 'string')
+  );
+}
+
+// ---------------------------------------------------------------------------
 // PKCE helpers (RFC 7636)
 // ---------------------------------------------------------------------------
 
@@ -170,7 +192,7 @@ async function exchangeCodeForToken(
   code: string,
   codeVerifier: string,
   redirectUri: string
-): Promise<{ access_token: string; expires_in: number; refresh_token?: string }> {
+): Promise<TokenResponse> {
   const params = new URLSearchParams({
     client_id: CLIENT_ID,
     code,
@@ -190,7 +212,12 @@ async function exchangeCodeForToken(
     throw new Error(`Token exchange failed ${res.status}: ${body.slice(0, 200)}`);
   }
 
-  return (await res.json()) as { access_token: string; expires_in: number; refresh_token?: string };
+  const data: unknown = await res.json();
+  if (!isValidTokenResponse(data)) {
+    throw new Error('Token exchange returned malformed response: missing or invalid access_token/expires_in');
+  }
+
+  return data;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,11 +231,12 @@ async function exchangeCodeForToken(
  * Times out after 8 s to avoid hanging.
  */
 async function silentRefresh(scope: GDriveScope): Promise<string> {
-  return new Promise(async (resolve, reject) => {
-    if (!CLIENT_ID) { reject(new Error('GDRIVE_NOT_CONFIGURED')); return; }
+  if (!CLIENT_ID) throw new Error('GDRIVE_NOT_CONFIGURED');
 
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+
+  return new Promise((resolve, reject) => {
     const redirectUri = `${window.location.origin}/gdrive-callback.html`;
     const params = new URLSearchParams({
       client_id:              CLIENT_ID,
@@ -301,13 +329,13 @@ async function silentRefresh(scope: GDriveScope): Promise<string> {
  *                         browser blocked the popup.
  */
 async function popupSignIn(scope: GDriveScope, preOpenedWindow: Window | null): Promise<string> {
-  return new Promise(async (resolve, reject) => {
-    if (!CLIENT_ID) { reject(new Error('GDRIVE_NOT_CONFIGURED')); return; }
+  if (!CLIENT_ID) throw new Error('GDRIVE_NOT_CONFIGURED');
+  if (!preOpenedWindow) throw new Error('GDRIVE_POPUP_BLOCKED');
 
-    if (!preOpenedWindow) { reject(new Error('GDRIVE_POPUP_BLOCKED')); return; }
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
 
-    const codeVerifier = generateCodeVerifier();
-    const codeChallenge = await generateCodeChallenge(codeVerifier);
+  return new Promise((resolve, reject) => {
     const redirectUri = `${window.location.origin}/gdrive-callback.html`;
     const params = new URLSearchParams({
       client_id:              CLIENT_ID,
