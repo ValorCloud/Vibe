@@ -7,20 +7,79 @@
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 680px; margin: 60px auto; padding: 0 24px; color: #1a1a1a; line-height: 1.7; }
     h1 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+    h2 { font-size: 1.1rem; font-weight: 700; margin-top: 32px; margin-bottom: 8px; }
     p { margin-bottom: 16px; color: #333; }
+    ul { margin-bottom: 16px; color: #333; padding-left: 24px; }
+    li { margin-bottom: 6px; }
+    code { background: #f4f4f4; padding: 1px 5px; border-radius: 3px; font-size: 0.9em; }
     a { color: #0070f3; }
     footer { margin-top: 48px; font-size: 0.8rem; color: #888; }
   </style>
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p>Last updated: May 2026</p>
+  <p>Last updated: June 2026</p>
 
   <p>This app (<strong>Vibe Lyricist</strong>) is provided as-is and uses only the minimum information needed to operate. We do not sell, share, or permanently store personal data.</p>
 
-  <p>If Google services are used (e.g. Google Drive), access is strictly limited to the permissions you explicitly approve during the OAuth consent flow. You can revoke access at any time from your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">Google Account security page</a>.</p>
+  <h2>Google User Data</h2>
 
-  <p>No personal data is transmitted to third parties beyond what is required to deliver core app features. Authentication tokens are handled by Google's own OAuth infrastructure and are never stored on our servers.</p>
+  <p>Vibe Lyricist offers optional integration with Google Drive so you can open, edit, and save your lyrics files directly from your Drive. This section explains exactly what Google user data is accessed, how it is used, and how it is protected, in compliance with the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener noreferrer">Google API Services User Data Policy</a>.</p>
+
+  <h2>OAuth Scopes Requested</h2>
+
+  <p>When you choose to connect Google Drive, Vibe Lyricist requests <em>one or both</em> of the following OAuth scopes, depending on the operation:</p>
+
+  <ul>
+    <li><code>https://www.googleapis.com/auth/drive.readonly</code> – Grants read-only access to files in your Google Drive. This scope is used solely to list and download lyrics or audio files you have selected.</li>
+    <li><code>https://www.googleapis.com/auth/drive.file</code> – Grants read and write access limited strictly to files created or opened by Vibe Lyricist. This scope is used to save or update a lyrics file back to your Drive.</li>
+  </ul>
+
+  <p>These scopes do <strong>not</strong> grant access to arbitrary files, folders, or any other data in your Google Account. Access is limited to the files you explicitly pick within the app.</p>
+
+  <h2>Data Accessed</h2>
+
+  <p>Through the Google Drive API (v3), Vibe Lyricist may read the following data from your Google Drive:</p>
+
+  <ul>
+    <li><strong>File metadata</strong> – file name, file ID, MIME type, and file size of lyrics and audio files (extensions: <code>.txt</code>, <code>.md</code>, <code>.json</code>, <code>.docx</code>, <code>.odt</code>, <code>.mp3</code>, <code>.flac</code>, <code>.wav</code>, <code>.ogg</code>, <code>.m4a</code>, <code>.aac</code>, <code>.opus</code>, <code>.webm</code>, <code>.weba</code>).</li>
+    <li><strong>File content</strong> – the text content of lyrics files you open, and the audio stream of audio files you play back via a temporary in-browser blob URL.</li>
+  </ul>
+
+  <p>No other Google account data (such as your email address, profile information, contacts, calendar, or Drive storage quota) is accessed or requested.</p>
+
+  <h2>Data Usage</h2>
+
+  <p>The Google user data accessed by Vibe Lyricist is used exclusively for the following purposes:</p>
+
+  <ul>
+    <li><strong>Opening lyrics files</strong> – File content is loaded into the in-app editor so you can read and edit your song lyrics. The content is never transmitted to any server operated by Vibe Lyricist.</li>
+    <li><strong>Saving lyrics files</strong> – When you save, the text content of your lyrics is uploaded back to the same file in your Google Drive (or a new file is created). This upload goes directly from your browser to Google's servers via the Google Drive REST API; the data does not pass through our servers.</li>
+    <li><strong>Audio playback</strong> – Audio files are streamed directly from Google Drive to your browser and played locally. A temporary <code>blob://</code> URL is created for the audio element and revoked once playback ends or the file is removed from the player queue.</li>
+  </ul>
+
+  <p>Google user data is <strong>never</strong> used for advertising, analytics, AI/ML model training, or any purpose beyond the in-app functionality described above.</p>
+
+  <h2>Data Storage and Retention</h2>
+
+  <ul>
+    <li><strong>OAuth access tokens</strong> are stored in browser memory only (JavaScript variables). They are never written to <code>localStorage</code>, <code>sessionStorage</code>, cookies, or any server-side database. Tokens are automatically cleared when you sign out of Google Drive within the app or when you close/refresh the page.</li>
+    <li><strong>Refresh tokens</strong> are not requested or stored.</li>
+    <li><strong>File content</strong> exists in browser memory only for the duration of your editing session and is discarded when you navigate away or close the app.</li>
+    <li><strong>No Google user data is stored on Vibe Lyricist servers</strong> – the application is a client-side single-page app with no backend that handles user data.</li>
+  </ul>
+
+  <h2>Data Sharing</h2>
+
+  <p>Vibe Lyricist does not share Google user data with any third parties. The only network requests made on your behalf are directly to Google's own APIs (<code>www.googleapis.com</code>, <code>accounts.google.com</code>) using your access token. No Google user data is forwarded to other services or analytics platforms.</p>
+
+  <h2>Revoking Access</h2>
+
+  <p>You can revoke Vibe Lyricist's access to your Google Drive at any time from your <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">Google Account permissions page</a>. Once revoked, the app will no longer be able to access your Google Drive until you re-authorize it.</p>
+
+  <h2>Other Data</h2>
+
+  <p>Outside of the Google Drive integration, Vibe Lyricist does not collect, transmit, or store personal data. The app runs entirely in your browser. Any lyrics, musical settings, or preferences you create are stored locally in your browser's <code>localStorage</code> and are never sent to our servers.</p>
 
   <p>For any privacy-related questions, contact us at: <a href="mailto:emmanueldk@gmail.com">emmanueldk@gmail.com</a></p>
 
