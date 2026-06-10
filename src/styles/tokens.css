@@ -64,6 +64,14 @@
   /* Fluent radius — promu ici pour usage hors .ui-fluent */
   --fluent-radius: 24px 4px 24px 4px;
 
+  /* Musical page LCARS tile/badge/card radius tokens.
+     Centralise the LCARS asymmetric corner patterns used throughout the
+     Musical tab so magic values don't scatter across JSX style props. */
+  --mp-radius-tile:  12px 4px 12px 4px;   /* Vibe genre tiles, sub-style buttons */
+  --mp-radius-badge:  8px 2px  8px 2px;   /* Inline badges, BPM chips, copy btn */
+  --mp-radius-card:  14px 4px 14px 4px;   /* Niche profile card, reference cards */
+  --mp-radius-pill: 999px;                /* Mood tags, sub-style pills */
+
   /* Fluent light */
   --bg-app:            #f3f2f1;
   /* Raised from 0.75 → 0.90: sidebar less transparent over textured backgrounds */

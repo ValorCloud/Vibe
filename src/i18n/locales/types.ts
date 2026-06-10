@@ -312,8 +312,8 @@ export interface Translations {
     generatePrompt: string;
     promptLabel: string;
     promptPlaceholder: string;
-    promptStructureLabel?: string;
-    promptStructureHint?: string;
+    promptStructureLabel: string;
+    promptStructureHint: string;
     optimizedFor: string;
     copyPrompt: string;
     copied: string;
@@ -321,28 +321,30 @@ export interface Translations {
     metronome: string;
     metronomeStart: string;
     metronomeStop: string;
-    instruments?: string;
-    instrumentsPlaceholder?: string;
+    instruments: string;
+    instrumentsPlaceholder: string;
     /** Placeholder for the instrument search field */
-    searchInstruments?: string;
+    searchInstruments: string;
     /** aria-label for clearing the instrument search field */
-    clearSearch?: string;
+    clearSearch: string;
     /** Shown when no instruments match the search query */
-    noInstrumentsFound?: string;
+    noInstrumentsFound: string;
     /** Button label to clear all selected instruments */
-    clearAll?: string;
+    clearAll: string;
     /** aria-label for the clear-all-instruments button (more descriptive than the visible label) */
-    clearAllInstruments?: string;
+    clearAllInstruments: string;
     /** aria-label prefix for removing a selected instrument chip */
-    removeInstrument?: string;
-    rhythmPresets?: string;
-    vibeBoard?: string;
-    vibeBoardDescription?: string;
-    subStyle?: string;
+    removeInstrument: string;
+    rhythmPresets: string;
+    vibeBoard: string;
+    vibeBoardDescription: string;
+    subStyle: string;
     /** Badge text when a musical prompt is filled and ready */
-    promptReady?: string;
+    promptReady: string;
     /** Badge text when no musical prompt has been defined yet */
-    promptEmpty?: string;
+    promptEmpty: string;
+    /** Button label to open the Player tab from the Musical tab */
+    openPlayer: string;
   };
 
   /** Strings for the Lyria 3 preview panel */

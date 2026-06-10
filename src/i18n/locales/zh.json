@@ -208,7 +208,8 @@
     "vibeBoardDescription": "选择您的风格以自动设置 BPM 和乐器",
     "subStyle": "子风格",
     "promptReady": "提示就绪",
-    "promptEmpty": "无提示"
+    "promptEmpty": "无提示",
+    "openPlayer": "打开播放器"
   },
   "analysis": {
     "title": "歌曲分析报告",

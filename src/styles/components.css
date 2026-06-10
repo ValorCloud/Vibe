@@ -316,3 +316,11 @@
     0 0  80px oklch(from var(--accent-color) l c h / 0.08),
     0 8px 32px oklch(0 0 0 / 0.3);
 }
+
+/* ── Musical page LCARS radius utilities ──────────────────────────────────
+   Use these classes instead of inline style={{ borderRadius }} on Musical
+   page elements. Token values live in tokens.css (--mp-radius-*). */
+.vibe-tile  { border-radius: var(--mp-radius-tile);  }
+.vibe-badge { border-radius: var(--mp-radius-badge); }
+.vibe-card  { border-radius: var(--mp-radius-card);  }
+.vibe-pill  { border-radius: var(--mp-radius-pill);  }

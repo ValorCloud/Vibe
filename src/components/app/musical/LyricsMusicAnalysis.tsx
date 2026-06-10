@@ -30,8 +30,8 @@ export function LyricsMusicAnalysis({ title, topic, mood, hasContext, hasApiKey,
   const m = t.musical;
   const isDisabled = !hasApiKey || isAnalyzingLyrics || isGeneratingMusicalPrompt;
   const analyzeTooltip = !hasApiKey
-    ? (t.tooltips.aiUnavailable ?? 'AI unavailable')
-    : (m.analyzeLyricsShort ?? 'Analyze');
+    ? t.tooltips.aiUnavailable
+    : m.analyzeLyricsShort;
 
   return (
     <div className="space-y-4">

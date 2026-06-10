@@ -194,7 +194,8 @@
     "vibeBoardDescription": "اختر نوعك الموسيقي لضبط BPM والآلات تلقائيًا",
     "subStyle": "النمط الفرعي",
     "promptReady": "الموجّه جاهز",
-    "promptEmpty": "لا يوجد موجّه"
+    "promptEmpty": "لا يوجد موجّه",
+    "openPlayer": "فتح المشغل"
   },
   "analysis": {
     "title": "تقرير تحليل الأغنية",

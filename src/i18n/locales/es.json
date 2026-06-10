@@ -194,7 +194,8 @@
     "vibeBoardDescription": "Selecciona tu género para configurar automáticamente el BPM e instrumentos",
     "subStyle": "SUBESTILO",
     "promptReady": "PROMPT LISTO",
-    "promptEmpty": "SIN PROMPT"
+    "promptEmpty": "SIN PROMPT",
+    "openPlayer": "Abrir reproductor"
   },
   "analysis": {
     "title": "Informe de Análisis de Canción",

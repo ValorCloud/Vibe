@@ -49,7 +49,6 @@ interface AppEditorZoneProps {
   canPasteLyrics: boolean;
   onOpenLibrary: () => void;
   onPasteLyrics: () => void;
-  onOpenSearch: () => void;
 }
 
 export function AppEditorZone({
@@ -61,7 +60,6 @@ export function AppEditorZone({
   canPasteLyrics,
   onOpenLibrary,
   onPasteLyrics,
-  onOpenSearch: _onOpenSearch,
 }: AppEditorZoneProps) {
   const { isAnalyzing, isAdaptingLanguage, targetLanguage } = useInsightsBarStateContext();
 

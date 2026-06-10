@@ -207,7 +207,8 @@
     "vibeBoardDescription": "장르를 선택하면 BPM과 악기가 자동 설정됩니다",
     "subStyle": "하위 스타일",
     "promptReady": "프롬프트 준비 완료",
-    "promptEmpty": "프롬프트 없음"
+    "promptEmpty": "프롬프트 없음",
+    "openPlayer": "플레이어 열기"
   },
   "analysis": {
     "title": "곡 분석 보고서",

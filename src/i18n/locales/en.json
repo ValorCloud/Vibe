@@ -254,9 +254,10 @@
     "vibeBoardDescription": "Select your genre to automatically set BPM and instruments",
     "subStyle": "SUB-STYLE",
     "promptReady": "PROMPT READY",
-    "promptEmpty": "NO PROMPT"
+    "promptEmpty": "NO PROMPT",
+    "openPlayer": "Open Player"
   },
-    "lyria": {
+  "lyria": {
     "musicalParamsLabel": "MUSICAL PARAMS (FROM MUSICALPARAMSPANEL)",
     "noParams": "No params set — configure them in the musical params panel above.",
     "vocalStyle": "Vocal style",
@@ -576,7 +577,6 @@
     "readAloud": "Read aloud",
     "stopReading": "Stop reading",
     "readAnalysis": "Read analysis aloud",
-    "readSection": "Read this section aloud",
     "readLyrics": "Read lyrics aloud"
   },
   "voice": {

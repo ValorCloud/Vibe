@@ -170,10 +170,10 @@ export const MusicalInsightsBar = React.memo(function MusicalInsightsBar() {
   const canAutoSuggest = hasApiKey && hasContext;
   const autoSuggestDisabled = busy || !canAutoSuggest;
   const autoSuggestTooltip = !hasApiKey
-    ? (t.tooltips?.aiUnavailable ?? 'IA indisponible — configurez votre clé API')
+    ? t.tooltips.aiUnavailable
     : !hasContext
       ? 'Ajoutez un titre, sujet, paroles, humeur, genre ou instrumentation'
-      : (t.tooltips?.generateMusical ?? 'Générer le prompt musical depuis les paramètres actuels');
+      : t.tooltips.generateMusical;
 
   const handleAutoSuggest = useCallback(() => {
     if (autoSuggestDisabled) return;
@@ -235,8 +235,8 @@ export const MusicalInsightsBar = React.memo(function MusicalInsightsBar() {
   }, [setTempo, dismissCoherenceResult]);
 
   // i18n labels pour PromptStateBadge
-  const labelReady = (t.musical?.promptReady ?? 'PROMPT READY');
-  const labelEmpty = (t.musical?.promptEmpty ?? 'NO PROMPT');
+  const labelReady = t.musical.promptReady;
+  const labelEmpty = t.musical.promptEmpty;
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
@@ -291,7 +291,7 @@ export const MusicalInsightsBar = React.memo(function MusicalInsightsBar() {
               cursor: autoSuggestDisabled ? 'not-allowed' : 'pointer',
               opacity: autoSuggestDisabled ? 0.5 : 1,
             }}
-            aria-label={t.tooltips?.generateMusical ?? 'Générer le prompt musical'}
+            aria-label={t.tooltips.generateMusical}
           >
             {isGeneratingMusicalPrompt ? (
               <Spinner size="tiny" aria-label="Génération en cours…" />
