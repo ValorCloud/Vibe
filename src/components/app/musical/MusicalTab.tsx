@@ -39,7 +39,7 @@ export function MusicalTab({ hasApiKey }: Props) {
 
   const { addTracks, tracks } = useLibraryContext();
   const { setActiveTab } = useAppNavigationContext();
-  const lyriaTrackCount = tracks.filter(t => t.source === 'lyria').length;
+  const lyriaTrackCount = tracks.filter(track => track.source === 'lyria').length;
 
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [approvedClip, setApprovedClip] = useState<LyriaClip | null>(null);
