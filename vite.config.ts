@@ -201,6 +201,11 @@ export default defineConfig(({ mode }) => ({
     globals: true,
     setupFiles: [],
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // Expose TEST=true so _testExchangeCodeForToken is exported and the
+    // exchangeCodeForToken suite actually runs (not silently skipped).
+    env: {
+      TEST: 'true',
+    },
     typecheck: {
       tsconfig: './tsconfig.test.json',
     },
