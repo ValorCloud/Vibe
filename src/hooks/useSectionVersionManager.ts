@@ -112,7 +112,8 @@ export function useSectionVersionManager(params: UseSectionVersionManagerParams 
         const numbers = existingVersions
           .map(v => {
             const match = v.name.match(/-v(\d+)$/);
-            return match ? parseInt(match[1], 10) : 0;
+            // match[1] is string | undefined with noUncheckedIndexedAccess
+            return match ? parseInt(match[1] ?? '', 10) : 0;
           });
         const nextNum = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
         name = `${baseName}-v${String(nextNum).padStart(3, '0')}`;
