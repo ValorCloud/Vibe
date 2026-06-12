@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { History, Save, Undo2, X, Trash2 } from '../ui/icons';
+import { History, Undo2, X, Trash2 } from '../ui/icons';
 import { Tooltip } from '../ui/Tooltip';
 import { useTranslation } from '../../i18n';
 import { useOptionalSectionVersionContext } from '../../contexts/SectionVersionContext';
@@ -12,55 +12,43 @@ interface SectionVersionControlProps {
 }
 
 /**
- * Dropdown menu for managing per-section versions.
- * Shows version history and allows save/restore operations.
+ * Version button + dropdown for a section.
+ *
+ * - Button label = latest saved version name (e.g. VERSE-v003) or plain count.
+ * - No manual save dialog — versions are saved automatically on section blur.
+ * - Dropdown lists all saved versions with restore / delete actions.
  */
 export const SectionVersionControl = React.memo(function SectionVersionControl({
   section,
-  sectionIndex,
+  sectionIndex: _sectionIndex,
 }: SectionVersionControlProps) {
   const { t } = useTranslation();
   const versionContext = useOptionalSectionVersionContext();
   const { song, updateSongAndStructureWithHistory } = useSongContext();
 
   const [isOpen, setIsOpen] = useState(false);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [versionName, setVersionName] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
 
   const versions = versionContext?.getSectionVersions(section.id) ?? [];
   const versionCount = versionContext?.getSectionVersionCount(section.id) ?? 0;
+  const latestVersion = versions[0];
 
-  // Close menu when clicking outside
+  // Button label: latest version name if available, otherwise count
+  const buttonLabel = latestVersion ? latestVersion.name : String(versionCount);
+
   useEffect(() => {
     if (!isOpen) return;
-
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
-  const handleSaveVersion = useCallback(() => {
-    if (!versionContext || !versionName.trim()) return;
-
-    versionContext.saveSectionVersion(section, versionName.trim());
-    setVersionName('');
-    setSaveDialogOpen(false);
-  }, [section, versionName, versionContext]);
-
   const handleRestoreVersion = useCallback((version: SectionVersion) => {
-    // Clone the section from the version and update the current section
-    const restoredSection: Section = {
-      ...version.section,
-      id: section.id, // Keep the current section ID
-    };
-
-    // Find the section and replace it
+    const restoredSection: Section = { ...version.section, id: section.id };
     const newSong = song.map(s => s.id === section.id ? restoredSection : s);
     updateSongAndStructureWithHistory(newSong, newSong.map(s => s.name));
     setIsOpen(false);
@@ -72,8 +60,7 @@ export const SectionVersionControl = React.memo(function SectionVersionControl({
   }, [section.id, versionContext]);
 
   const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString(undefined, {
+    return new Date(timestamp).toLocaleString(undefined, {
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
@@ -81,8 +68,6 @@ export const SectionVersionControl = React.memo(function SectionVersionControl({
     });
   };
 
-  // If context is not available, don't render anything. This stays after all hooks
-  // so React sees the same hook order on every render.
   if (!versionContext) return null;
 
   return (
@@ -100,16 +85,18 @@ export const SectionVersionControl = React.memo(function SectionVersionControl({
             versionCount > 0 ? 'opacity-100' : 'opacity-60',
           ].join(' ')}
           aria-label={`${versionCount} version${versionCount !== 1 ? 's' : ''} saved`}
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
         >
           <History className="h-3 w-3" />
-          <span>{versionCount}</span>
+          <span>{buttonLabel}</span>
         </button>
       </Tooltip>
 
       {isOpen && (
         <div
           className="absolute top-full right-0 mt-1 w-80 max-h-96 overflow-y-auto bg-[var(--bg-sidebar)] border border-[var(--border-color)] rounded-lg shadow-xl z-50 custom-scrollbar"
-          role="menu"
+          role="listbox"
           aria-label="Section version history"
         >
           {/* Header */}
@@ -128,56 +115,11 @@ export const SectionVersionControl = React.memo(function SectionVersionControl({
             </button>
           </div>
 
-          {/* Save new version button */}
-          <div className="p-3 border-b border-[var(--border-color)]">
-            {!saveDialogOpen ? (
-              <button
-                type="button"
-                onClick={() => setSaveDialogOpen(true)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[var(--accent-color)] text-white rounded-md hover:opacity-90 transition-opacity text-xs font-medium"
-              >
-                <Save className="w-3.5 h-3.5" />
-                {t.editor?.saveSectionVersion ?? 'Save Current Version'}
-              </button>
-            ) : (
-              <div className="space-y-2">
-                <input
-                  type="text"
-                  value={versionName}
-                  onChange={(e) => setVersionName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveVersion();
-                    if (e.key === 'Escape') {
-                      setSaveDialogOpen(false);
-                      setVersionName('');
-                    }
-                  }}
-                  placeholder={t.editor?.versionNamePlaceholder ?? 'Version name...'}
-                  className="w-full px-2 py-1.5 text-xs bg-[var(--bg-app)] border border-[var(--border-color)] rounded text-[var(--text-primary)] placeholder:text-[var(--text-secondary)]"
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleSaveVersion}
-                    disabled={!versionName.trim()}
-                    className="flex-1 px-2 py-1.5 bg-[var(--accent-color)] text-white rounded text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {t.common?.save ?? 'Save'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSaveDialogOpen(false);
-                      setVersionName('');
-                    }}
-                    className="flex-1 px-2 py-1.5 bg-[var(--bg-app)] border border-[var(--border-color)] text-[var(--text-primary)] rounded text-xs font-medium"
-                  >
-                    {t.common?.cancel ?? 'Cancel'}
-                  </button>
-                </div>
-              </div>
-            )}
+          {/* Hint */}
+          <div className="px-3 py-2 border-b border-[var(--border-color)]">
+            <p className="text-[10px] text-[var(--text-secondary)] italic">
+              {t.editor?.versionAutoSaveHint ?? 'Versions are saved automatically when you move to another section.'}
+            </p>
           </div>
 
           {/* Version list */}
@@ -187,16 +129,18 @@ export const SectionVersionControl = React.memo(function SectionVersionControl({
                 {t.editor?.noVersionsSaved ?? 'No versions saved yet'}
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1" role="group">
                 {versions.map((version) => (
                   <div
                     key={version.id}
-                    className="group p-2 bg-[var(--bg-app)] hover:bg-[var(--bg-sidebar)] border border-[var(--border-color)] hover:border-[var(--accent-color)]/30 rounded transition-all"
+                    className="group p-2 bg-[var(--bg-app)] hover:bg-[var(--bg-sidebar)] border border-[var(--border-color)] hover:border-[var(--lcars-orange)]/30 rounded transition-all"
+                    role="option"
+                    aria-selected={false}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="text-xs font-medium text-[var(--text-primary)] truncate">
+                          <p className="text-xs font-mono font-semibold text-[var(--lcars-orange)] truncate">
                             {version.name}
                           </p>
                           {version.isAutoSave && (
@@ -217,8 +161,8 @@ export const SectionVersionControl = React.memo(function SectionVersionControl({
                           <button
                             type="button"
                             onClick={() => handleRestoreVersion(version)}
-                            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--accent-color)] hover:bg-[var(--accent-color)]/10 rounded transition-colors"
-                            aria-label="Restore version"
+                            className="p-1.5 text-[var(--text-secondary)] hover:text-[var(--lcars-orange)] hover:bg-[var(--lcars-orange)]/10 rounded transition-colors"
+                            aria-label={`Restore ${version.name}`}
                           >
                             <Undo2 className="w-3.5 h-3.5" />
                           </button>
@@ -228,7 +172,7 @@ export const SectionVersionControl = React.memo(function SectionVersionControl({
                             type="button"
                             onClick={(e) => handleDeleteVersion(e, version.id)}
                             className="p-1.5 text-[var(--text-secondary)] hover:text-red-500 hover:bg-red-500/10 rounded transition-colors"
-                            aria-label="Delete version"
+                            aria-label={`Delete ${version.name}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
