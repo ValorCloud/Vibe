@@ -177,9 +177,14 @@ export default defineConfig(({ mode }) => ({
     outDir: 'dist',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-fluent': ['@fluentui/react-components', '@fluentui/react-icons'],
-          'vendor-motion': ['motion'],
+        // Vite 8 / Rolldown requires manualChunks to be a function, not an object
+        manualChunks: (id: string) => {
+          if (id.includes('@fluentui/react-components') || id.includes('@fluentui/react-icons')) {
+            return 'vendor-fluent';
+          }
+          if (id.includes('/node_modules/motion/')) {
+            return 'vendor-motion';
+          }
         },
       },
     },
