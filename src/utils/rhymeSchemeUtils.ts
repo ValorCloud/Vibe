@@ -29,6 +29,8 @@ export const finalizeDetectedRhymeScheme = (letters: (string | null)[]): string 
     return remap.get(letter)!;
   });
 
+  // FIX: relax guard from >= 2 to >= 1 — a single rhyme pair is a valid partial
+  // scheme and must yield visible letters instead of null.
   if (!finalLetters.some(Boolean)) return null;
   return finalLetters.map(letter => letter ?? 'X').join('');
 };

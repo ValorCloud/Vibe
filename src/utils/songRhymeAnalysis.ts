@@ -188,8 +188,11 @@ export const buildRhymeScheme = (lineCount: number, groups: RhymeGroup[]): strin
     }
   }
 
+  // FIX: a single rhyme group (one pair) is a valid partial scheme — relax guard
+  // from >= 2 to >= 1 so free-verse sections with a single rhyming pair emit
+  // schema letters rather than null / X for all lines.
   const distinctRhyming = new Set(letters.filter(l => l !== 'X'));
-  return distinctRhyming.size >= 2 ? letters.join('') : null;
+  return distinctRhyming.size >= 1 ? letters.join('') : null;
 };
 
 // ─── analyseSection / analyseSong ────────────────────────────────────────────
