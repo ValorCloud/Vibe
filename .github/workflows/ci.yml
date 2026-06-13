@@ -21,13 +21,17 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm ci --prefix api
 
       - name: Lint
         run: npm run lint
 
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: |
+          npx tsc --noEmit
+          npx tsc -p api --noEmit
 
       - name: Build
         run: npm run build
