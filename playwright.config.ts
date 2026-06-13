@@ -1,5 +1,4 @@
 import { defineConfig, devices } from '@playwright/test';
-import * as path from 'path';
 
 /**
  * Playwright E2E configuration for Vibe / Lyricist Pro
@@ -7,6 +6,12 @@ import * as path from 'path';
  * - Full suite on main / pre-prod
  * Docs: https://playwright.dev/docs/test-configuration
  */
+
+// Fixed port for the preview server. Kept in sync with the workflow's
+// E2E_BASE_URL and the `webServer` block below.
+const PORT = 4173;
+const BASE_URL = process.env.E2E_BASE_URL ?? `http://localhost:${PORT}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   /* Run tests in parallel */
@@ -24,7 +29,7 @@ export default defineConfig({
 
   use: {
     /* Base URL — override via E2E_BASE_URL in CI */
-    baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:5173',
+    baseURL: BASE_URL,
     /* Collect traces on first retry */
     trace: 'on-first-retry',
     /* Screenshot on failure */
@@ -63,13 +68,20 @@ export default defineConfig({
     },
   ],
 
-  /* Start the Vite dev server automatically when running locally */
-  webServer: process.env.CI
-    ? undefined   // CI boots its own server
-    : {
-        command: 'npm run dev',
-        url: 'http://localhost:5173',
-        reuseExistingServer: true,
-        timeout: 120_000,
-      },
+  /*
+   * Always start the built app via `vite preview` on a fixed port.
+   *
+   * Previously this block was disabled when CI was set (`process.env.CI`),
+   * but the workflow never started its own server — so nothing listened on
+   * :4173 and every `page.goto` failed with NS_ERROR_CONNECTION_REFUSED.
+   * Starting the preview server here works both in CI and locally;
+   * `reuseExistingServer` means a dev server already running locally is
+   * reused instead of conflicting.
+   */
+  webServer: {
+    command: `npm run preview -- --port ${PORT} --strictPort`,
+    url: BASE_URL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
 });
