@@ -67,21 +67,13 @@ function getErrorMessage(error: unknown): string {
 
 /**
  * Copyright Similarity Check API
- * 
- * This endpoint searches multiple lyrics databases (Genius, Musixmatch, LyricFind)
- * to detect similarity with existing copyrighted songs.
- * 
- * Required Environment Variables:
- * - GENIUS_ACCESS_TOKEN: Genius API token
- * - MUSIXMATCH_API_KEY: Musixmatch API key (optional)
- * - LYRICFIND_API_KEY: LyricFind API key (optional)
+ *
+ * Searches Genius for lyrics similar to the submitted text.
+ * CORS is handled globally by vercel.json headers.
+ *
+ * Required env var: GENIUS_ACCESS_TOKEN
  */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -162,7 +154,6 @@ async function searchGenius(
 
   const matches: CopyrightMatch[] = [];
 
-  // Search for each keyword
   for (const keyword of keywords.slice(0, 5)) {
     try {
       const searchUrl = `https://api.genius.com/search?q=${encodeURIComponent(keyword)}`;
@@ -183,14 +174,12 @@ async function searchGenius(
       const searchData = await searchRes.json() as GeniusSearchResponse;
       const hits = searchData.response?.hits || [];
 
-      // Get lyrics for top 3 results
       for (const hit of hits.slice(0, 3)) {
         const song = hit.result;
         if (!song) continue;
         if (!song.url) continue;
 
         try {
-          // Fetch full lyrics via web scraping
           const lyricsUrl = song.url;
           const lyricsController = new AbortController();
           const lyricsTimer = setTimeout(() => lyricsController.abort(), FETCH_TIMEOUT_MS);
@@ -202,11 +191,9 @@ async function searchGenius(
           }
           const html = await lyricsRes.text();
 
-          // Extract lyrics from HTML
           const lyrics = extractLyricsFromGeniusHtml(html);
           if (!lyrics) continue;
 
-          // Calculate similarity
           const similarity = calculateSimilarity(currentLyrics, lyrics, sections);
 
           if (similarity.score >= threshold) {
@@ -221,13 +208,11 @@ async function searchGenius(
               riskLevel: calculateRiskLevel(similarity.score),
             });
           }
-        } catch (err) {
-          // Skip this song if lyrics fetch fails
+        } catch (_err) {
           continue;
         }
       }
-    } catch (err) {
-      // Skip this keyword if search fails
+    } catch (_err) {
       continue;
     }
   }
@@ -240,13 +225,11 @@ async function searchGenius(
  */
 function extractLyricsFromGeniusHtml(html: string): string | null {
   try {
-    // Genius uses data-lyrics-container divs
     const matches = html.match(/<div[^>]*data-lyrics-container[^>]*>([\s\S]*?)<\/div>/gi);
     if (!matches) return null;
 
     const lyrics = matches
       .map(div => {
-        // Remove HTML tags
         return div
           .replace(/<[^>]+>/g, ' ')
           .replace(/&[a-z]+;/gi, ' ')
@@ -256,7 +239,7 @@ function extractLyricsFromGeniusHtml(html: string): string | null {
       .join('\n\n');
 
     return lyrics.length > 50 ? lyrics : null;
-  } catch (err) {
+  } catch (_err) {
     return null;
   }
 }
@@ -272,7 +255,6 @@ function calculateSimilarity(
   const currentLines = currentLyrics.split('\n').filter(l => l.trim());
   const copyrightedLines = copyrightedLyrics.split('\n').filter(l => l.trim());
 
-  // Find exact line matches
   const matchedLines: string[] = [];
   currentLines.forEach(currentLine => {
     const normalized = currentLine.toLowerCase().trim();
@@ -288,7 +270,6 @@ function calculateSimilarity(
     });
   });
 
-  // Calculate word overlap
   const currentWords = new Set(
     currentLyrics.toLowerCase().match(/\b\w{4,}\b/g) || []
   );
@@ -297,12 +278,10 @@ function calculateSimilarity(
   );
   const sharedWords = [...currentWords].filter(w => copyrightedWords.has(w)).length;
 
-  // Find shared keywords
   const sharedKeywords = extractKeywords(currentLyrics).filter(keyword =>
     copyrightedLyrics.toLowerCase().includes(keyword.toLowerCase())
   );
 
-  // Calculate section similarity
   const matchedSections = sections
     .map((section) => {
       const sectionScore = calculateSimpleScore(section.text, copyrightedLyrics);
@@ -310,7 +289,6 @@ function calculateSimilarity(
     })
     .filter(s => s.score > 20);
 
-  // Overall similarity score
   const lineScore = (matchedLines.length / Math.max(currentLines.length, 1)) * 100;
   const wordScore = (sharedWords / Math.max(currentWords.size, 1)) * 100;
   const score = Math.round(lineScore * 0.7 + wordScore * 0.3);
