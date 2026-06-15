@@ -19,13 +19,17 @@ on:
 jobs:
   # ---------------------------------------------------------------------------
   # 1. Smoke gate (PR + main) — blocks merge on failure
-  #    Skipped on version-bump commits tagged [skip bump] to avoid wasting
-  #    CI minutes on no-op bot pushes.
+  #    Skipped on version-bump commits tagged [skip bump].
+  #    Note: head_commit is null on pull_request events — guard with || ''
   # ---------------------------------------------------------------------------
   smoke:
     name: Smoke (chromium)
     runs-on: ubuntu-latest
-    if: "!contains(github.event.head_commit.message, '[skip bump]')"
+    if: >-
+      !contains(
+        github.event.head_commit.message || github.event.pull_request.title || '',
+        '[skip bump]'
+      )
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,7 +41,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install
 
       - name: Install Playwright browsers (chromium only)
         run: npx playwright install chromium --with-deps
@@ -85,7 +89,7 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm install
 
       - name: Install Playwright browsers
         run: npx playwright install ${{ matrix.browser }} --with-deps

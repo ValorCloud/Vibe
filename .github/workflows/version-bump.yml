@@ -10,6 +10,7 @@ on:
 jobs:
   bump:
     runs-on: ubuntu-latest
+    # push events always populate head_commit — condition is safe here
     if: "!contains(github.event.head_commit.message, '[skip bump]')"
 
     steps:

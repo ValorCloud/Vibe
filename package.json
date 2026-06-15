@@ -1,6 +1,6 @@
 {
   "name": "vibe",
-  "version": "1.40.0.6",
+  "version": "1.40.0.7",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,6 +15,10 @@
     "test:e2e:smoke": "playwright test --project=chromium-smoke",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"
+  },
+  "overrides": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   },
   "dependencies": {
     "@azure/msal-browser": "^5.11.0",

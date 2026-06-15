@@ -8,8 +8,6 @@ import { test, expect } from '@playwright/test';
 
 // ---- helpers ----------------------------------------------------------------
 
-/** Mount a minimal Gemini mock that returns a canned lyrics response.
- *  Route: /api/generate (the actual Vercel serverless function path). */
 async function mockGeminiGenerate(page: import('@playwright/test').Page) {
   await page.route('**/api/generate**', async (route) => {
     await route.fulfill({
@@ -23,7 +21,6 @@ async function mockGeminiGenerate(page: import('@playwright/test').Page) {
   });
 }
 
-/** Mount a minimal Lyria mock. */
 async function mockLyriaGenerate(page: import('@playwright/test').Page) {
   await page.route('**/api/lyria/generate**', async (route) => {
     await route.fulfill({
@@ -34,7 +31,6 @@ async function mockLyriaGenerate(page: import('@playwright/test').Page) {
   });
 }
 
-/** Mount a minimal Suno mock. */
 async function mockSunoGenerate(page: import('@playwright/test').Page) {
   await page.route('**/api/suno/generate**', async (route) => {
     await route.fulfill({
@@ -45,7 +41,6 @@ async function mockSunoGenerate(page: import('@playwright/test').Page) {
   });
 }
 
-/** Mount a minimal Copyright-check mock. */
 async function mockCopyrightCheck(page: import('@playwright/test').Page) {
   await page.route('**/api/copyright/check**', async (route) => {
     await route.fulfill({
@@ -92,20 +87,29 @@ test.describe('Smoke — Editor', () => {
     expect(value).toContain('Hello smoke test');
   });
 
-  test('save action does not throw', async ({ page }) => {
+  test('save action does not throw and content persists', async ({ page }) => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
-    // Trigger save via keyboard shortcut and wait for any async handler
+
+    const editor = page
+      .locator('[data-testid="lyrics-editor"], textarea, [contenteditable="true"]')
+      .first();
+    await expect(editor).toBeVisible({ timeout: 10_000 });
+    await editor.click();
+    await editor.fill('Save smoke content');
+
     await page.keyboard.press('Control+s');
-    // Wait for either a save indicator or just let micro-tasks settle
     await page
       .locator('[data-testid="save-indicator"], [aria-label*="saved" i]')
       .waitFor({ state: 'visible', timeout: 3_000 })
       .catch(() => {
-        // No visible indicator — that's fine, just ensure no crash
+        // No visible indicator — assert content integrity instead
       });
+
+    const value = await editor.inputValue().catch(() => editor.textContent());
+    expect(value).toContain('Save smoke content');
     expect(errors).toHaveLength(0);
   });
 });
@@ -148,6 +152,7 @@ test.describe('Smoke — Copyright check (mocked)', () => {
       await expect(page.locator('text=/low|faible|no.*issue/i')).toBeVisible({ timeout: 10_000 });
     } else {
       test.skip();
+      return;
     }
   });
 });
@@ -164,10 +169,13 @@ test.describe('Smoke — i18n', () => {
       .first();
     if (await langSwitch.isVisible()) {
       await langSwitch.click();
-      await page.waitForTimeout(500);
+      // Replace arbitrary timeout with deterministic load-state wait
+      await page.waitForLoadState('domcontentloaded');
       await expect(page).not.toHaveURL(/error/);
+      await expect(page.locator('body')).not.toBeEmpty();
     } else {
       test.skip();
+      return;
     }
   });
 });
