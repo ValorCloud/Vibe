@@ -1,111 +1,113 @@
 # Vibe — Coding Rules
 
 These rules apply to all AI agents (GitHub Copilot, Copilot Chat, Copilot Workspace, etc.) working on this repository.
+Rules are ordered by priority — repo-specific rules (sections 1–5) override generic ones (sections below) when they conflict.
 
 ---
 
-⚠️ **INIT** : Avant toute analyse, rappelle à l'utilisateur en une phrase de vérifier que les connecteurs `@github` et `@vercel` sont activés (sources de vérité absolues du workspace).
+⚠️ **INIT**: Before any analysis, remind the user in one sentence to verify that the `@github` and `@vercel` connectors are active (absolute sources of truth for the workspace).
 
 ---
 
-## General Approach
+## 1. Posture & Communication
+
+- **Interpret intent, not the letter:** Understand the real objective, context, and expected deliverable. Prefer practical utility over literal execution.
+- **Scope by default = strict letter.** Exceed the explicit scope only if intent is unambiguous AND impact is ≤ 3 files. Otherwise, ask.
+- **Ambiguity handling:** Minor = decide silently; Medium = briefly state the assumption; Major = give the most likely path + 1–2 concise variants. Never invent constraints or facts.
+- **Style:** Zero filler. Direct responses, ready to implement. Do not expose internal reasoning. On failure: read logs directly, infer nothing, minimize interactions.
+
+## 2. Execution & Architecture
+
+- **Immediate action:** Apply changes directly inline (files, configs, commands). No pseudo-code, no deferred actions or promises.
+- **UI/UX:** Exclusive use of **Microsoft Fluent UI (Fluent 2)**. No mixing design systems. Everything must be PWA-compliant and responsive.
+- **Versioning:** Increment the *sub-minor-minor* version everywhere (package.json, manifests, headers) on every source code change. Format: `x.y.z.w` where `w` is the internal patch counter (e.g. `1.2.3.4 → 1.2.3.5`). If 4-segment versions are unsupported, record the build number in the commit message (e.g. `v1.2.3 build 5`).
+
+## 3. Repo Hygiene — Strict & Non-Negotiable
+
+### A. package.json (Canonical Rule)
+
+- **Mandatory SHA read before any push that includes package.json:** Read the file via the GitHub API (`get_file_contents`) to retrieve the current SHA AND full content. Never reconstruct it from memory.
+- **Full content only:** The committed `package.json` must include all fields (`name`, `version`, `scripts`, `dependencies`, `devDependencies`, etc.) — never a partial skeleton.
+- **Bumped version:** Increment `version` sub-minor-minor in the full retrieved content, never in a skeleton.
+- **npm verification:** Verify each version exists before committing (`npm show <pkg>@<version>`).
+- **Dependency rule:** `dependencies` = runtime (imported in `src/` for prod: *react, @fluentui/x, zod, motion*). `devDependencies` = build/tests (*vite, typescript, eslint, vitest*). When in doubt: if imported in `src/` → `dependencies`.
+
+### B. Refactoring & TypeScript
+
+- **Exhaustive search:** Run "find all references" before modifying any interface/type/prop.
+  - 0 consumers → deletion allowed in the same commit.
+  - ≥1 consumer → atomic migration required: old + new in the same diff, all call-sites updated.
+- **TS discipline:** Mentally simulate `tsc --noEmit` before committing. Zero implicit `any` (TS7006), zero missing module (TS2307).
+- **Strict casts:** No `as Type` casts without a type-guard on unknown payloads.
+- **Global extensions:** Any interface extending `Window` (e.g. `WindowWithWebkitAudio`) must also declare the standard properties it uses (`AudioContext: typeof AudioContext`).
+
+### C. Commits & CI/CD
+
+- **Atomicity:** 1 commit = 1 problem solved + ALL its consumers updated. Never leave broken code for a "next commit". If >5 files, split sequentially with a valid build at each step.
+- **Regression check:** Assess risk on the full diff before committing. Report status (fixed/remaining) after the commit.
+- **Failure resolution (Vercel/Actions):** Read logs (API/UI). Target the root cause (the *first* error in the stack, not the last). Fix everything in one exhaustive session.
+- **Tests and immediacy:** Tests are blocking for merge, not for commit. A commit without tests is allowed if a test commit follows in the same session.
+
+## 4. General Approach
 
 - Always check for a PRD (Product Requirements Document) before starting a new task and follow it closely.
 - Look for comprehensive project documentation to understand requirements before making changes.
 - Focus only on code areas relevant to the assigned task.
 - Prefer iterating on existing code rather than creating new solutions.
 - Keep solutions simple and avoid introducing unnecessary complexity.
-- Make only requested changes or changes you're confident are well understood.
 - Consider what other code areas might be affected by your changes.
 - Don't drastically change existing patterns without explicit instruction.
 - Exhaust all options using existing implementations before introducing new patterns.
-- If introducing a new pattern to replace an old one, remove the old implementation.
+- If introducing a new pattern to replace an old one, remove the old implementation — after verifying all consumers are migrated (see §3B).
 
-## Code Quality
+## 5. Code Quality
 
 - Keep files under 300 lines of code; refactor when approaching this limit.
 - Maintain a clean, organized codebase.
 - Avoid code duplication by checking for similar existing functionality.
-- Write thorough tests for all major functionality.
-- All tests should always pass before deploying to production. If they don't, notify me.
+- Write thorough tests for all major functionality. All tests must pass before merging to production. If they don't, notify the user.
 - Consider different environments (dev, test, prod) when writing code.
-- Unless explicitly instructed, instead of trying to gracefully handle an error or failure, fix the underlying issue.
+- Fix the underlying issue rather than gracefully handling errors, unless explicitly instructed otherwise.
 - When refactoring, look for duplicate code, duplicate files, and similar existing functionality. Do not copy files and rename them — edit the file that already exists.
 
-## Debugging & Issue Tracking
+## 6. Debugging & Issue Tracking
 
-- If you run into the same persistent error, write logs and console messages to help track down the issue, and check the logs after making changes to verify resolution.
-- If you run into issues that take multiple iterations to fix: after fixing, write a description of the problem and solution in a file under `fixes/<issue-name>.md`. Only do this for major issues.
-- For issues taking multiple iterations, check the `fixes/` folder for previous fixes to see if the issue was encountered before.
+- On a persistent error: write logs and console messages to track the issue, then check the logs after changes to verify resolution.
+- For issues requiring multiple iterations: after fixing, write a description of the problem and solution in `fixes/<issue-name>.md`. Only for major issues.
+- Before starting, check the `fixes/` folder for prior resolutions of the same issue.
 
-## Documentation
+## 7. Documentation
 
 - Keep a running list of patterns and technology used in `README.md`.
-- Reference `README.md` for patterns and technology used in the project.
+- Reference `README.md` for patterns and technology before making architectural decisions.
 
-## Git & Version Control
+## 8. Git & Version Control
 
-- Never leave unstaged/untracked files after committing to git.
+- Never leave unstaged/untracked files after committing.
 - Don't create new branches unless explicitly requested.
 - Never commit `.env` files to version control.
-- Never overwrite `.env` files without first asking and confirming.
+- Never overwrite `.env` files without explicit confirmation.
 - Never name files `improved-something` or `refactored-something`.
 
-## Dev Server
+## 9. Dev Server
 
 - Kill all related running servers before starting a new one.
 - Always start a new server after making changes to allow for testing.
 
-## Data & Mocking
+## 10. Data & Mocking
 
 - Avoid writing one-time scripts in permanent files.
 - Don't mock data except for tests (never for dev or prod environments).
 
 ---
 
-## 1. POSTURE & COMMUNICATION (Zéro effet "Génie")
+## Pre-Commit Checklist (Mandatory)
 
-- **Interprète l'intention, pas la lettre :** Ne sois pas un exécuteur aveugle. Comprends l'objectif réel, le contexte et le livrable attendu. Préfère l'utilité pratique à l'exactitude littérale bornée.
-- **Gestion des ambiguïtés :** Mineure = décide silencieusement ; Moyenne = énonce brièvement l'hypothèse ; Majeure = donne la voie la plus probable + 1 ou 2 variantes concises. N'invente jamais de contraintes ou de faits.
-- **Style :** Zéro blabla. Réponses directes, prêtes à l'implémentation. N'expose pas ton raisonnement interne. Si échec : lis les logs directement, ne déduis rien, minimise les interactions.
-
-## 2. EXÉCUTION & ARCHITECTURE
-
-- **Action immédiate :** Applique les modifications directement en ligne (fichiers, configs, commandes). Zéro pseudo-code, zéro action différée ou promesse.
-- **UI/UX :** Utilisation exclusive de **Microsoft Fluent UI (Fluent 2)**. Interdiction de mixer les design systems. Tout doit être PWA-compliant et responsive.
-- **Versioning :** Incrémente systématiquement la version *sub-minor-minor* partout (package.json, manifests, headers) à chaque modification de code source.
-
-## 3. RÈGLES D'HYGIÈNE REPO "LYRICIST/Vibe" (Strictes & Non-Négociables)
-
-### A. Opérations package.json
-
-- **Lecture API obligatoire :** Lis l'état actuel via l'API GitHub avant tout commit. Ne jamais le reconstruire de mémoire.
-- **Vérification npm :** Vérifie l'existence de chaque version (`npm show <pkg>@<version>`).
-- **Règle Dependencies :** `dependencies` = runtime (importé dans `src/` pour la prod : *react, @fluentui/x, zod, motion*). `devDependencies` = build/tests (*vite, typescript, eslint, vitest*). En cas de doute : import dans `src/` = `dependencies`.
-
-### B. Refactoring & TypeScript
-
-- **Recherche exhaustive :** Fais un "find all references" avant toute modification d'interface/type/prop. Modifie TOUS les call-sites affectés dans le même commit. Ne supprime jamais une prop sans vérifier les impacts.
-- **Rigueur TS :** Simule mentalement `tsc --noEmit`.
-- **Casts stricts :** Interdiction des casts `as Type` sans type-guard sur des payloads inconnus.
-- **Extensions globales :** Toute interface étendant `Window` (ex: `WindowWithWebkitAudio`) doit aussi déclarer les propriétés standards qu'elle utilise (`AudioContext: typeof AudioContext`).
-
-### C. Commits & CI/CD
-
-- **Atomicité :** 1 commit = 1 problème résolu + TOUS ses consommateurs mis à jour. Interdit de laisser un code cassé pour un "prochain commit". Si >5 fichiers, découpe séquentiellement avec un build valide à chaque étape.
-- **Gestion des Régressions :** Évalue le risque avant le commit sur le diff complet. Reporte l'état (corrigé/restant) après le commit.
-- **Résolution des Fails (Vercel/Actions) :** Lis les logs (API/UI). Cible la cause racine (la *première* erreur de la stack, pas la dernière). Corrige le tout en une session exhaustive.
-
-### D. Règle package.json (Non-Négociable)
-
-- **Lecture SHA obligatoire avant tout push_files incluant package.json** : lire le fichier via l'API GitHub (`get_file_contents`) pour récupérer le SHA courant ET le contenu complet.
-- **Contenu complet uniquement** : le `package.json` commité doit inclure la totalité des champs (`name`, `version`, `scripts`, `dependencies`, `devDependencies`, etc.) — jamais une version partielle ou reconstruite de mémoire.
-- **Version incrémentée** : bumper `version` sub-minor-minor dans le contenu complet récupéré, pas dans un squelette.
-
-## 4. CHECKLIST PRÉ-COMMIT (Validation obligatoire)
-
-- [ ] `package.json` lu depuis GitHub.
-- [ ] Versions npm validées.
-- [ ] Tous les consommateurs des symboles modifiés inclus dans le diff.
-- [ ] Zéro `any` implicite (TS7006) ou module manquant (TS2307).
-- [ ] Diff complet relu : cohérence I/O de chaque composant vérifiée.
+- [ ] `package.json` read from GitHub API (SHA retrieved, full content used).
+- [ ] npm versions verified (`npm show <pkg>@<version>`).
+- [ ] All consumers of modified symbols included in the diff.
+- [ ] Zero implicit `any` (TS7006) or missing module (TS2307).
+- [ ] No new TypeScript errors (`tsc --noEmit` clean).
+- [ ] Existing tests green (`vitest run`) or deviation documented.
+- [ ] No debug `console.log` left in the diff.
+- [ ] Full diff reviewed: I/O consistency of each component verified.
