@@ -154,21 +154,16 @@ test.describe('Suno — Poll / extend (mocked)', () => {
     await response.finished();
 
     // Wait for the audio/player element as the observable post-poll outcome —
-    // avoids arbitrary waitForTimeout.
+    // avoids arbitrary waitForTimeout. If it never appears, only tolerate that
+    // when polling didn't fire either (feature not implemented in this build);
+    // otherwise rethrow as a real failure below.
     try {
       await page
         .locator('audio, [data-testid="audio-player"], [class*="player"]')
         .first()
         .waitFor({ state: 'visible', timeout: 10_000 });
     } catch (err) {
-      // pollCalled reflects whether the app actually fires /api/suno/get;
-      // skip only if the polling feature is not implemented in this build
-      if (!pollCalled) {
-        test.skip();
-        return;
-      }
-      // Polling occurred but the player never appeared — this is a real failure.
-      throw err;
+      if (pollCalled) throw err;
     }
 
     // pollCalled reflects whether the app actually fires /api/suno/get;
