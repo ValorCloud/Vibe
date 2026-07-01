@@ -22,6 +22,29 @@ afterEach(() => {
 });
 
 describe('SpotifyAuthContext', () => {
+  it('does not crash when Spotify is not configured and surfaces an auth error on login', async () => {
+    vi.unstubAllEnvs();
+
+    const { SpotifyAuthProvider, useSpotifyAuthActions, useSpotifyAuthState } = await import('../SpotifyAuthContext');
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <SpotifyAuthProvider>{children}</SpotifyAuthProvider>
+    );
+    const { result } = renderHook(() => ({
+      actions: useSpotifyAuthActions(),
+      state: useSpotifyAuthState(),
+    }), { wrapper });
+
+    expect(result.current.state.status).toBe('idle');
+    expect(result.current.state.error).toBeNull();
+
+    await act(async () => {
+      await result.current.actions.login();
+    });
+
+    expect(result.current.state.status).toBe('error');
+    expect(result.current.state.error).toContain('VITE_SPOTIFY_CLIENT_ID is not set');
+  });
+
   it('rehydrates a token that becomes available after the initial state read', async () => {
     const expiresAt = Date.now() + 120_000;
     localStorage.setItem(TOKEN_KEY, 'stored-token');

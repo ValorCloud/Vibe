@@ -167,9 +167,7 @@ function InsightsTranslateGroup({ song }: InsightsTranslateGroupProps) {
 }
 
 function InsightsMetronomeButton() {
-  const { toggleMetronome } = useInsightsBarActionsContext();
-  const { isMetronomeActive } = useInsightsBarStateContext();
-  return <MetronomeButton isMetronomeActive={isMetronomeActive} toggleMetronome={toggleMetronome} />;
+  return <MetronomeButton />;
 }
 
 interface InsightsActionsControlProps {

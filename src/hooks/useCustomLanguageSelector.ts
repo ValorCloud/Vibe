@@ -1,97 +1,109 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEventHandler } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import {
-  SUPPORTED_ADAPTATION_LANGUAGES,
   adaptationLanguageLabel,
-  buildCustomLangId,
+  CUSTOM_LANG_ID_PREFIX,
   CUSTOM_LANGUAGE_VALUE,
-  migrateAdaptationToLangId,
-  readCustomLangText,
-} from '../i18n';
-import type { AdaptationLangId } from '../i18n/constants';
+  SUPPORTED_ADAPTATION_LANGUAGES,
+} from '../i18n/constants';
 
-interface UseCustomLanguageSelectorOptions {
-  storedValue: AdaptationLangId;
+interface UseCustomLanguageSelectorParams {
+  storedValue: string;
   onValueChange: (lang: string) => void;
 }
 
-interface LanguageOption {
-  value: string;
-  label: string;
-  title?: string;
-  alwaysShow?: boolean;
-  searchText?: string;
+function toCustomText(value: string): string {
+  if (!value.startsWith(CUSTOM_LANG_ID_PREFIX)) return '';
+  return value.slice(CUSTOM_LANG_ID_PREFIX.length).trim();
 }
 
 export function useCustomLanguageSelector({
   storedValue,
   onValueChange,
-}: UseCustomLanguageSelectorOptions) {
-  const initialCustomText = readCustomLangText(storedValue) ?? '';
-  const [customText, setCustomText] = useState(initialCustomText);
-  const [showCustomInput, setShowCustomInput] = useState(initialCustomText.length > 0);
-  const customInputRef = useRef<HTMLInputElement>(null);
+}: UseCustomLanguageSelectorParams) {
+  const [selectValue, setSelectValue] = useState<string>(
+    storedValue.startsWith(CUSTOM_LANG_ID_PREFIX) ? CUSTOM_LANGUAGE_VALUE : storedValue,
+  );
+  const [customText, setCustomTextState] = useState<string>(toCustomText(storedValue));
+  const customInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    const nextCustomText = readCustomLangText(storedValue) ?? '';
-    setCustomText(nextCustomText);
-    setShowCustomInput(nextCustomText.length > 0);
+    if (storedValue.startsWith(CUSTOM_LANG_ID_PREFIX)) {
+      setSelectValue(CUSTOM_LANGUAGE_VALUE);
+      setCustomTextState(toCustomText(storedValue));
+      return;
+    }
+    setSelectValue(storedValue);
+    setCustomTextState('');
   }, [storedValue]);
 
-  useEffect(() => {
-    if (!showCustomInput) return;
-    const frame = requestAnimationFrame(() => customInputRef.current?.focus());
-    return () => cancelAnimationFrame(frame);
-  }, [showCustomInput]);
-
-  const languageOptions = useMemo<LanguageOption[]>(
+  const languageOptions = useMemo(
     () => [
-      ...SUPPORTED_ADAPTATION_LANGUAGES.map((language) => ({
-        value: language.langId,
-        label: adaptationLanguageLabel(language),
-        title: language.aiName,
-        searchText: `${language.aiName} ${language.code} ${language.region ?? ''}`,
+      ...SUPPORTED_ADAPTATION_LANGUAGES.map((lang) => ({
+        value: lang.langId,
+        label: adaptationLanguageLabel(lang),
+        title: lang.region ? `${lang.aiName} (${lang.region})` : lang.aiName,
+        searchText: `${lang.aiName} ${lang.code} ${lang.region ?? ''}`.trim(),
       })),
       {
         value: CUSTOM_LANGUAGE_VALUE,
-        label: 'Other language…',
+        label: '🌐 Other language…',
         title: 'Type any language name',
-        alwaysShow: true,
-        searchText: 'Other language',
+        searchText: 'other custom language',
       },
     ],
     [],
   );
 
-  const selectValue = useMemo(
-    () => (showCustomInput ? CUSTOM_LANGUAGE_VALUE : migrateAdaptationToLangId(storedValue)),
-    [showCustomInput, storedValue],
+  const showCustomInput = selectValue === CUSTOM_LANGUAGE_VALUE;
+  const effectiveLang = customText.trim();
+
+  useEffect(() => {
+    if (!showCustomInput) return;
+    customInputRef.current?.focus();
+  }, [showCustomInput]);
+
+  const setCustomText = useCallback(
+    (value: string) => {
+      setCustomTextState(value);
+      const trimmed = value.trim();
+      if (showCustomInput && trimmed.length > 0) {
+        onValueChange(`${CUSTOM_LANG_ID_PREFIX}${trimmed}`);
+      }
+    },
+    [onValueChange, showCustomInput],
   );
 
-  const handleLanguageSelect = (value: string) => {
-    if (value === CUSTOM_LANGUAGE_VALUE) {
-      setShowCustomInput(true);
-      const nextCustomId = buildCustomLangId(customText);
-      if (nextCustomId) onValueChange(nextCustomId);
-      return;
-    }
+  const handleCustomTextChange = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      setCustomText(event.target.value);
+    },
+    [setCustomText],
+  );
 
-    setShowCustomInput(false);
-    onValueChange(migrateAdaptationToLangId(value));
-  };
-
-  const handleCustomTextChange: ChangeEventHandler<HTMLInputElement> = (event) => {
-    setCustomText(event.target.value);
-  };
+  const handleLanguageSelect = useCallback(
+    (lang: string) => {
+      setSelectValue(lang);
+      if (lang === CUSTOM_LANGUAGE_VALUE) {
+        if (customText.trim().length > 0) {
+          onValueChange(`${CUSTOM_LANG_ID_PREFIX}${customText.trim()}`);
+        }
+        return;
+      }
+      onValueChange(lang);
+      setCustomTextState('');
+    },
+    [customText, onValueChange],
+  );
 
   return {
     selectValue,
     customText,
-    setCustomText,
     customInputRef,
     showCustomInput,
-    effectiveLang: customText.trim(),
+    effectiveLang,
     languageOptions,
     handleLanguageSelect,
     handleCustomTextChange,
+    setCustomText,
   };
 }
