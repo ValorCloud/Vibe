@@ -290,13 +290,13 @@ test.describe('Suno — Error handling (mocked)', () => {
       });
     });
 
-    const malformedPayloads = [
-      { style: 'pop' }, // missing prompt entirely
-      { prompt: '' }, // empty prompt
-      { prompt: 123 }, // wrong type
+    const malformedCases: { name: string; payload: Record<string, unknown> }[] = [
+      { name: 'missing prompt entirely', payload: { style: 'pop' } },
+      { name: 'empty prompt', payload: { prompt: '' } },
+      { name: 'wrong type for prompt', payload: { prompt: 123 } },
     ];
 
-    for (const payload of malformedPayloads) {
+    for (const { name, payload } of malformedCases) {
       const result = await page.evaluate(async (body) => {
         const res = await fetch('/api/suno/generate', {
           method: 'POST',
@@ -305,9 +305,9 @@ test.describe('Suno — Error handling (mocked)', () => {
         });
         return { status: res.status, json: await res.json() };
       }, payload);
-      expect(result.status).toBeGreaterThanOrEqual(400);
-      expect(result.status).toBeLessThan(500);
-      expect(typeof result.json.error).toBe('string');
+      expect(result.status, `case: ${name}`).toBeGreaterThanOrEqual(400);
+      expect(result.status, `case: ${name}`).toBeLessThan(500);
+      expect(result.json.error, `case: ${name}`).toBe('Missing required field: prompt (string)');
     }
   });
 
