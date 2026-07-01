@@ -17,42 +17,28 @@ import type { AdaptationLangId } from '../i18n/constants';
 import type { EditMode } from '../types';
 
 export interface InsightsBarActionsContextValue {
-  // Language adaptation
   setTargetLanguage: (v: AdaptationLangId) => void;
   adaptSongLanguage: (lang: AdaptationLangId) => void;
   detectLanguage: () => void;
-  // Analysis
   analyzeCurrentSong: () => void;
-  // Edit mode
   editMode: EditMode;
   switchEditMode: (mode: EditMode) => void;
-  // Similarity (badge label only — index is read directly from SimilarityContext)
   setIsSimilarityModalOpen: (v: boolean) => void;
-  // Callbacks
   onOpenSearch: () => void;
   onToggleAnalysisPanel: () => void;
-  // Metronome (optional — MusicalTab owns it but InsightsBar shows the button)
-  toggleMetronome?: () => void;
 }
 
 export interface InsightsBarStateContextValue {
-  // Language adaptation
   targetLanguage: AdaptationLangId;
   isAdaptingLanguage: boolean;
   isDetectingLanguage: boolean;
   adaptationProgress: AdaptationProgress;
   adaptationResult: AdaptationResult | null;
-  // Analysis
   isAnalyzing: boolean;
-  // Similarity (badge label only — index is read directly from SimilarityContext)
   webBadgeLabel: string | null;
-  // Library
   libraryCount: number;
-  // API / panels
   isAnalysisPanelOpen: boolean;
   hasApiKey: boolean;
-  // Metronome (optional — MusicalTab owns it but InsightsBar shows the button)
-  isMetronomeActive?: boolean;
 }
 
 export interface InsightsBarContextValue extends InsightsBarActionsContextValue, InsightsBarStateContextValue {}
@@ -74,7 +60,6 @@ export function InsightsBarProvider({
     setIsSimilarityModalOpen: value.setIsSimilarityModalOpen,
     onOpenSearch: value.onOpenSearch,
     onToggleAnalysisPanel: value.onToggleAnalysisPanel,
-    ...(value.toggleMetronome !== undefined ? { toggleMetronome: value.toggleMetronome } : {}),
   }), [
     value.setTargetLanguage,
     value.adaptSongLanguage,
@@ -85,7 +70,6 @@ export function InsightsBarProvider({
     value.setIsSimilarityModalOpen,
     value.onOpenSearch,
     value.onToggleAnalysisPanel,
-    value.toggleMetronome,
   ]);
 
   const stateValue = useMemo<InsightsBarStateContextValue>(() => ({
@@ -99,7 +83,6 @@ export function InsightsBarProvider({
     libraryCount: value.libraryCount,
     isAnalysisPanelOpen: value.isAnalysisPanelOpen,
     hasApiKey: value.hasApiKey,
-    ...(value.isMetronomeActive !== undefined ? { isMetronomeActive: value.isMetronomeActive } : {}),
   }), [
     value.targetLanguage,
     value.isAdaptingLanguage,
@@ -111,7 +94,6 @@ export function InsightsBarProvider({
     value.libraryCount,
     value.isAnalysisPanelOpen,
     value.hasApiKey,
-    value.isMetronomeActive,
   ]);
 
   return (
