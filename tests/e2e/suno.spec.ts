@@ -147,19 +147,35 @@ test.describe('Suno — Poll / extend (mocked)', () => {
     const generateBtn = page.locator('button').filter({ hasText: /generat|créer/i }).first();
     await expect(generateBtn).toBeVisible({ timeout: 8_000 });
 
-    await generateBtn.click();
-    // Wait for generate response, then for the audio/player element as the
-    // observable post-poll outcome — avoids arbitrary waitForTimeout
-    await page.waitForResponse('**/api/suno/generate**');
-    await page
-      .locator('audio, [data-testid="audio-player"], [class*="player"]')
-      .first()
-      .waitFor({ state: 'visible', timeout: 10_000 })
-      .catch(() => null); // player may not appear if polling is client-side only
+    const [response] = await Promise.all([
+      page.waitForResponse('**/api/suno/generate**'),
+      generateBtn.click(),
+    ]);
+    await response.finished();
+
+    // Wait for the audio/player element as the observable post-poll outcome —
+    // avoids arbitrary waitForTimeout.
+    try {
+      await page
+        .locator('audio, [data-testid="audio-player"], [class*="player"]')
+        .first()
+        .waitFor({ state: 'visible', timeout: 10_000 });
+    } catch (err) {
+      // pollCalled reflects whether the app actually fires /api/suno/get;
+      // skip only if the polling feature is not implemented in this build
+      if (!pollCalled) {
+        test.skip();
+        return;
+      }
+      // Polling occurred but the player never appeared — this is a real failure.
+      throw err;
+    }
 
     // pollCalled reflects whether the app actually fires /api/suno/get;
     // skip only if the polling feature is not implemented in this build
-    if (!pollCalled) test.skip();
+    if (!pollCalled) {
+      test.skip();
+    }
   });
 
   test('extend action calls /api/suno/extend', async ({ page }) => {
