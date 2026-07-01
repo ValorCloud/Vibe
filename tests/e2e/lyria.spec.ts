@@ -166,7 +166,10 @@ test.describe('Lyria — UI state', () => {
     await expect(generateBtn).toBeVisible({ timeout: 8_000 });
     await generateBtn.click();
 
-    // Immediately after clicking, button should be disabled or show a loading state
+    // Immediately after clicking, button should be disabled or show a loading state.
+    // A 1.5s slow mock guarantees this in-progress state must be observable —
+    // assert it directly instead of skipping when the probe is false, so a
+    // missing disabled/loading state fails the test rather than being hidden.
     const isDisabledOrLoading =
       (await generateBtn.isDisabled()) ||
       (await page
@@ -174,7 +177,6 @@ test.describe('Lyria — UI state', () => {
         .first()
         .isVisible()
         .catch(() => false));
-    // Loading state is a UI-quality check — skip only if genuinely not implemented
-    if (!isDisabledOrLoading) test.skip();
+    expect(isDisabledOrLoading).toBe(true);
   });
 });

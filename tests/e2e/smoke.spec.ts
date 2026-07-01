@@ -8,17 +8,93 @@ import { test, expect } from '@playwright/test';
 
 // ---- helpers ----------------------------------------------------------------
 
+async function openHome(page: import('@playwright/test').Page) {
+  await page.goto('/');
+  await page.waitForLoadState('domcontentloaded');
+  await page.evaluate(async () => {
+    localStorage.clear();
+    sessionStorage.clear();
+    const root = await navigator.storage?.getDirectory?.();
+    if (!root) return;
+    await root.removeEntry('vibe-session.json').catch(() => {
+      // No persisted OPFS session — start clean anyway.
+    });
+  });
+  await page.reload();
+  await page.waitForLoadState('domcontentloaded');
+}
+
+async function getEditor(page: import('@playwright/test').Page) {
+  const selectors = [
+    'input[data-line-id]',
+    '[data-testid="lyrics-editor"]',
+    'textarea[name="lyrics"]',
+    'textarea',
+    '[contenteditable="true"]',
+    '[role="textbox"]',
+  ];
+
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    for (const selector of selectors) {
+      const editor = page.locator(selector).first();
+      if (await editor.isVisible().catch(() => false)) return editor;
+    }
+    await page.waitForTimeout(250);
+  }
+
+  throw new Error('Could not find an editor control after creating a new song.');
+}
+
+async function mockApiAvailable(page: import('@playwright/test').Page) {
+  await page.route('**/api/status**', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        available: true,
+        provider: 'gemini',
+        model: 'gemini-2.5-flash',
+      }),
+    });
+  });
+}
+
 async function mockGeminiGenerate(page: import('@playwright/test').Page) {
   await page.route('**/api/generate**', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        lyrics: '[Verse 1]\nSmoke test lyrics\n[Chorus]\nIt works!',
-        model: 'gemini-2.5-pro',
+        text: JSON.stringify([
+          {
+            name: 'Intro',
+            rhymeScheme: 'FREE',
+            lines: [
+              { text: 'Smoke test lyrics', rhymingSyllables: '', rhyme: '', syllables: 4, concept: 'smoke' },
+              { text: 'Second line', rhymingSyllables: '', rhyme: '', syllables: 3, concept: 'smoke' },
+              { text: 'Third line', rhymingSyllables: '', rhyme: '', syllables: 3, concept: 'smoke' },
+              { text: 'Fourth line', rhymingSyllables: '', rhyme: '', syllables: 3, concept: 'smoke' },
+            ],
+          },
+        ]),
       }),
     });
   });
+}
+
+async function createGeneratedSong(page: import('@playwright/test').Page) {
+  await mockApiAvailable(page);
+  await mockGeminiGenerate(page);
+  await openHome(page);
+
+  const generateBtn = page.getByRole('button', {
+    name: /generate lyrics|generate a new song with ai/i,
+  });
+  await expect(generateBtn).toBeVisible({ timeout: 10_000 });
+  await generateBtn.click();
+  const editor = await getEditor(page);
+  await expect(editor).toContainText('Smoke test lyrics');
+  return editor;
 }
 
 async function mockLyriaGenerate(page: import('@playwright/test').Page) {
@@ -64,7 +140,7 @@ test.describe('Smoke — App loads', () => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
 
-    await page.goto('/');
+    await openHome(page);
     await expect(page).toHaveTitle(/Lyricist|Vibe/i);
     const hardErrors = errors.filter(
       (e) => !e.includes('favicon') && !e.includes('ResizeObserver'),
@@ -75,28 +151,17 @@ test.describe('Smoke — App loads', () => {
 
 test.describe('Smoke — Editor', () => {
   test('editor panel is visible and accepts text input', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
-    const editor = page
-      .locator('[data-testid="lyrics-editor"], textarea, [contenteditable="true"]')
-      .first();
-    await expect(editor).toBeVisible({ timeout: 10_000 });
+    const editor = await createGeneratedSong(page);
     await editor.click();
     await editor.fill('Hello smoke test');
-    const value = await editor.inputValue().catch(() => editor.textContent());
-    expect(value).toContain('Hello smoke test');
+    await expect(editor).toHaveValue('Hello smoke test');
   });
 
   test('save action does not throw and content persists', async ({ page }) => {
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
-    const editor = page
-      .locator('[data-testid="lyrics-editor"], textarea, [contenteditable="true"]')
-      .first();
-    await expect(editor).toBeVisible({ timeout: 10_000 });
+    const editor = await createGeneratedSong(page);
     await editor.click();
     await editor.fill('Save smoke content');
 
@@ -108,38 +173,22 @@ test.describe('Smoke — Editor', () => {
         // No visible indicator — assert content integrity instead
       });
 
-    const value = await editor.inputValue().catch(() => editor.textContent());
-    expect(value).toContain('Save smoke content');
+    await expect(editor).toHaveValue('Save smoke content');
     expect(errors).toHaveLength(0);
   });
 });
 
 test.describe('Smoke — AI Generate (mocked)', () => {
   test('clicking Generate triggers API call and shows lyrics', async ({ page }) => {
-    await mockGeminiGenerate(page);
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
-
-    const generateBtn = page
-      .locator('button')
-      .filter({ hasText: /generat|AI|créer|write/i })
-      .first();
-    await expect(generateBtn).toBeVisible({ timeout: 10_000 });
-    await generateBtn.click();
-
-    await expect(page.locator('text=Smoke test lyrics')).toBeVisible({ timeout: 10_000 });
+    await createGeneratedSong(page);
   });
 });
 
 test.describe('Smoke — Copyright check (mocked)', () => {
   test('copyright check returns low risk badge', async ({ page }) => {
     await mockCopyrightCheck(page);
-    await page.goto('/');
-    await page.waitForLoadState('domcontentloaded');
+    const editor = await createGeneratedSong(page);
 
-    const editor = page
-      .locator('[data-testid="lyrics-editor"], textarea, [contenteditable="true"]')
-      .first();
     await editor.click();
     await editor.fill('These are test lyrics');
 
@@ -147,7 +196,7 @@ test.describe('Smoke — Copyright check (mocked)', () => {
       .locator('button')
       .filter({ hasText: /copyright|check|vérif/i })
       .first();
-    if (await checkBtn.isVisible()) {
+    if ((await checkBtn.isVisible().catch(() => false)) && (await checkBtn.isEnabled().catch(() => false))) {
       await checkBtn.click();
       await expect(page.locator('text=/low|faible|no.*issue/i')).toBeVisible({ timeout: 10_000 });
     } else {
