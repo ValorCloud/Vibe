@@ -26,6 +26,7 @@ export interface InsightsBarActionsContextValue {
   setIsSimilarityModalOpen: (v: boolean) => void;
   onOpenSearch: () => void;
   onToggleAnalysisPanel: () => void;
+  toggleMetronome?: () => void;
 }
 
 export interface InsightsBarStateContextValue {
@@ -39,6 +40,7 @@ export interface InsightsBarStateContextValue {
   libraryCount: number;
   isAnalysisPanelOpen: boolean;
   hasApiKey: boolean;
+  isMetronomeActive?: boolean;
 }
 
 export interface InsightsBarContextValue extends InsightsBarActionsContextValue, InsightsBarStateContextValue {}
@@ -60,6 +62,7 @@ export function InsightsBarProvider({
     setIsSimilarityModalOpen: value.setIsSimilarityModalOpen,
     onOpenSearch: value.onOpenSearch,
     onToggleAnalysisPanel: value.onToggleAnalysisPanel,
+    ...(value.toggleMetronome ? { toggleMetronome: value.toggleMetronome } : {}),
   }), [
     value.setTargetLanguage,
     value.adaptSongLanguage,
@@ -70,6 +73,7 @@ export function InsightsBarProvider({
     value.setIsSimilarityModalOpen,
     value.onOpenSearch,
     value.onToggleAnalysisPanel,
+    value.toggleMetronome,
   ]);
 
   const stateValue = useMemo<InsightsBarStateContextValue>(() => ({
@@ -83,6 +87,7 @@ export function InsightsBarProvider({
     libraryCount: value.libraryCount,
     isAnalysisPanelOpen: value.isAnalysisPanelOpen,
     hasApiKey: value.hasApiKey,
+    ...(value.isMetronomeActive !== undefined ? { isMetronomeActive: value.isMetronomeActive } : {}),
   }), [
     value.targetLanguage,
     value.isAdaptingLanguage,
@@ -94,6 +99,7 @@ export function InsightsBarProvider({
     value.libraryCount,
     value.isAnalysisPanelOpen,
     value.hasApiKey,
+    value.isMetronomeActive,
   ]);
 
   return (

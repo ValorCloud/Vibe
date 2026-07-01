@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { Loader2, Languages } from '../../ui/icons';
 import { LcarsSelect } from '../../ui/LcarsSelect';
 import { Tooltip } from '../../ui/Tooltip';
-import { useTranslation } from '../../../i18n';
+import { CUSTOM_LANGUAGE_VALUE, useTranslation } from '../../../i18n';
 import { useCustomLanguageSelector } from '../../../hooks/useCustomLanguageSelector';
 import type { AdaptationLangId } from '../../../i18n/constants';
 import type { Section } from '../../../types';
@@ -78,9 +78,10 @@ export function TranslateGroup({
           <LcarsSelect
             value={selectValue}
             onChange={(lang) => {
-              setTargetLanguage(lang as AdaptationLangId);
-              if (!isBaseDisabled) adaptSongLanguage(lang as AdaptationLangId);
               handleLanguageSelect(lang);
+              if (lang !== CUSTOM_LANGUAGE_VALUE && !isBaseDisabled) {
+                adaptSongLanguage(lang as AdaptationLangId);
+              }
             }}
             options={languageOptions}
             triggerLabel={triggerContent}
