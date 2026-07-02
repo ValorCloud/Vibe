@@ -13,7 +13,7 @@ type VisualMode = 'waves' | 'bars' | 'orbits' | 'starfield';
 const VISUAL_MODES: readonly VisualMode[] = ['waves', 'bars', 'orbits', 'starfield'];
 
 /** FNV-1a string hash — deterministic seed source for the per-track PRNG. */
-function hashSeed(seed: string): number {
+export function hashSeed(seed: string): number {
   let h = 2166136261;
   for (let i = 0; i < seed.length; i++) {
     h ^= seed.charCodeAt(i);
@@ -23,7 +23,7 @@ function hashSeed(seed: string): number {
 }
 
 /** Mulberry32 PRNG — cheap, deterministic per-track randomization. */
-function makeRng(seed: number) {
+export function makeRng(seed: number) {
   let s = seed || 1;
   return () => {
     s |= 0; s = (s + 0x6D2B79F5) | 0;
@@ -33,7 +33,7 @@ function makeRng(seed: number) {
   };
 }
 
-interface VisualParams {
+export interface VisualParams {
   mode: VisualMode;
   hue: number;
   count: number;
@@ -41,7 +41,8 @@ interface VisualParams {
   phases: number[];
 }
 
-function buildParams(seed: string): VisualParams {
+/** Exported for unit tests — deterministic per-seed visual parameters. */
+export function buildParams(seed: string): VisualParams {
   const rng = makeRng(hashSeed(seed));
   const mode = VISUAL_MODES[Math.floor(rng() * VISUAL_MODES.length)]!;
   return {
@@ -127,6 +128,10 @@ export function AudioVisualStage({ seed, isPlaying, contentWidth, overlay }: Aud
   const [showControls, setShowControls] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const params = useMemo(() => buildParams(seed), [seed]);
+  // Elapsed animation time — persisted across play/pause effect re-runs so the
+  // visualization resumes where it left off instead of restarting from t=0.
+  const elapsedRef = useRef(0);
+  useEffect(() => { elapsedRef.current = 0; }, [params]);
 
   const handleMouseMove = () => {
     setShowControls(true);
@@ -141,27 +146,45 @@ export function AudioVisualStage({ seed, isPlaying, contentWidth, overlay }: Aud
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     let rafId = 0;
+    // Cached CSS-pixel size — avoids offsetWidth/offsetHeight layout reads on
+    // every animation frame (each read forces a synchronous reflow).
+    let cssWidth = 0;
+    let cssHeight = 0;
 
     const resize = () => {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio;
-      ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+      cssWidth = canvas.offsetWidth;
+      cssHeight = canvas.offsetHeight;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = cssWidth * dpr;
+      canvas.height = cssHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    window.addEventListener('resize', resize);
+    // ResizeObserver tracks the element itself (container width is fluid), so
+    // size changes without a window resize are caught too. Fallback for
+    // environments without ResizeObserver (older browsers, jsdom).
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(resize);
+      observer.observe(canvas);
+    } else {
+      window.addEventListener('resize', resize);
+    }
     resize();
 
     ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+    ctx.fillRect(0, 0, cssWidth, cssHeight);
 
-    const start = performance.now();
+    const start = performance.now() - elapsedRef.current * 1000;
     const draw = () => {
-      drawFrame(ctx, canvas.offsetWidth, canvas.offsetHeight, (performance.now() - start) / 1000, params);
+      elapsedRef.current = (performance.now() - start) / 1000;
+      drawFrame(ctx, cssWidth, cssHeight, elapsedRef.current, params);
       if (isPlaying) rafId = window.requestAnimationFrame(draw);
     };
     draw();
 
     return () => {
-      window.removeEventListener('resize', resize);
+      if (observer) observer.disconnect();
+      else window.removeEventListener('resize', resize);
       window.cancelAnimationFrame(rafId);
     };
   }, [isPlaying, params]);
