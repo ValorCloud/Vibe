@@ -51,7 +51,7 @@ describe('makeRng', () => {
   it('treats seed 0 as a valid seed (falls back to 1)', () => {
     const zero = makeRng(0);
     const one = makeRng(1);
-    expect(zero()).toBe(one());
+    for (let i = 0; i < 10; i++) expect(zero()).toBe(one());
   });
 });
 
