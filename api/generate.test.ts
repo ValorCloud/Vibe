@@ -111,4 +111,60 @@ describe('POST /api/generate', () => {
     console.log('BODY:', ctx.body);
     expect(ctx.statusCode).toBe(200);
   });
+
+  describe('runtime provider override (x-ai-provider / x-ai-key headers)', () => {
+    beforeEach(() => {
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+    });
+
+    it('uses the user-supplied OpenAI key without any server env key', async () => {
+      const fetchMock = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'openai says hi' } }] }),
+      });
+      vi.stubGlobal('fetch', fetchMock);
+      try {
+        const { res, ctx } = makeRes();
+        await handler(makeReq({
+          headers: { 'x-ai-provider': 'openai', 'x-ai-key': 'sk-user-key' },
+          body: { model: 'gpt-4o-mini', contents: 'hello' },
+        } as Partial<VercelRequest>), res);
+        expect(ctx.statusCode).toBe(200);
+        expect(ctx.body).toEqual({ text: 'openai says hi' });
+        const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+        expect(url).toContain('api.openai.com');
+        expect((init.headers as Record<string, string>).Authorization).toBe('Bearer ' + 'sk-user-key');
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it('validates the model prefix against the override provider', async () => {
+      const { res, ctx } = makeRes();
+      await handler(makeReq({
+        headers: { 'x-ai-provider': 'anthropic', 'x-ai-key': 'sk-ant-key' },
+        body: { model: 'gemini-1.5-pro', contents: 'hello' },
+      } as Partial<VercelRequest>), res);
+      expect(ctx.statusCode).toBe(400);
+    });
+
+    it('returns 500 for an override provider without any key (header or env)', async () => {
+      const { res, ctx } = makeRes();
+      await handler(makeReq({
+        headers: { 'x-ai-provider': 'openai' },
+        body: { model: 'gpt-4o-mini', contents: 'hello' },
+      } as Partial<VercelRequest>), res);
+      expect(ctx.statusCode).toBe(500);
+    });
+
+    it('rejects malformed API keys (non-printable characters ignored)', async () => {
+      const { res, ctx } = makeRes();
+      await handler(makeReq({
+        headers: { 'x-ai-provider': 'openai', 'x-ai-key': 'bad\r\nkey' },
+        body: { model: 'gpt-4o-mini', contents: 'hello' },
+      } as Partial<VercelRequest>), res);
+      expect(ctx.statusCode).toBe(500);
+    });
+  });
 });

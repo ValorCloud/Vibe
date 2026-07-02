@@ -93,4 +93,44 @@ describe('SettingsModal', () => {
     expect(englishButton.className).not.toContain('bg-[var(--accent-color)]/10');
     expect(frenchButton.querySelector('img')).not.toBeNull();
   });
+
+  it('persists an alternate AI provider and API key on save', () => {
+    const props = createProps();
+
+    render(
+      <LanguageProvider>
+        <SettingsModal {...props} />
+      </LanguageProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'OpenAI' }));
+    const keyInput = screen.getByLabelText(/api key/i);
+    fireEvent.change(keyInput, { target: { value: 'sk-my-user-key' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(localStorage.getItem('vibe_ai_provider')).toBe('openai');
+    expect(localStorage.getItem('vibe_ai_api_key')).toBe('sk-my-user-key');
+    expect(props.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the API key field for the default provider and clears settings on Default', () => {
+    localStorage.setItem('vibe_ai_provider', 'anthropic');
+    localStorage.setItem('vibe_ai_api_key', 'sk-old-key');
+    const props = createProps();
+
+    render(
+      <LanguageProvider>
+        <SettingsModal {...props} />
+      </LanguageProvider>,
+    );
+
+    expect(screen.getByLabelText(/api key/i)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Default' }));
+    expect(screen.queryByLabelText(/api key/i)).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(localStorage.getItem('vibe_ai_provider')).toBeNull();
+    expect(localStorage.getItem('vibe_ai_api_key')).toBeNull();
+  });
 });

@@ -621,6 +621,14 @@ export interface Translations {
       show: string;
       hide: string;
     };
+    /** AI provider override section (optional — component falls back to English). */
+    aiProvider?: {
+      label: string;
+      default: string;
+      apiKeyLabel: string;
+      apiKeyPlaceholder: string;
+      hint: string;
+    };
     actions: {
       default: string;
       save: string;

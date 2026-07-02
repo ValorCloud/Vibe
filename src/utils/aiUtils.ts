@@ -2,6 +2,11 @@ import { withRetry, type RetryOptions } from './withRetry';
 import { z } from 'zod';
 import { VIBE_EVENTS } from '../constants/vibeEvents';
 import { logger } from './logger';
+import {
+  getActiveAiOverride,
+  AI_PROVIDER_LABELS,
+  AI_PROVIDER_DEFAULT_MODELS,
+} from './aiProviderSettings';
 
 const getErrorMessage = (error: unknown) => {
   if (error && typeof error === 'object' && 'message' in error) return String((error as { message?: unknown }).message ?? '');
@@ -80,34 +85,63 @@ async function fetchProviderInfo(): Promise<ProviderInfo> {
 /** Prefetch at module load (non-blocking). */
 void fetchProviderInfo();
 
+/** Model-name prefixes accepted per provider (mirrors api/_aiProvider.ts). */
+const PROVIDER_MODEL_PREFIXES: Record<'gemini' | 'openai' | 'anthropic', string[]> = {
+  gemini: ['gemini-'],
+  openai: ['gpt-', 'o1-', 'o3-', 'chatgpt-'],
+  anthropic: ['claude-'],
+};
+
+/** Env var holding the server-side key per provider (informational only). */
+const PROVIDER_KEY_ENV_VARS: Record<string, string> = {
+  gemini: 'GEMINI_API_KEY',
+  openai: 'OPENAI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
+};
+
 /**
  * Returns human-readable provider name for UI display.
+ * Reflects the user-configured override (Settings → AI Provider) when active,
+ * otherwise the server-configured provider.
  * Falls back to 'Google Gemini' synchronously until cache is populated.
  */
 export function getAiProviderName(): string {
+  const override = getActiveAiOverride();
+  if (override) return AI_PROVIDER_LABELS[override.provider];
   if (_providerInfoCache) {
-    const map: Record<string, string> = {
-      gemini: 'Google Gemini',
-      openai: 'OpenAI',
-      anthropic: 'Anthropic Claude',
-    };
-    return map[_providerInfoCache.provider] ?? _providerInfoCache.provider;
+    return AI_PROVIDER_LABELS[_providerInfoCache.provider as keyof typeof AI_PROVIDER_LABELS]
+      ?? _providerInfoCache.provider;
   }
   return 'Google Gemini';
 }
 
 /**
- * Returns the active model name. Falls back synchronously.
+ * Returns the active model name (override-aware). Falls back synchronously.
  */
 export function getAiModelName(): string {
+  const override = getActiveAiOverride();
+  if (override) return AI_PROVIDER_DEFAULT_MODELS[override.provider];
   return _providerInfoCache?.model ?? 'gemini-2.5-flash';
 }
 
 /**
+ * Returns a label describing where the active API key comes from,
+ * for display in the About dialog.
+ */
+export function getAiKeySourceLabel(): string {
+  const override = getActiveAiOverride();
+  if (override) return 'User key (Settings)';
+  const provider = _providerInfoCache?.provider ?? 'gemini';
+  return PROVIDER_KEY_ENV_VARS[provider] ?? 'GEMINI_API_KEY';
+}
+
+/**
  * Returns whether the AI provider is available.
- * Triggers a fetch if the cache is cold; returns false until resolved.
+ * A user-configured override (provider + key in Settings) is always
+ * considered available; otherwise defers to the server /api/status check.
  */
 export async function isAiAvailable(): Promise<boolean> {
+  if (getActiveAiOverride()) return true;
   const info = await fetchProviderInfo();
   return info.available;
 }
@@ -125,9 +159,24 @@ export const AI_KEY_ENV_VAR = 'GEMINI_API_KEY';
 
 const proxyGenerateContent = async (params: GenerateContentParams): Promise<GenerateContentResponse> => {
   const { signal, ...body } = params;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+
+  // Forward the user-configured provider/key override (Settings → AI Provider).
+  // Callers pass models for the default provider; remap to the override
+  // provider's default model when the requested model family doesn't match.
+  const override = getActiveAiOverride();
+  if (override) {
+    headers['x-ai-provider'] = override.provider;
+    headers['x-ai-key'] = override.apiKey;
+    const prefixes = PROVIDER_MODEL_PREFIXES[override.provider];
+    if (!prefixes.some(p => body.model.startsWith(p))) {
+      body.model = AI_PROVIDER_DEFAULT_MODELS[override.provider];
+    }
+  }
+
   const response = await fetch('/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body),
     signal: signal ?? null,
   });

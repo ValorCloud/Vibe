@@ -482,6 +482,13 @@
       "show": "Show",
       "hide": "Hide"
     },
+    "aiProvider": {
+      "label": "AI Provider",
+      "default": "Default (server)",
+      "apiKeyLabel": "API key",
+      "apiKeyPlaceholder": "Paste your API key…",
+      "hint": "Your key is stored locally on this device and sent only with your AI requests."
+    },
     "actions": {
       "default": "Default",
       "save": "Save",

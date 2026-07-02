@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Apple, Github, Music, Youtube, ExternalLink, Linkedin, Radio, ShoppingBag, Info, X, BookOpen, FileText } from '../../ui/icons';
 import { useTranslation } from '../../../i18n';
 import { APP_VERSION_LABEL } from '../../../version';
-import { AI_KEY_ENV_VAR, AI_MODEL_NAME } from '../../../utils/aiUtils';
+import { getAiProviderName, getAiModelName, getAiKeySourceLabel, isAiAvailable } from '../../../utils/aiUtils';
 import { Button } from '../../ui/Button';
 import { AiAssistantPanel } from '../AiAssistantPanel';
 import bannerImage from '../../../../docs/Lyricist_Splash_Medium.png';
@@ -37,6 +37,26 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
   const bodyRef = useRef<HTMLDivElement>(null);
   const sweepItemsRef = useRef<HTMLDivElement>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  // Active AI provider info — refreshed when the dialog opens (the provider
+  // status may resolve asynchronously and the user can change it in Settings).
+  const [aiInfo, setAiInfo] = useState({
+    provider: getAiProviderName(),
+    model: getAiModelName(),
+    keySource: getAiKeySourceLabel(),
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    const refresh = () => setAiInfo({
+      provider: getAiProviderName(),
+      model: getAiModelName(),
+      keySource: getAiKeySourceLabel(),
+    });
+    refresh();
+    void isAiAvailable().then(() => { if (!cancelled) refresh(); });
+    return () => { cancelled = true; };
+  }, [isOpen]);
 
   const onCloseRef = useRef(onClose);
   useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
@@ -148,24 +168,24 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
               </span>
             </p>
 
-            {/* Tech Info — Gemini */}
+            {/* Tech Info — active AI provider */}
             <div className="grid grid-cols-1 gap-3 pt-4 border-t border-[var(--border-color)] sm:grid-cols-2">
               <div className="about-sweep-item flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)]">
                 <div className="about-sweep-content flex flex-col items-center gap-1">
                   <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{about.engineLabel ?? 'Engine'}</span>
-                  <span className="text-xs text-[var(--text-primary)] telemetry-text">{about.engine ?? 'Vibe AI'}</span>
+                  <span className="text-xs text-[var(--text-primary)] telemetry-text">{aiInfo.provider}</span>
                 </div>
               </div>
               <div className="about-sweep-item flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)]">
                 <div className="about-sweep-content flex flex-col items-center gap-1">
                   <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{about.modelLabel ?? 'Model'}</span>
-                  <span className="text-xs text-[var(--text-primary)] telemetry-text break-all text-center">{AI_MODEL_NAME}</span>
+                  <span className="text-xs text-[var(--text-primary)] telemetry-text break-all text-center">{aiInfo.model}</span>
                 </div>
               </div>
               <div className="about-sweep-item flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)]">
                 <div className="about-sweep-content flex flex-col items-center gap-1">
                   <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">{about.apiKeyLabel ?? 'API key'}</span>
-                  <span className="text-xs text-[var(--text-primary)] telemetry-text break-all text-center">{AI_KEY_ENV_VAR}</span>
+                  <span className="text-xs text-[var(--text-primary)] telemetry-text break-all text-center">{aiInfo.keySource}</span>
                 </div>
               </div>
               <div className="about-sweep-item flex flex-col items-center gap-1 px-4 py-3 rounded-lg bg-[var(--bg-app)] border border-[var(--border-color)]">
