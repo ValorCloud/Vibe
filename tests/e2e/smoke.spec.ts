@@ -93,7 +93,12 @@ async function createGeneratedSong(page: import('@playwright/test').Page) {
   await expect(generateBtn).toBeVisible({ timeout: 10_000 });
   await generateBtn.click();
   const editor = await getEditor(page);
-  await expect(editor).toContainText('Smoke test lyrics');
+  const tagName = await editor.evaluate((el) => el.tagName.toLowerCase());
+  if (tagName === 'input' || tagName === 'textarea') {
+    await expect(editor).toHaveValue(/Smoke test lyrics/);
+  } else {
+    await expect(editor).toContainText('Smoke test lyrics');
+  }
   return editor;
 }
 
