@@ -1,10 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { X, Monitor, Sun, Moon, Volume2, VolumeX, Globe, Settings, Type, FileCode, Languages } from '../../ui/icons';
+import { X, Monitor, Sun, Moon, Volume2, VolumeX, Globe, Settings, Type, FileCode, Languages, Bot } from '../../ui/icons';
 import { useTranslation, SUPPORTED_UI_LOCALES } from '../../../i18n';
 import { APP_VERSION_LABEL } from '../../../version';
 import { Button } from '../../ui/Button';
 import { LanguageBadge } from '../../ui/LanguageBadge';
 import { SunoKPIBar } from '../status/SunoKPIBar';
+import {
+  getAiProviderSettings,
+  setAiProviderSettings,
+  AI_PROVIDER_CHOICES,
+  AI_PROVIDER_LABELS,
+  type AiProviderChoice,
+} from '../../../utils/aiProviderSettings';
 
 interface Props {
   isOpen: boolean;
@@ -54,6 +61,7 @@ export function SettingsModal({
   const settingsScale = (typeof settings.scale === 'object' ? settings.scale : undefined);
   const settingsEditMode = (typeof settings.editMode === 'object' ? settings.editMode : undefined);
   const settingsTranslation = (typeof settings.translation === 'object' ? settings.translation : undefined);
+  const settingsAiProvider = (typeof settings.aiProvider === 'object' ? settings.aiProvider : undefined);
   const settingsActions = (typeof settings.actions === 'object' ? settings.actions : undefined);
   const [draftTheme, setDraftTheme] = useState(theme);
   const [draftAudioFeedback, setDraftAudioFeedback] = useState(audioFeedback);
@@ -61,6 +69,8 @@ export function SettingsModal({
   const [draftUiScale, setDraftUiScale] = useState(uiScale);
   const [draftDefaultEditMode, setDraftDefaultEditMode] = useState(defaultEditMode);
   const [draftShowTranslation, setDraftShowTranslation] = useState(showTranslationFeatures);
+  const [draftAiProvider, setDraftAiProvider] = useState<AiProviderChoice>(() => getAiProviderSettings().provider);
+  const [draftAiApiKey, setDraftAiApiKey] = useState(() => getAiProviderSettings().apiKey);
   const closeActionRef = useRef<'save' | 'close' | null>(null);
 
   useEffect(() => {
@@ -72,6 +82,9 @@ export function SettingsModal({
       setDraftUiScale(uiScale);
       setDraftDefaultEditMode(defaultEditMode);
       setDraftShowTranslation(showTranslationFeatures);
+      const aiSettings = getAiProviderSettings();
+      setDraftAiProvider(aiSettings.provider);
+      setDraftAiApiKey(aiSettings.apiKey);
     }
   }, [isOpen, theme, audioFeedback, language, uiScale, defaultEditMode, showTranslationFeatures]);
 
@@ -100,6 +113,7 @@ export function SettingsModal({
     setUiScale(draftUiScale);
     setDefaultEditMode(draftDefaultEditMode);
     setShowTranslationFeatures(draftShowTranslation);
+    setAiProviderSettings({ provider: draftAiProvider, apiKey: draftAiApiKey });
     onClose();
   };
 
@@ -110,6 +124,8 @@ export function SettingsModal({
     setDraftUiScale('large');
     setDraftDefaultEditMode('section');
     setDraftShowTranslation(true);
+    setDraftAiProvider('default');
+    setDraftAiApiKey('');
   };
 
   return (
@@ -337,6 +353,54 @@ export function SettingsModal({
                       </button>
                     ))}
                   </div>
+                </section>
+
+                {/* AI Provider section */}
+                <section aria-labelledby="settings-aiprovider-heading">
+                  <h3 id="settings-aiprovider-heading" className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] mb-3 flex items-center gap-2">
+                    <Bot className="w-3.5 h-3.5" />
+                    {settingsAiProvider?.label ?? 'AI Provider'}
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {AI_PROVIDER_CHOICES.map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => setDraftAiProvider(opt)}
+                        aria-pressed={draftAiProvider === opt}
+                        className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-xs transition-all ${
+                          draftAiProvider === opt
+                            ? 'bg-[var(--accent-color)]/10 border-[var(--accent-color)]/40 text-[var(--accent-color)]'
+                            : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--accent-color)]/20 hover:text-[var(--text-primary)]'
+                        }`}
+                      >
+                        <span>
+                          {opt === 'default'
+                            ? (settingsAiProvider?.default ?? 'Default (server)')
+                            : AI_PROVIDER_LABELS[opt]}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  {draftAiProvider !== 'default' && (
+                    <div className="mt-3 space-y-2">
+                      <label htmlFor="settings-ai-api-key" className="block text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
+                        {settingsAiProvider?.apiKeyLabel ?? 'API key'}
+                      </label>
+                      <input
+                        id="settings-ai-api-key"
+                        type="password"
+                        autoComplete="off"
+                        spellCheck={false}
+                        value={draftAiApiKey}
+                        onChange={(e) => setDraftAiApiKey(e.target.value)}
+                        placeholder={settingsAiProvider?.apiKeyPlaceholder ?? 'Paste your API key…'}
+                        className="w-full px-3 py-2.5 rounded-lg border bg-[var(--bg-app)] border-[var(--border-color)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] focus:border-[var(--accent-color)]/40 focus:outline-none transition-all"
+                      />
+                      <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
+                        {settingsAiProvider?.hint ?? 'Your key is stored locally on this device and sent only with your AI requests.'}
+                      </p>
+                    </div>
+                  )}
                 </section>
 
                 {/* Suno Service Status */}

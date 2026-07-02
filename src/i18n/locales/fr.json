@@ -472,6 +472,13 @@
       "show": "Afficher",
       "hide": "Masquer"
     },
+    "aiProvider": {
+      "label": "Fournisseur IA",
+      "default": "Défaut (serveur)",
+      "apiKeyLabel": "Clé API",
+      "apiKeyPlaceholder": "Collez votre clé API…",
+      "hint": "Votre clé est stockée localement sur cet appareil et transmise uniquement avec vos requêtes IA."
+    },
     "actions": {
       "default": "Défaut",
       "save": "Enregistrer",

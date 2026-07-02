@@ -5,9 +5,34 @@ import {
   getAllowedModelPrefixes,
   ALLOWED_CONFIG_KEYS,
   getProviderInfo,
+  parseProviderName,
+  type ProviderOverride,
 } from './_aiProvider';
 
 const MAX_CONTENTS_LENGTH = 100_000;
+const MAX_API_KEY_LENGTH = 512;
+
+/** Reads a single-valued header, ignoring arrays (never legitimate here). */
+function headerValue(headers: Record<string, string | string[] | undefined>, name: string): string | undefined {
+  const raw = headers[name];
+  return typeof raw === 'string' ? raw : undefined;
+}
+
+/**
+ * Extracts the optional per-request provider override from x-ai-provider /
+ * x-ai-key headers. The API key is validated to printable ASCII to prevent
+ * header-injection into upstream provider requests, and is never logged or
+ * echoed back to the client.
+ */
+function resolveOverride(headers: Record<string, string | string[] | undefined>): ProviderOverride | undefined {
+  const provider = parseProviderName(headerValue(headers, 'x-ai-provider'));
+  const rawKey = headerValue(headers, 'x-ai-key')?.trim();
+  const apiKey = rawKey && rawKey.length <= MAX_API_KEY_LENGTH && /^[\x21-\x7E]+$/.test(rawKey)
+    ? rawKey
+    : undefined;
+  if (!provider && !apiKey) return undefined;
+  return { ...(provider && { provider }), ...(apiKey && { apiKey }) };
+}
 
 type SanitizedConfig = Record<string, unknown>;
 
@@ -63,7 +88,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const { available } = getProviderInfo();
+  const override = resolveOverride(req.headers as Record<string, string | string[] | undefined>);
+
+  const { available } = getProviderInfo(override);
   if (!available) {
     res.status(500).json({ error: 'AI provider API key is not configured on the server.' });
     return;
@@ -86,7 +113,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const allowedPrefixes = getAllowedModelPrefixes();
+    const allowedPrefixes = getAllowedModelPrefixes(override?.provider);
     if (!allowedPrefixes.some(p => model.startsWith(p))) {
       res.status(400).json({ error: `Model "${model}" is not allowed for the active provider.` });
       return;
@@ -101,7 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? sanitizeConfig(config)
       : {};
 
-    const text = await providerGenerate({ model, contents, config: sanitizedConfig });
+    const text = await providerGenerate({ model, contents, config: sanitizedConfig }, override);
     res.status(200).json({ text });
 
   } catch (error: unknown) {
