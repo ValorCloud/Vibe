@@ -2,6 +2,8 @@ import { memo, useEffect, useRef, useState } from 'react';
 import { FrequencyVisualizer } from './FrequencyVisualizer';
 import { LCARS } from './lcarsTheme';
 import { SPOTIFY_GREEN, DEFAULT_VIDEO_ASPECT_RATIO, LCARS_BOX_COLORS } from './playerConstants';
+import { AudioVisualStage } from './AudioVisualStage';
+import { StageOverlay, type StageOverlayBindings } from './StageOverlay';
 import type { FrequencyAnalyserState } from './useFrequencyAnalyser';
 
 // ─── VideoPlayer ──────────────────────────────────────────────────────────────
@@ -11,9 +13,10 @@ interface VideoPlayerProps {
   isPlaying: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   contentWidth: string;
+  overlay?: StageOverlayBindings | undefined;
 }
 
-function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProps) {
+function VideoPlayer({ src, isPlaying, videoRef, contentWidth, overlay }: VideoPlayerProps) {
   const [showControls, setShowControls] = useState(false);
   const [aspectRatio, setAspectRatio] = useState(DEFAULT_VIDEO_ASPECT_RATIO);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,12 +56,15 @@ function VideoPlayer({ src, isPlaying, videoRef, contentWidth }: VideoPlayerProp
           {isPlaying ? 'ACTIVE' : 'STANDBY'}
         </span>
       </div>
-      <div style={{ aspectRatio, width: '100%', background: '#000', borderRadius: '0 0 4px 4px', overflow: 'hidden' }}>
+      <div style={{ aspectRatio, width: '100%', background: '#000', borderRadius: '0 0 4px 4px', overflow: 'hidden', position: 'relative' }}>
         <video ref={videoRef} src={src}
           style={{ width: '100%', height: '100%', display: 'block', objectFit: 'fill' }}
-          playsInline controls={showControls} preload="metadata"
+          playsInline controls={!overlay && showControls} preload="metadata"
           onLoadedMetadata={handleLoadedMetadata}
           aria-label={isPlaying ? 'Video player – playing' : 'Video player – paused'} />
+        {overlay && (
+          <StageOverlay visible={showControls || !isPlaying} isPlaying={isPlaying} {...overlay} />
+        )}
       </div>
       <div aria-hidden="true" style={{ position: 'absolute', top: 30, left: 0, width: 3, height: 36, background: LCARS.purple, borderRadius: '0 2px 2px 0', opacity: 0.55 }} />
       <div aria-hidden="true" style={{ position: 'absolute', top: 30, right: 0, width: 3, height: 36, background: LCARS.orange, borderRadius: '2px 0 0 2px', opacity: 0.55 }} />
@@ -128,6 +134,10 @@ export interface VoxNovaArtworkProps {
   spotifyImageUrl?: string | undefined;
   spotifyTrackName?: string | undefined;
   spotifyArtistsLabel?: string | undefined;
+  /** Transport bindings rendered as overlay controls inside the stage. */
+  overlay?: StageOverlayBindings | undefined;
+  /** Per-track seed for the randomized visual stage shown when the local track has no video. */
+  visualSeed?: string | undefined;
 }
 
 function VoxNovaArtworkImpl({
@@ -139,6 +149,8 @@ function VoxNovaArtworkImpl({
   spotifyImageUrl,
   spotifyTrackName,
   spotifyArtistsLabel,
+  overlay,
+  visualSeed,
 }: VoxNovaArtworkProps): React.ReactElement | null {
   if (isSpotify) {
     if (!spotifyImageUrl || !spotifyTrackName) return null;
@@ -152,15 +164,30 @@ function VoxNovaArtworkImpl({
       />
     );
   }
-  if (!videoSrc || !videoRef) return null;
-  return (
-    <VideoPlayer
-      src={videoSrc}
-      isPlaying={isPlaying}
-      videoRef={videoRef}
-      contentWidth={contentWidth}
-    />
-  );
+  if (videoSrc && videoRef) {
+    return (
+      <VideoPlayer
+        src={videoSrc}
+        isPlaying={isPlaying}
+        videoRef={videoRef}
+        contentWidth={contentWidth}
+        overlay={overlay}
+      />
+    );
+  }
+  // No video track — fall back to a randomized visualization stage, like the
+  // generated visualizations of old-school players.
+  if (visualSeed && overlay) {
+    return (
+      <AudioVisualStage
+        seed={visualSeed}
+        isPlaying={isPlaying}
+        contentWidth={contentWidth}
+        overlay={overlay}
+      />
+    );
+  }
+  return null;
 }
 
 /**

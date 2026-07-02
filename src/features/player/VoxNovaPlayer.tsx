@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { PlayerControls } from './PlayerControls';
 import { PlayerSidebar } from './PlayerSidebar';
 import { SidebarProvider } from './SidebarContext';
@@ -92,6 +92,20 @@ function VoxNovaPlayerInner() {
   const CONTENT_WIDTH = 'min(680px, 95%)';
   const WIDE_WIDTH = 'min(900px, 98%)';
 
+  // Transport bindings for the in-stage overlay (play/pause, ±10s, seek, volume).
+  const stageOverlay = useMemo(() => ({
+    currentTime: activeEngine.currentTime,
+    duration: activeEngine.duration,
+    volume: activeEngine.volume,
+    onTogglePlay: activeEngine.togglePlay,
+    onSeek: activeEngine.seek,
+    onVolumeChange: activeEngine.setVolume,
+  }), [activeEngine.currentTime, activeEngine.duration, activeEngine.volume, activeEngine.togglePlay, activeEngine.seek, activeEngine.setVolume]);
+
+  // The local stage (video or randomized visual) hosts the volume cursor, so
+  // the transport panel only shows it when no stage is rendered.
+  const stageHasVolume = !isSpotify && !!selectedTrack;
+
   return (
     <div className="lcars-lyrics-area" style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', color: 'var(--text-primary)', fontFamily: '"Antonio", "Eurostile", "Helvetica Neue", Arial, sans-serif', overflow: 'hidden' }}>
       <LCARSBackground />
@@ -148,7 +162,7 @@ function VoxNovaPlayerInner() {
             track={spotifyTrack}
           />
 
-          {/* Video / Album-art stage */}
+          {/* Video / Visual / Album-art stage */}
           <VoxNovaArtwork
             isSpotify={isSpotify}
             contentWidth={CONTENT_WIDTH}
@@ -158,6 +172,8 @@ function VoxNovaPlayerInner() {
             spotifyImageUrl={spotifyAlbumArt ?? undefined}
             spotifyTrackName={spotifyTrack?.name}
             spotifyArtistsLabel={spotifyArtists}
+            overlay={!isSpotify ? stageOverlay : undefined}
+            visualSeed={!isSpotify && selectedTrack && !selectedTrack.isVideo ? selectedTrack.id : undefined}
           />
 
           {/* Transport */}
@@ -168,7 +184,7 @@ function VoxNovaPlayerInner() {
             display: 'flex', flexDirection: 'column', gap: 10 }}>
             <SeekBar currentTime={activeEngine.currentTime} duration={activeEngine.duration} onSeek={activeEngine.seek} disabled={!hasActiveTrack} />
             <PlayerControls engine={activeEngine} onPrev={handlePrevTrack} onNext={handleNextTrack} disabled={!hasActiveTrack} />
-            <VolumeControl volume={activeEngine.volume} onChange={activeEngine.setVolume} />
+            {!stageHasVolume && <VolumeControl volume={activeEngine.volume} onChange={activeEngine.setVolume} />}
           </div>
 
           <div style={{ flex: 1, minHeight: 0 }} aria-hidden="true" />
