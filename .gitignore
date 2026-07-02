@@ -27,3 +27,7 @@ dist-ssr
 api/phonemize/__pycache__/
 api/phonemize/**/__pycache__/
 api/phonemize/*.pyc
+
+# Playwright artifacts
+playwright-report/
+test-results/
