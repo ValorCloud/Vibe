@@ -479,7 +479,7 @@
       "apiKeyPlaceholder": "Collez votre clé API…",
       "hint": "Votre clé est stockée localement sur cet appareil et transmise uniquement avec vos requêtes IA.",
       "persistenceLabel": "Stockage de la clé",
-      "persistenceLocal": "Cet appareil",
+      "persistenceLocal": "Sur cet appareil",
       "persistenceSession": "Cette session uniquement"
     },
     "actions": {
