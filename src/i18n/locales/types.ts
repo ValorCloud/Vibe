@@ -628,6 +628,9 @@ export interface Translations {
       apiKeyLabel: string;
       apiKeyPlaceholder: string;
       hint: string;
+      persistenceLabel?: string;
+      persistenceLocal?: string;
+      persistenceSession?: string;
     };
     actions: {
       default: string;

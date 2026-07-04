@@ -11,6 +11,7 @@ import {
   AI_PROVIDER_CHOICES,
   AI_PROVIDER_LABELS,
   type AiProviderChoice,
+  type AiKeyPersistence,
 } from '../../../utils/aiProviderSettings';
 
 interface Props {
@@ -71,6 +72,7 @@ export function SettingsModal({
   const [draftShowTranslation, setDraftShowTranslation] = useState(showTranslationFeatures);
   const [draftAiProvider, setDraftAiProvider] = useState<AiProviderChoice>(() => getAiProviderSettings().provider);
   const [draftAiApiKey, setDraftAiApiKey] = useState(() => getAiProviderSettings().apiKey);
+  const [draftAiKeyPersistence, setDraftAiKeyPersistence] = useState<AiKeyPersistence>(() => getAiProviderSettings().keyPersistence ?? 'local');
   const closeActionRef = useRef<'save' | 'close' | null>(null);
 
   useEffect(() => {
@@ -85,6 +87,7 @@ export function SettingsModal({
       const aiSettings = getAiProviderSettings();
       setDraftAiProvider(aiSettings.provider);
       setDraftAiApiKey(aiSettings.apiKey);
+      setDraftAiKeyPersistence(aiSettings.keyPersistence ?? 'local');
     }
   }, [isOpen, theme, audioFeedback, language, uiScale, defaultEditMode, showTranslationFeatures]);
 
@@ -113,7 +116,7 @@ export function SettingsModal({
     setUiScale(draftUiScale);
     setDefaultEditMode(draftDefaultEditMode);
     setShowTranslationFeatures(draftShowTranslation);
-    setAiProviderSettings({ provider: draftAiProvider, apiKey: draftAiApiKey });
+    setAiProviderSettings({ provider: draftAiProvider, apiKey: draftAiApiKey, keyPersistence: draftAiKeyPersistence });
     onClose();
   };
 
@@ -126,6 +129,7 @@ export function SettingsModal({
     setDraftShowTranslation(true);
     setDraftAiProvider('default');
     setDraftAiApiKey('');
+    setDraftAiKeyPersistence('local');
   };
 
   return (
@@ -399,6 +403,29 @@ export function SettingsModal({
                       <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
                         {settingsAiProvider?.hint ?? 'Your key is stored locally on this device and sent only with your AI requests.'}
                       </p>
+                      <label className="block text-[10px] uppercase tracking-widest text-[var(--text-secondary)]">
+                        {settingsAiProvider?.persistenceLabel ?? 'Key storage'}
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {(['local', 'session'] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => setDraftAiKeyPersistence(mode)}
+                            aria-pressed={draftAiKeyPersistence === mode}
+                            className={`flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border text-xs transition-all ${
+                              draftAiKeyPersistence === mode
+                                ? 'bg-[var(--accent-color)]/10 border-[var(--accent-color)]/40 text-[var(--accent-color)]'
+                                : 'bg-[var(--bg-app)] border-[var(--border-color)] text-[var(--text-secondary)] hover:border-[var(--accent-color)]/20 hover:text-[var(--text-primary)]'
+                            }`}
+                          >
+                            <span>
+                              {mode === 'local'
+                                ? (settingsAiProvider?.persistenceLocal ?? 'This device')
+                                : (settingsAiProvider?.persistenceSession ?? 'This session only')}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </section>

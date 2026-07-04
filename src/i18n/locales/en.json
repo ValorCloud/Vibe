@@ -487,7 +487,10 @@
       "default": "Default (server)",
       "apiKeyLabel": "API key",
       "apiKeyPlaceholder": "Paste your API key…",
-      "hint": "Your key is stored locally on this device and sent only with your AI requests."
+      "hint": "Your key is stored locally on this device and sent only with your AI requests.",
+      "persistenceLabel": "Key storage",
+      "persistenceLocal": "This device",
+      "persistenceSession": "This session only"
     },
     "actions": {
       "default": "Default",
