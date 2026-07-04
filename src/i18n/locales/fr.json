@@ -477,7 +477,10 @@
       "default": "Défaut (serveur)",
       "apiKeyLabel": "Clé API",
       "apiKeyPlaceholder": "Collez votre clé API…",
-      "hint": "Votre clé est stockée localement sur cet appareil et transmise uniquement avec vos requêtes IA."
+      "hint": "Votre clé est stockée localement sur cet appareil et transmise uniquement avec vos requêtes IA.",
+      "persistenceLabel": "Stockage de la clé",
+      "persistenceLocal": "Cet appareil",
+      "persistenceSession": "Cette session uniquement"
     },
     "actions": {
       "default": "Défaut",

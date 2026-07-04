@@ -54,7 +54,9 @@ export function AboutModal({ isOpen, onClose, isSplashScreen = false }: Props) {
       keySource: getAiKeySourceLabel(),
     });
     refresh();
-    void isAiAvailable().then(() => { if (!cancelled) refresh(); });
+    void isAiAvailable()
+      .then(() => { if (!cancelled) refresh(); })
+      .catch(() => { /* keep the synchronous values — never surface an unhandled rejection */ });
     return () => { cancelled = true; };
   }, [isOpen]);
 

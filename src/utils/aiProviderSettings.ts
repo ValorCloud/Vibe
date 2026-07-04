@@ -20,13 +20,30 @@ import { safeGetItem, safeSetItem, safeRemoveItem } from './safeStorage';
 /** 'default' — use the server-configured provider (no override). */
 export type AiProviderChoice = 'default' | 'gemini' | 'openai' | 'anthropic';
 
+/** Where the user API key is persisted. 'local' (default) survives restarts; 'session' is cleared when the tab closes. */
+export type AiKeyPersistence = 'local' | 'session';
+
 export interface AiProviderSettings {
   provider: AiProviderChoice;
   apiKey: string;
+  /** Optional — defaults to 'local' for backward compatibility. */
+  keyPersistence?: AiKeyPersistence;
 }
 
 const AI_PROVIDER_KEY = 'vibe_ai_provider';
 const AI_API_KEY_KEY = 'vibe_ai_api_key';
+const AI_KEY_PERSISTENCE_KEY = 'vibe_ai_key_persistence';
+
+/** sessionStorage counterparts of safeStorage helpers (same silent-failure contract). */
+const sessionGetItem = (key: string): string | null => {
+  try { return sessionStorage.getItem(key); } catch { return null; }
+};
+const sessionSetItem = (key: string, value: string): void => {
+  try { sessionStorage.setItem(key, value); } catch { /* noop */ }
+};
+const sessionRemoveItem = (key: string): void => {
+  try { sessionStorage.removeItem(key); } catch { /* noop */ }
+};
 
 export const AI_PROVIDER_CHOICES: readonly AiProviderChoice[] = ['default', 'gemini', 'openai', 'anthropic'] as const;
 
@@ -48,11 +65,17 @@ function parseChoice(raw: string | null): AiProviderChoice {
   return raw === 'gemini' || raw === 'openai' || raw === 'anthropic' ? raw : 'default';
 }
 
+function parsePersistence(raw: string | null): AiKeyPersistence {
+  return raw === 'session' ? 'session' : 'local';
+}
+
 /** Reads the persisted AI provider settings. */
 export function getAiProviderSettings(): AiProviderSettings {
+  const keyPersistence = parsePersistence(safeGetItem(AI_KEY_PERSISTENCE_KEY));
   return {
     provider: parseChoice(safeGetItem(AI_PROVIDER_KEY)),
-    apiKey: safeGetItem(AI_API_KEY_KEY) ?? '',
+    apiKey: (keyPersistence === 'session' ? sessionGetItem(AI_API_KEY_KEY) : safeGetItem(AI_API_KEY_KEY)) ?? '',
+    keyPersistence,
   };
 }
 
@@ -63,11 +86,24 @@ export function setAiProviderSettings(settings: AiProviderSettings): void {
   } else {
     safeSetItem(AI_PROVIDER_KEY, settings.provider);
   }
+  const keyPersistence = settings.keyPersistence ?? 'local';
+  if (keyPersistence === 'session') {
+    safeSetItem(AI_KEY_PERSISTENCE_KEY, 'session');
+  } else {
+    safeRemoveItem(AI_KEY_PERSISTENCE_KEY);
+  }
   const key = settings.apiKey.trim();
   if (key) {
-    safeSetItem(AI_API_KEY_KEY, key);
+    if (keyPersistence === 'session') {
+      sessionSetItem(AI_API_KEY_KEY, key);
+      safeRemoveItem(AI_API_KEY_KEY);
+    } else {
+      safeSetItem(AI_API_KEY_KEY, key);
+      sessionRemoveItem(AI_API_KEY_KEY);
+    }
   } else {
     safeRemoveItem(AI_API_KEY_KEY);
+    sessionRemoveItem(AI_API_KEY_KEY);
   }
 }
 

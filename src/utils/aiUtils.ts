@@ -170,7 +170,11 @@ const proxyGenerateContent = async (params: GenerateContentParams): Promise<Gene
     headers['x-ai-key'] = override.apiKey;
     const prefixes = PROVIDER_MODEL_PREFIXES[override.provider];
     if (!prefixes.some(p => body.model.startsWith(p))) {
-      body.model = AI_PROVIDER_DEFAULT_MODELS[override.provider];
+      const remappedModel = AI_PROVIDER_DEFAULT_MODELS[override.provider];
+      logger.warn(
+        `[aiUtils] Requested model "${body.model}" does not match override provider "${override.provider}" — remapping to "${remappedModel}".`,
+      );
+      body.model = remappedModel;
     }
   }
 
