@@ -53,7 +53,7 @@ async function mockApiAvailable(page: import('@playwright/test').Page) {
       body: JSON.stringify({
         available: true,
         provider: 'gemini',
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.5-flash',
       }),
     });
   });

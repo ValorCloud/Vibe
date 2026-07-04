@@ -39,7 +39,7 @@ export const AI_PROVIDER_LABELS: Record<Exclude<AiProviderChoice, 'default'>, st
 
 /** Default model used per provider (mirrors api/_aiProvider.ts PROVIDER_DEFAULTS). */
 export const AI_PROVIDER_DEFAULT_MODELS: Record<Exclude<AiProviderChoice, 'default'>, string> = {
-  gemini: 'gemini-2.5-flash',
+  gemini: 'gemini-3.5-flash',
   openai: 'gpt-4o-mini',
   anthropic: 'claude-3-5-haiku-20241022',
 };

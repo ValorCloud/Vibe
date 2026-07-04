@@ -10,7 +10,7 @@ export interface VoiceAssistantContext {
   uiLocaleCode?: string;
 }
 
-const DEFAULT_MODEL = 'gemini-2.5-flash';
+const DEFAULT_MODEL = 'gemini-3.5-flash';
 const sentenceSegmenter = typeof Intl !== 'undefined' && 'Segmenter' in Intl
   ? new Intl.Segmenter(undefined, { granularity: 'sentence' })
   : null;

@@ -48,7 +48,7 @@ const TIMEOUT_MS = 55_000;
 // ─── Per-provider defaults ────────────────────────────────────────────────────
 
 export const PROVIDER_DEFAULTS: Record<ProviderName, { model: string; keyEnv: string; prefixes: string[] }> = {
-  gemini:    { model: 'gemini-2.5-flash', keyEnv: 'GEMINI_API_KEY',    prefixes: ['gemini-'] },
+  gemini:    { model: 'gemini-3.5-flash', keyEnv: 'GEMINI_API_KEY',    prefixes: ['gemini-'] },
   openai:    { model: 'gpt-4o-mini',      keyEnv: 'OPENAI_API_KEY',    prefixes: ['gpt-', 'o1-', 'o3-', 'chatgpt-'] },
   anthropic: { model: 'claude-3-5-haiku-20241022', keyEnv: 'ANTHROPIC_API_KEY', prefixes: ['claude-'] },
 };

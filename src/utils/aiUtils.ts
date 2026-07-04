@@ -67,14 +67,14 @@ async function fetchProviderInfo(): Promise<ProviderInfo> {
         ? {
             available: parsed.data.available,
             provider: parsed.data.provider ?? 'gemini',
-            model: parsed.data.model ?? 'gemini-2.5-flash',
+            model: parsed.data.model ?? 'gemini-3.5-flash',
           }
-        : { available: false, provider: 'gemini', model: 'gemini-2.5-flash' };
+        : { available: false, provider: 'gemini', model: 'gemini-3.5-flash' };
       _providerInfoCache = info;
       return info;
     })
     .catch(() => {
-      const fallback: ProviderInfo = { available: false, provider: 'gemini', model: 'gemini-2.5-flash' };
+      const fallback: ProviderInfo = { available: false, provider: 'gemini', model: 'gemini-3.5-flash' };
       _providerInfoCache = fallback;
       return fallback;
     });
@@ -121,7 +121,7 @@ export function getAiProviderName(): string {
 export function getAiModelName(): string {
   const override = getActiveAiOverride();
   if (override) return AI_PROVIDER_DEFAULT_MODELS[override.provider];
-  return _providerInfoCache?.model ?? 'gemini-2.5-flash';
+  return _providerInfoCache?.model ?? 'gemini-3.5-flash';
 }
 
 /**
@@ -151,7 +151,7 @@ export async function isAiAvailable(): Promise<boolean> {
 /** @deprecated Use getAiProviderName() */
 export const AI_PROVIDER_NAME = 'Google Gemini';
 /** @deprecated Use getAiModelName() */
-export const AI_MODEL_NAME = 'gemini-2.5-flash';
+export const AI_MODEL_NAME = 'gemini-3.5-flash';
 /** @deprecated */
 export const AI_KEY_ENV_VAR = 'GEMINI_API_KEY';
 
