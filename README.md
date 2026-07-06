@@ -156,6 +156,18 @@ npm test
 3. Dans le même panneau, ajouter les variables **client-side** avec leur préfixe `VITE_`
 4. Déclencher un redéploiement
 
+## Documentation GitHub Pages & Microsoft Clarity
+
+La documentation (`docs/`) est publiée automatiquement sur GitHub Pages sous `/Vibe/docs/` par le workflow `.github/workflows/deploy-pages.yml` (générateur : `scripts/build-docs.mjs`, exécutable localement via `npm run build:docs`).
+
+**Microsoft Clarity** (analytics visiteurs : sessions, heatmaps, appareils, référents — bien plus riche que les statistiques GitHub) est injecté dans l'application et les pages de documentation :
+
+1. Créer un projet sur [clarity.microsoft.com](https://clarity.microsoft.com) et récupérer le *Project ID*
+2. Dans **Repository → Settings → Secrets and variables → Actions → Variables**, ajouter la variable `CLARITY_PROJECT_ID`
+3. Redéclencher le workflow *Deploy to GitHub Pages*
+
+Sans cette variable, aucun script de tracking n'est injecté (dev local et CI restent sans tracking).
+
 ## Architecture backend (Phonemize)
 
 Un microservice Python FastAPI G2P optionnel est disponible dans `api/phonemize/`. Il est exclu du build Vercel (`.vercelignore`) et doit être déployé séparément (ex: Railway, Fly.io). Voir `api/phonemize/README.md` pour les instructions de déploiement.

@@ -6,7 +6,10 @@ import { LanguageProvider } from './i18n/LanguageProvider';
 import { RefsProvider } from './contexts/RefsContext';
 import { SpotifyAuthProvider } from './contexts/SpotifyAuthContext';
 import { SpotifyEngineProvider } from './contexts/SpotifyEngineContext';
+import { initClarity } from './utils/clarity';
 import './index.css';
+
+initClarity();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
