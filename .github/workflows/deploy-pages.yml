@@ -34,6 +34,12 @@ jobs:
         run: npm run build
         env:
           VITE_BASE: /Vibe/
+          VITE_CLARITY_PROJECT_ID: ${{ vars.CLARITY_PROJECT_ID }}
+
+      - name: Build documentation site
+        run: node scripts/build-docs.mjs dist/docs
+        env:
+          CLARITY_PROJECT_ID: ${{ vars.CLARITY_PROJECT_ID }}
 
       - name: Add SPA 404 fallback
         run: cp dist/index.html dist/404.html

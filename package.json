@@ -1,6 +1,6 @@
 {
   "name": "vibe",
-  "version": "1.41.0.3",
+  "version": "1.41.0.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "build:docs": "node scripts/build-docs.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -49,6 +50,7 @@
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
     "jsdom": "^26.1.0",
+    "marked": "^18.0.5",
     "tailwindcss": "^4.3.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.62.1",
