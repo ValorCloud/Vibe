@@ -3,7 +3,7 @@
   "version": "1.39.0.14",
   "private": true,
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.109.0",
+    "@anthropic-ai/sdk": "^0.110.0",
     "@google/genai": "^2.9.0",
     "@vercel/node": "^5.8.19",
     "openai": "^6.44.0"
