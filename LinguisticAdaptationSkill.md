@@ -82,7 +82,7 @@ Return ONLY valid JSON, no markdown fences.
 ```
 
 Key techniques:
-- **Cap the sample** (~2 000 chars) and append an explicit truncation marker so the model knows it sees a sample, not the whole document.
+- **Cap the sample** (~2,000 chars) and append an explicit truncation marker so the model knows it sees a sample, not the whole document.
 - **Per-line detection** enables mixed-language documents (code-switching lyrics, bilingual copy).
 - **Defensive parsing**: strip markdown fences from the response; if JSON parsing fails, accept a plain-text answer only if it "looks like a language name" (short, no `{`/`[`); otherwise fall back to a safe default (e.g., "English"). Never store a raw JSON blob as a language name.
 
@@ -148,7 +148,7 @@ Acceptance policy: **accept if score ≥ 50**; always surface warnings to the us
 
 The differentiator of this skill vs. naive "translate this" prompting:
 
-1. **Machine-derived constraints, not vibes.** Syllable counts and rhyme nuclei are computed deterministically (in Vibe: an IPA pipeline — G2P → phonemic syllabification → rhyme-nucleus extraction → similarity scoring) and injected into the prompt as explicit per-line requirements. When no phonological tooling is available, instruct the model to first *count* source syllables per line, state them, and then adapt.
+1. **Machine-derived constraints, not vibes.** Syllable counts and rhyme nuclei are computed deterministically (in Vibe: an IPA pipeline — G2P (grapheme-to-phoneme) → phonemic syllabification → rhyme-nucleus extraction → similarity scoring) and injected into the prompt as explicit per-line requirements. When no phonological tooling is available, instruct the model to first *count* source syllables per line, state them, and then adapt.
 2. **Phonetics over spelling.** Rhyme equivalence is defined on IPA rhyme nuclei (*"Match the phonetic sound, not just the spelling!"*), which transfers across scripts and languages.
 3. **Constraint precedence.** When fresh machine-computed counts and stale stored metadata disagree, the fresh authoritative counts win.
 4. **Graceful degradation.** If constraint tooling fails or is unavailable, proceed with the standard doctrine prompt rather than blocking (log, don't crash).
@@ -238,7 +238,7 @@ you don't recognize, still attempt the adaptation and say what you assumed.
 
 ## 8. Reference Implementation Map (Vibe Codebase)
 
-For maintainers extending or re-extracting this skill:
+For maintainers extending or re-extracting this skill (file paths accurate as of 2026-07; verify after refactorings):
 
 | Concern | File |
 |---|---|
