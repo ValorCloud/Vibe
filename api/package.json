@@ -5,7 +5,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.109.0",
     "@google/genai": "^2.9.0",
-    "@vercel/node": "^5.8.19",
+    "@vercel/node": "^5.10.2",
     "openai": "^6.44.0"
   },
   "overrides": {
