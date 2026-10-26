@@ -16,23 +16,29 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   # ---------------------------------------------------------------------------
   # 1. Smoke gate (PR + main) — blocks merge on failure
-  #    Skipped on version-bump commits tagged [skip bump].
-  #    Note: head_commit is null on pull_request events — guard with || ''
+  #    Selection uses changed files, never PR titles or commit labels.
   # ---------------------------------------------------------------------------
   smoke:
     name: Smoke (chromium)
     runs-on: ubuntu-latest
-    if: >-
-      !contains(
-        github.event.head_commit.message || github.event.pull_request.title || '',
-        '[skip bump]'
-      )
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test impact selection
+        run: python3 .github/ci/test_impact.py
+      - id: impact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/ci/impact.py
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -41,18 +47,22 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        if: steps.impact.outputs.profile != 'metadata'
         run: npm install
 
       - name: Install Playwright browsers (chromium only)
+        if: steps.impact.outputs.profile != 'metadata'
         run: npx playwright install chromium --with-deps
 
       - name: Build app
+        if: steps.impact.outputs.profile != 'metadata'
         run: npm run build
         env:
           VITE_LYRIA_INTERNAL_TOKEN: smoke-stub
           VITE_SUNO_MODE: dev
 
       - name: Run smoke tests
+        if: steps.impact.outputs.profile != 'metadata'
         run: npx playwright test --project=chromium-smoke
         env:
           CI: true
@@ -81,6 +91,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test impact selection
+        run: python3 .github/ci/test_impact.py
+      - id: impact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/ci/impact.py
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -89,18 +107,22 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        if: steps.impact.outputs.profile != 'metadata'
         run: npm install
 
       - name: Install Playwright browsers
+        if: steps.impact.outputs.profile != 'metadata'
         run: npx playwright install ${{ matrix.browser }} --with-deps
 
       - name: Build app
+        if: steps.impact.outputs.profile != 'metadata'
         run: npm run build
         env:
           VITE_LYRIA_INTERNAL_TOKEN: full-stub
           VITE_SUNO_MODE: dev
 
       - name: Run full E2E suite (${{ matrix.browser }})
+        if: steps.impact.outputs.profile != 'metadata'
         run: npx playwright test --project=${{ matrix.browser }}
         env:
           CI: true
@@ -113,3 +135,4 @@ jobs:
           name: playwright-report-${{ matrix.browser }}
           path: playwright-report/
           retention-days: 14
+
