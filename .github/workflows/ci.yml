@@ -6,6 +6,10 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -13,6 +17,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test impact selection
+        run: python3 .github/ci/test_impact.py
+      - id: impact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/ci/impact.py
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -21,17 +33,22 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        if: steps.impact.outputs.profile != 'metadata'
         run: |
           npm install --legacy-peer-deps
           npm ci --prefix api
 
       - name: Lint
+        if: steps.impact.outputs.profile != 'metadata'
         run: npm run lint
 
       - name: Typecheck
+        if: steps.impact.outputs.profile != 'metadata'
         run: |
           npx tsc --noEmit
           npx tsc -p api --noEmit
 
       - name: Build
+        if: steps.impact.outputs.profile != 'metadata'
         run: npm run build
+

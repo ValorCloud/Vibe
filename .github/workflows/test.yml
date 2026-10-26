@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   test:
     name: Vitest
@@ -14,6 +18,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Test impact selection
+        run: python3 .github/ci/test_impact.py
+      - id: impact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 .github/ci/impact.py
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -22,11 +34,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        if: steps.impact.outputs.profile != 'metadata'
         run: |
           npm install --legacy-peer-deps
           npm ci --prefix api
 
       - name: Run tests
+        if: steps.impact.outputs.profile != 'metadata'
         run: npm test
 
       - name: Upload coverage
@@ -36,3 +50,4 @@ jobs:
           name: coverage
           path: coverage/
           retention-days: 7
+
