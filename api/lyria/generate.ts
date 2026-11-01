@@ -204,7 +204,7 @@ export default async function handler(
   const rateLimit = await checkRateLimit(`lyria:${ip}`);
   if (!rateLimit.allowed) {
     res.setHeader('Retry-After', String(rateLimit.retryAfterSec));
-    res.status(429).json({ error: 'Too Many Requests' });
+    res.status(rateLimit.reason === 'quota-unavailable' ? 503 : 429).json({ error: rateLimit.reason === 'quota-unavailable' ? 'Generation admission is temporarily unavailable.' : 'Too Many Requests' });
     return;
   }
 

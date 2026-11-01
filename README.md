@@ -13,7 +13,7 @@
 ### ✍️ Éditeur de paroles
 - **4 modes d'édition** : Section (éditeur structuré), Texte libre, Markdown et Phonétique (transcription IPA)
 - Structure de chanson par sections (couplet, refrain, pont…) avec drag & drop pour réorganiser
-- Undo/Redo illimité, auto-save via OPFS (stockage privé du navigateur)
+- Undo/Redo jusqu’à 50 étapes par pile, auto-save via OPFS (stockage privé de ce profil de navigateur et de cette origine, sur cet appareil ; exporter séparément les travaux importants)
 - Quantization syllabique par ligne ou globale
 - Gestion de versions des paroles
 
@@ -160,13 +160,13 @@ npm test
 
 La documentation (`docs/`) est publiée automatiquement sur GitHub Pages sous `/Vibe/docs/` par le workflow `.github/workflows/deploy-pages.yml` (générateur : `scripts/build-docs.mjs`, exécutable localement via `npm run build:docs`).
 
-**Microsoft Clarity** (analytics visiteurs : sessions, heatmaps, appareils, référents — bien plus riche que les statistiques GitHub) est injecté dans l'application et les pages de documentation :
+**Microsoft Clarity** est facultatif dans l'application et la documentation. Le contrôle « Confidentialité / Privacy » permet d'accepter, de refuser ou de retirer son accord. Aucun SDK n'est chargé avant l'accord ; les signaux GPC/DNT sont respectés. Le contenu de l'application est masqué et seuls des événements génériques sont émis. Les URL d'authentification ou contenant des paramètres non autorisés excluent la mesure.
 
 1. Créer un projet sur [clarity.microsoft.com](https://clarity.microsoft.com) et récupérer le *Project ID*
 2. Dans **Repository → Settings → Secrets and variables → Actions → Variables**, ajouter la variable `CLARITY_PROJECT_ID`
 3. Redéclencher le workflow *Deploy to GitHub Pages*
 
-Sans cette variable, aucun script de tracking n'est injecté (dev local et CI restent sans tracking).
+Sans cette variable, aucun script de tracking n'est injecté. Une variable configurée ne remplace pas le choix personnel : le refus persiste, y compris après rechargement. Après retrait, une nouvelle acceptation prend effet au rechargement. Le noyau commun est épinglé dans `src/vendor/valor-audience/manifest.json` ; ses octets sont contrôlés par un test. Les pages de documentation partagent le même choix sur la même origine.
 
 ## Architecture backend (Phonemize)
 

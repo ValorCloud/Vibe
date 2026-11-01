@@ -1,0 +1,5 @@
+.valor-audience-control,.valor-audience-panel{font:14px/1.5 system-ui,sans-serif;color:CanvasText;background:Canvas;border:1px solid ButtonBorder;border-radius:8px;box-shadow:0 2px 12px color-mix(in srgb,CanvasText 15%,transparent)}
+.valor-audience-control{position:fixed;bottom:12px;inset-inline-end:12px;z-index:2147483600;padding:8px 12px;cursor:pointer}
+.valor-audience-panel{position:fixed;bottom:60px;inset-inline-end:12px;z-index:2147483601;width:min(440px,calc(100vw - 24px));max-height:75vh;overflow:auto;padding:18px;box-sizing:border-box}
+.valor-audience-panel[hidden]{display:none}.valor-audience-panel h2{font:600 17px/1.4 system-ui,sans-serif;margin:0 0 8px}.valor-audience-panel p{margin:0 0 12px}.valor-audience-panel a{color:LinkText;text-decoration:underline}
+.valor-audience-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.valor-audience-actions button{font:inherit;color:ButtonText;background:ButtonFace;border:1px solid ButtonBorder;border-radius:6px;padding:8px 14px;cursor:pointer}.valor-audience-actions button:focus-visible,.valor-audience-control:focus-visible{outline:2px solid Highlight;outline-offset:3px}

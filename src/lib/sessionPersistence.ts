@@ -2,8 +2,9 @@
  * sessionPersistence
  *
  * Stores / retrieves the current Vibe session via the Origin Private File
- * System (OPFS).  OPFS is attached to the device + origin — it is NOT
- * browser-profile-dependent and persists across browser restarts.
+ * System (OPFS). OPFS belongs to this origin and browser profile on this
+ * device. Clearing site data/private browsing can remove it; export important
+ * work separately. It is not a cloud or cross-device backup.
  *
  * File: vibe-session.json  (in the OPFS root directory)
  * Schema version: 1
@@ -93,19 +94,38 @@ async function getRoot(): Promise<FileSystemDirectoryHandle> {
   return navigator.storage.getDirectory();
 }
 
+// Preserve invocation order, including a reset queued while a write is pending.
+// Web Locks additionally serialize cooperating tabs on this origin.
+let pending: Promise<unknown> = Promise.resolve();
+function serialize<T>(operation: () => Promise<T>): Promise<T> {
+  const run = pending.then(async (): Promise<T> => typeof navigator !== 'undefined' && navigator.locks
+    ? await navigator.locks.request('vibe-session', operation)
+    : await operation());
+  pending = run.catch(() => {});
+  return run;
+}
+
 // ─── Public API ────────────────────────────────────────────────────────────────
 
 export async function saveSession(payload: SessionSnapshot): Promise<void> {
-  if (!isOpfsAvailable()) return;
-  try {
+  if (!isOpfsAvailable()) throw new Error('Session storage is unavailable. Export your current work.');
+  // Snapshot before queueing: subsequent edits must not change this write.
+  const contents = JSON.stringify({ ...payload, schemaVersion: SESSION_SCHEMA_VERSION });
+  return serialize(async () => {
     const root = await getRoot();
     const fh = await root.getFileHandle(FILE_NAME, { create: true });
     const writable = await fh.createWritable();
-    await writable.write(JSON.stringify({ ...payload, schemaVersion: SESSION_SCHEMA_VERSION }));
-    await writable.close();
-  } catch {
-    // Non-blocking — never crash the app on persistence failure
-  }
+    try {
+      await writable.write(contents);
+      await writable.close();
+    } catch (error) {
+      await writable.abort().catch(() => {});
+      throw error;
+    }
+    if (await (await fh.getFile()).text() !== contents) {
+      throw new Error('Session storage could not be verified. Export your current work.');
+    }
+  });
 }
 
 export async function loadSession(): Promise<SessionSnapshot | null> {
@@ -125,10 +145,12 @@ export async function loadSession(): Promise<SessionSnapshot | null> {
 
 export async function clearSession(): Promise<void> {
   if (!isOpfsAvailable()) return;
-  try {
-    const root = await getRoot();
-    await root.removeEntry(FILE_NAME);
-  } catch {
-    // File might not exist — ignore
-  }
+  return serialize(async () => {
+    try {
+      const root = await getRoot();
+      await root.removeEntry(FILE_NAME);
+    } catch {
+      // Reset stays non-blocking when the file is absent or storage is denied.
+    }
+  });
 }

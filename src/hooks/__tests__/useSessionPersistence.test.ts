@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_STRUCTURE } from '../../constants/editor';
 import { useSessionPersistence } from '../useSessionPersistence';
@@ -72,6 +72,18 @@ const createParams = () => ({
 });
 
 describe('useSessionPersistence', () => {
+  it('does not announce a saved fallback session when localStorage rejects the write', async () => {
+    vi.useFakeTimers();
+    try {
+      const params = { ...createParams(), isSessionHydrated: true };
+      songContextMock.song[0]!.lines[0]!.text = 'Unsaved song';
+      vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new DOMException('full', 'QuotaExceededError'); });
+      renderHook(() => useSessionPersistence(params));
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(params.setHasSavedSession).not.toHaveBeenCalledWith(true);
+      expect(songContextMock.song[0]!.lines[0]!.text).toBe('Unsaved song');
+    } finally { vi.useRealTimers(); }
+  });
   beforeEach(() => {
     vi.stubGlobal('localStorage', createMemoryStorage());
     vi.stubGlobal('fetch', vi.fn());

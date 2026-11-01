@@ -1,29 +1,25 @@
-/**
- * Microsoft Clarity bootstrap.
- *
- * Injects the Clarity tracking script only when VITE_CLARITY_PROJECT_ID is
- * set at build time, so local dev and CI builds without the variable stay
- * tracking-free. Clarity provides far richer visitor analytics (sessions,
- * heatmaps, devices, referrers) than GitHub traffic statistics.
+import { mountAudience } from '../vendor/valor-audience/valor-audience.mjs';
+import type { AudienceApi } from '../vendor/valor-audience/valor-audience.mjs';
+import '../vendor/valor-audience/valor-audience.css';
+
+let audience: AudienceApi | undefined;
+
+/** Public configuration only. A project ID alone never starts collection.
+ * The common controller masks the app before loading Clarity and keeps all
+ * personal content/identifiers out of its small allowlist of generic events.
  */
-
-interface ClarityWindow extends Window {
-  clarity?: { (...args: unknown[]): void; q?: unknown[] };
-}
-
-export function initClarity(): void {
-  const projectId = (import.meta.env.VITE_CLARITY_PROJECT_ID as string | undefined)?.trim();
-  if (!projectId || !/^[a-z0-9]+$/i.test(projectId)) return;
-
-  const w = window as ClarityWindow;
-  if (w.clarity) return; // already initialized
-
-  w.clarity = function (...args: unknown[]) {
-    (w.clarity!.q = w.clarity!.q ?? []).push(args);
-  };
-  const script = document.createElement('script');
-  script.async = true;
-  script.src = `https://www.clarity.ms/tag/${projectId}`;
-  const first = document.getElementsByTagName('script')[0];
-  first?.parentNode?.insertBefore(script, first);
+export function initClarity(): AudienceApi | undefined {
+  if (audience) return audience;
+  const projectId = (import.meta.env.VITE_CLARITY_PROJECT_ID as string | undefined)?.trim() ?? '';
+  if (!projectId) return undefined;
+  const basePath = new URL(import.meta.env.BASE_URL, window.location.origin).pathname;
+  audience = mountAudience({ schemaVersion: 1, enabled: true,
+    // This adapter's masked content and URL/event boundaries are tested below.
+    // This flag describes those safeguards, not a legal compliance certificate.
+    privacyReviewed: true,
+    key: 'lyricist', projectId, kind: 'app', hosts: [window.location.hostname],
+    appPaths: [basePath, basePath + 'index.html'],
+    privacyPath: `${import.meta.env.BASE_URL}privacy.html`,
+  }, window);
+  return audience;
 }

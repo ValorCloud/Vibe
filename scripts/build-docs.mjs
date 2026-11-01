@@ -4,8 +4,8 @@
  *
  * Converts every Markdown file under docs/ into a static HTML page
  * (preserving the folder structure), copies non-Markdown assets as-is,
- * and injects the Microsoft Clarity tracking snippet when the
- * CLARITY_PROJECT_ID environment variable is set.
+ * and mounts the shared optional-audience controls only with a reviewed
+ * configuration. A project ID alone does not load a tracking SDK.
  *
  * Usage: node scripts/build-docs.mjs [outputDir]   (default: dist/docs)
  */
@@ -25,20 +25,15 @@ const escapeHtml = (value) =>
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;');
 
-const claritySnippet = () => {
+const claritySnippet = (depth) => {
   if (!CLARITY_PROJECT_ID) return '';
   if (!/^[a-z0-9]+$/i.test(CLARITY_PROJECT_ID)) {
     throw new Error('[build-docs] CLARITY_PROJECT_ID must be alphanumeric.');
   }
+  const base = '../'.repeat(depth);
   return `
-    <!-- Microsoft Clarity -->
-    <script type="text/javascript">
-      (function(c,l,a,r,i,t,y){
-        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
-        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
-        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-      })(window, document, "clarity", "script", "${CLARITY_PROJECT_ID}");
-    </script>`;
+    <link rel="stylesheet" href="${base}audience/valor-audience.css" />
+    <script type="module" src="${base}audience-init.mjs"></script>`;
 };
 
 const pageTemplate = (title, body, depth) => {
@@ -64,7 +59,7 @@ const pageTemplate = (title, body, depth) => {
       table { border-collapse: collapse; }
       th, td { border: 1px solid #33335a; padding: 0.35rem 0.6rem; }
       nav.docs-nav { border-bottom: 1px solid #33335a; margin-bottom: 2rem; padding-bottom: 0.75rem; }
-    </style>${claritySnippet()}
+    </style>${claritySnippet(depth)}
   </head>
   <body>
     <nav class="docs-nav"><a href="${home}">VIBE Documentation</a></nav>
@@ -101,6 +96,15 @@ const markdownFiles = await collectMarkdownFiles(DOCS_DIR);
 
 // Copy every asset (images, etc.) so relative references keep working.
 await mkdir(OUT_DIR, { recursive: true });
+await cp(path.join(ROOT, 'src/vendor/valor-audience'), path.join(OUT_DIR, 'audience'), {recursive:true});
+await cp(path.join(ROOT, 'public/privacy.html'), path.join(OUT_DIR, 'privacy.html'));
+if (CLARITY_PROJECT_ID) {
+  // Keep the same origin-scoped choice as the app. Only generic events are
+  // sent; the shared controller rejects token-bearing and private URLs.
+  const config = {schemaVersion:1, enabled:true, privacyReviewed:true,
+    key:'lyricist', projectId:CLARITY_PROJECT_ID, kind:'site'};
+  await writeFile(path.join(OUT_DIR, 'audience-init.mjs'), `import {mountAudience} from './audience/valor-audience.mjs';\nconst config=${JSON.stringify(config).replaceAll('<', '\\u003c')};\nmountAudience({...config,hosts:[location.hostname],privacyPath:new URL('./privacy.html',import.meta.url).href},window);\n`);
+}
 await cp(DOCS_DIR, OUT_DIR, {
   recursive: true,
   filter: (src) => !src.toLowerCase().endsWith('.md'),
@@ -130,5 +134,5 @@ await writeFile(
 
 console.log(
   `[build-docs] Generated ${pages.length} pages in ${path.relative(ROOT, OUT_DIR)}` +
-    (CLARITY_PROJECT_ID ? ' (Microsoft Clarity enabled)' : ' (Microsoft Clarity disabled: CLARITY_PROJECT_ID not set)'),
+    (CLARITY_PROJECT_ID ? ' (optional audience controls configured; personal consent required)' : ' (Microsoft Clarity disabled: CLARITY_PROJECT_ID not set)'),
 );
