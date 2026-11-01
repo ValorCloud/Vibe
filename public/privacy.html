@@ -53,7 +53,7 @@
   <p>The Google user data accessed by Vibe Lyricist is used exclusively for the following purposes:</p>
 
   <ul>
-    <li><strong>Opening lyrics files</strong> – File content is loaded into the in-app editor so you can read and edit your song lyrics. The content is never transmitted to any server operated by Vibe Lyricist.</li>
+    <li><strong>Opening lyrics files</strong> – File content is loaded into the in-app editor so you can read and edit your song lyrics and may be included in the local editing session. Opening a file does not itself send its content to a generation service.</li>
     <li><strong>Saving lyrics files</strong> – When you save, the text content of your lyrics is uploaded back to the same file in your Google Drive (or a new file is created). This upload goes directly from your browser to Google's servers via the Google Drive REST API; the data does not pass through our servers.</li>
     <li><strong>Audio playback</strong> – Audio files are streamed directly from Google Drive to your browser and played locally. A temporary <code>blob://</code> URL is created for the audio element and revoked once playback ends or the file is removed from the player queue.</li>
   </ul>
@@ -71,7 +71,7 @@
 
   <h2>Data Sharing</h2>
 
-  <p>Vibe Lyricist does not share Google user data with any third parties. The only network requests made on your behalf are directly to Google's own APIs (<code>www.googleapis.com</code>, <code>accounts.google.com</code>) using your access token. No Google user data is forwarded to other services or analytics platforms.</p>
+  <p>Google Drive operations communicate directly with Google's APIs (<code>www.googleapis.com</code>, <code>accounts.google.com</code>) using your access token. If you separately request an AI feature for text in the editor, its relevant input is sent to the configured generation service. The audience integration described below masks the application and does not add file contents or account identifiers to its events.</p>
 
   <h2>Revoking Access</h2>
 
