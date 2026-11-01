@@ -1,9 +1,9 @@
 {
   "source": "https://github.com/ValorCloud/apps-websites",
-  "commit": "4f0a022d9915b52da967b2cc11110fa3044b8aca",
+  "commit": "7791d5bc37439b81ee81cee614e1f867476a3789",
   "path": "shared/analytics",
   "files": {
-    "valor-audience.mjs": "dd3c1297af39f9e75efefb6d396fc60a256ab96df1851e1be941d093d26c0e59",
+    "valor-audience.mjs": "141ad8672a23ff35df20c20193335243c257c020898ced614faebf2284a5f50d",
     "valor-audience.css": "53185d9aede903a9fc412ae26f29c5e0159199778923d939fc79aac2addb462d"
   }
 }

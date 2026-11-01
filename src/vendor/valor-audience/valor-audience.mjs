@@ -88,7 +88,7 @@ export function createAudience(config, env) {
     track
   });
   decision = read();
-  w.addEventListener('storage', event => { if (event.key === key || event.key === null) { decision = read(); if (decision !== 'granted') stop(); notify(); } });
+  w.addEventListener('storage', event => { if (event.key === key || event.key === null) { decision = read(); if (decision !== 'granted') stop(); else start(); notify(); } });
   const guard = () => { if (!allowed()) stop(); notify(); };
   w.addEventListener('popstate', guard);
   w.addEventListener('hashchange', guard);

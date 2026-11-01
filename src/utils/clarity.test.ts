@@ -8,6 +8,11 @@ import type { AudienceConfig } from '../vendor/valor-audience/valor-audience.mjs
 
 const config: AudienceConfig = {schemaVersion:1,enabled:true,privacyReviewed:true,key:'lyricist',projectId:'test123',kind:'app',hosts:['lyricist.test'],privacyPath:'/privacy.html'};
 const page = (url = 'https://lyricist.test/') => new JSDOM('<html lang="en"><head></head><body><main>Private draft<input value="private prompt" /></main></body></html>', {url});
+const receiveConsent = (dom: JSDOM, value: 'granted' | 'denied') => {
+  const key = 'valor-audience-v1:lyricist';
+  dom.window.localStorage.setItem(key, JSON.stringify({version:1,value,time:Date.now()}));
+  dom.window.dispatchEvent(new dom.window.StorageEvent('storage', {key}));
+};
 
 describe('shared optional audience boundary', () => {
   it('keeps the vendored runtime and style byte-identical to the recorded source', () => {
@@ -32,6 +37,58 @@ describe('shared optional audience boundary', () => {
     expect(restored.status().decision).toBe('denied');
     expect(next.window.document.querySelector('script')).toBeNull();
     dom.window.close(); next.window.close();
+  });
+  it('starts on agreement received from another tab and never injects the SDK twice', () => {
+    const dom = page(), win = dom.window as unknown as Window;
+    const api = createAudience(config, win);
+    expect(api.status().active).toBe(false);
+    receiveConsent(dom, 'granted');
+    expect(api.status()).toMatchObject({decision:'granted',active:true,reloadRequired:false});
+    expect(win.document.documentElement.getAttribute('data-clarity-mask')).toBe('true');
+    const script = win.document.querySelector('script');
+    expect(script?.src).toBe('https://www.clarity.ms/tag/test123');
+    receiveConsent(dom, 'granted'); api.setConsent('granted');
+    expect(win.document.querySelectorAll('script')).toHaveLength(1);
+    expect(win.document.querySelector('script')).toBe(script);
+    dom.window.close();
+  });
+  it('permits an incoming grant after a refusal that never started measurement', () => {
+    const dom = page(), api = createAudience(config, dom.window as unknown as Window);
+    receiveConsent(dom, 'denied');
+    expect(api.status()).toMatchObject({decision:'denied',active:false,reloadRequired:false});
+    receiveConsent(dom, 'granted');
+    expect(api.status()).toMatchObject({decision:'granted',active:true,reloadRequired:false});
+    dom.window.close();
+  });
+  it('requires reload after an active instance receives withdrawal and a later grant', () => {
+    const dom = page(), api = createAudience(config, dom.window as unknown as Window);
+    api.setConsent('granted'); receiveConsent(dom, 'denied');
+    expect(api.status()).toMatchObject({decision:'denied',active:false,reloadRequired:true});
+    expect(dom.window.document.querySelector('script')).toBeNull();
+    receiveConsent(dom, 'granted');
+    expect(api.status()).toMatchObject({decision:'granted',active:false,reloadRequired:true});
+    expect(dom.window.document.querySelector('script')).toBeNull();
+    dom.window.close();
+  });
+  it.each([
+    {name:'GPC',privacy:'globalPrivacyControl'},
+    {name:'DNT',privacy:'doNotTrack'},
+    {name:'OAuth query',url:'https://lyricist.test/?code=secret'},
+    {name:'OAuth fragment',url:'https://lyricist.test/#access_token=secret'},
+    {name:'private path',url:'https://lyricist.test/customer'},
+    {name:'disabled configuration',patch:{enabled:false}},
+    {name:'unreviewed configuration',patch:{privacyReviewed:false}},
+    {name:'invalid project',patch:{projectId:'invalid!'}},
+    {name:'unapproved host',url:'https://other.test/'},
+  ])('keeps $name protection when agreement arrives from another tab', ({privacy,url,patch}) => {
+    const dom = page(url);
+    if(privacy) Object.defineProperty(dom.window.navigator, privacy, {value:privacy==='globalPrivacyControl'?true:'1'});
+    const api = createAudience({...config,...patch}, dom.window as unknown as Window);
+    receiveConsent(dom, 'granted');
+    expect(api.status().decision).toBe('granted');
+    expect(api.status().active).toBe(false);
+    expect(dom.window.document.querySelector('script')).toBeNull();
+    dom.window.close();
   });
   it.each(['globalPrivacyControl', 'doNotTrack'])('honors %s despite a saved grant', property => {
     const dom = page();
