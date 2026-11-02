@@ -53,7 +53,7 @@
   <p>The Google user data accessed by Vibe Lyricist is used exclusively for the following purposes:</p>
 
   <ul>
-    <li><strong>Opening lyrics files</strong> – File content is loaded into the in-app editor so you can read and edit your song lyrics. The content is never transmitted to any server operated by Vibe Lyricist.</li>
+    <li><strong>Opening lyrics files</strong> – File content is loaded into the in-app editor so you can read and edit your song lyrics and may be included in the local editing session. Opening a file does not itself send its content to a generation service.</li>
     <li><strong>Saving lyrics files</strong> – When you save, the text content of your lyrics is uploaded back to the same file in your Google Drive (or a new file is created). This upload goes directly from your browser to Google's servers via the Google Drive REST API; the data does not pass through our servers.</li>
     <li><strong>Audio playback</strong> – Audio files are streamed directly from Google Drive to your browser and played locally. A temporary <code>blob://</code> URL is created for the audio element and revoked once playback ends or the file is removed from the player queue.</li>
   </ul>
@@ -65,13 +65,13 @@
   <ul>
     <li><strong>OAuth access tokens</strong> are stored in browser memory only (JavaScript variables). They are never written to <code>localStorage</code>, <code>sessionStorage</code>, cookies, or any server-side database. Tokens are automatically cleared when you sign out of Google Drive within the app or when you close/refresh the page.</li>
     <li><strong>Refresh tokens</strong> are not requested or stored.</li>
-    <li><strong>File content</strong> exists in browser memory only for the duration of your editing session and is discarded when you navigate away or close the app.</li>
-    <li><strong>No Google user data is stored on Vibe Lyricist servers</strong> – the application is a client-side single-page app with no backend that handles user data.</li>
+    <li><strong>Editing content</strong> can be saved with your session in this browser profile (see Other Data below). Audio playback uses temporary browser URLs.</li>
+    <li><strong>Drive access</strong> is performed from your browser. Automatic session saving is local; requesting an AI feature is a separate transfer of its input to the configured generation service.</li>
   </ul>
 
   <h2>Data Sharing</h2>
 
-  <p>Vibe Lyricist does not share Google user data with any third parties. The only network requests made on your behalf are directly to Google's own APIs (<code>www.googleapis.com</code>, <code>accounts.google.com</code>) using your access token. No Google user data is forwarded to other services or analytics platforms.</p>
+  <p>Google Drive operations communicate directly with Google's APIs (<code>www.googleapis.com</code>, <code>accounts.google.com</code>) using your access token. If you separately request an AI feature for text in the editor, its relevant input is sent to the configured generation service. The audience integration described below masks the application and does not add file contents or account identifiers to its events.</p>
 
   <h2>Revoking Access</h2>
 
@@ -79,7 +79,11 @@
 
   <h2>Other Data</h2>
 
-  <p>Outside of the Google Drive integration, Vibe Lyricist does not collect, transmit, or store personal data. The app runs entirely in your browser. Any lyrics, musical settings, or preferences you create are stored locally in your browser's <code>localStorage</code> and are never sent to our servers.</p>
+  <p>Your editing session and preferences can be saved in <code>localStorage</code> and the Origin Private File System (OPFS), for this site and browser profile on this device. Clearing site data or using private browsing may remove them. Export important work separately. When you request an AI feature, the relevant input is sent through the configured generation service; local saving does not itself send your draft to that service.</p>
+
+  <h2>Optional Audience Measurement</h2>
+  <p>When configured, Microsoft Clarity loads only after you accept through the Privacy control. You may refuse or withdraw at any time. Your choice is stored locally for up to 180 days and applies to the app and documentation on the same origin. Global Privacy Control and Do Not Track prevent collection. Advertising consent stays disabled.</p>
+  <p>The app is masked before Clarity loads. The integration emits only generic navigation events, without lyric text, prompts, file names or account identifiers. Authentication URLs and URLs with unapproved parameters are excluded. On withdrawal the integration stops collection and removes a pending SDK; already transmitted measurements are not erased by that browser action. If you accept again, reload to restart measurement.</p>
 
   <p>For any privacy-related questions, contact us at: <a href="mailto:emmanueldk@gmail.com">emmanueldk@gmail.com</a></p>
 

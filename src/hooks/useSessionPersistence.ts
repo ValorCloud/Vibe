@@ -112,8 +112,7 @@ export function useSessionPersistence(params: UseSessionPersistenceParams): void
         song, structure, title, titleOrigin, topic, mood, rhymeScheme, targetSyllables,
         genre, tempo, instrumentation, rhythm, narrative, musicalPrompt, songLanguage,
       };
-      safeSetItem('lyricist_session', JSON.stringify(sessionData));
-      setHasSavedSession(true);
+      if (safeSetItem('lyricist_session', JSON.stringify(sessionData))) setHasSavedSession(true);
     }, SAVE_DEBOUNCE_MS);
 
     return () => {

@@ -68,10 +68,10 @@ export function MobileStatusChip({ hasApiKey, saveStatus = 'idle', lastSavedAt =
   return (
     <div className="mobile-status-chip" role="status" aria-live="polite" aria-label="App status">
       {/* Save status */}
-      <span className="mobile-status-chip__item" aria-label={saveStatusAria}>
+      {(saveStatus !== 'idle' || lastSavedAt !== null) && <span className="mobile-status-chip__item" aria-label={saveStatusAria}>
         <span className={dotClass} aria-hidden="true" />
         <span className="mobile-status-chip__label" aria-hidden="true">{saveLabel}</span>
-      </span>
+      </span>}
 
       <span className="mobile-status-chip__divider" aria-hidden="true" />
 
