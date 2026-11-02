@@ -55,11 +55,13 @@ export function useSessionAutoSave(payload: AutoSavePayload): SessionAutoSaveRes
   const payloadRef = useRef<AutoSavePayload>(payload);
   payloadRef.current = payload;
   const isFirstRunRef = useRef(true);
+  const notifiedSavedRef = useRef(false);
 
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
 
   useEffect(() => {
+    let current = true;
     // Skip the very first effect tick: it fires from initial hydration and
     // would mis-flag the freshly-loaded session as "unsaved".
     if (isFirstRunRef.current) {
@@ -100,16 +102,24 @@ export function useSessionAutoSave(payload: AutoSavePayload): SessionAutoSaveRes
       setSaveStatus('saving');
       try {
         await saveSession(snapshot);
+        // An earlier write may finish after another edit or unmount. It must
+        // never describe that newer draft as saved (or replace its error).
+        if (!current) return;
         setSaveStatus('saved');
         setLastSavedAt(snapshot.savedAt);
-        payloadRef.current.onSaved?.();
+        if (!notifiedSavedRef.current) {
+          notifiedSavedRef.current = true;
+          payloadRef.current.onSaved?.();
+        }
       } catch (err) {
+        if (!current) return;
         logger.error('[useSessionAutoSave] failed to persist session', err);
         setSaveStatus('error');
       }
     }, 2000);
 
     return () => {
+      current = false;
       if (timerRef.current) clearTimeout(timerRef.current);
     };
   }, [

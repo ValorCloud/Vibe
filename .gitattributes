@@ -1,0 +1,3 @@
+# Vendored checksums describe exact upstream bytes on every workstation.
+src/vendor/valor-audience/valor-audience.mjs text eol=lf
+src/vendor/valor-audience/valor-audience.css text eol=lf
