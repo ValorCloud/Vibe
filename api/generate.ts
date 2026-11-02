@@ -84,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const rl = await checkRateLimit(ip);
   if (!rl.allowed) {
     res.setHeader('Retry-After', String(rl.retryAfterSec));
-    res.status(429).json({ error: `Rate limit exceeded. Retry after ${rl.retryAfterSec}s.` });
+    res.status(rl.reason === 'quota-unavailable' ? 503 : 429).json({ error: rl.reason === 'quota-unavailable' ? 'Generation admission is temporarily unavailable. Please try again later.' : `Rate limit exceeded. Retry after ${rl.retryAfterSec}s.` });
     return;
   }
 
