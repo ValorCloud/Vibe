@@ -9,7 +9,7 @@ Les préférences de zoom, de pause et d’audio sont personnelles et persistant
 
 Validation locale :
 
-- Suite Vitest complète : 167 fichiers, 2 160 tests réussis ; vérification ciblée finale des préférences de session : 26 tests réussis.
+- Suite Vitest complète : 167 fichiers, 2 160 tests réussis ; vérification ciblée finale des commandes et préférences : 35 tests réussis. Un menu ouvert reste ouvert lors d’un changement de callback et invoque la dernière callback à la sélection.
 - ESLint, typecheck application et API, build de production, tests de sélection CI et comparaison des octets du moteur partagé réussis.
 - Recette Chromium sur le build de production : trois scénarios réussis (1440 px anglais, 390 px français, 320 px arabe). Vérification des cinq zooms 50–150 %, hover, clavier, Échap/focus, persistance après rechargement, modes clair/sombre et absence de déplacement de la barre à l’ouverture des listes.
 - Plein écran natif et sortie vérifiés sur ordinateur en conservant le zoom ; mouvement réduit système et reprise de la préférence personnelle vérifiés. Audio à droite également en RTL, commandes tactiles de 44 × 44 px et navigation mobile préservées.

@@ -12,11 +12,13 @@ interface Props {
 /** Shared hover, keyboard and touch choices, opening above the status bar. */
 export function StatusChoice({ label, value, children, options, onSelect }: Props) {
   const group = useRef<HTMLDivElement>(null);
+  const selectRef = useRef(onSelect);
   const panelId = useId();
+  useEffect(() => { selectRef.current = onSelect; }, [onSelect]);
   useEffect(() => {
     if (!group.current) return;
-    return mountChoices(group.current, { placement: 'above', onSelect });
-  }, [onSelect]);
+    return mountChoices(group.current, { placement: 'above', onSelect: selectedValue => selectRef.current(selectedValue) });
+  }, []);
 
   return (
     <div ref={group} className="vibe-status-choice">
