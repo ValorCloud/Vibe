@@ -7,8 +7,10 @@ import { motion } from 'motion/react';
 import { Tooltip } from '../ui/Tooltip';
 import { useTranslation } from '../../i18n';
 import { useAppNavigationContext } from '../../contexts/AppStateContext';
+import { useInterfaceMotionDisabled } from '../../contexts/InterfaceMotionContext';
 
 export function RibbonTabs() {
+  const motionDisabled = useInterfaceMotionDisabled();
   const { activeTab, setActiveTab, setIsLeftPanelOpen, setIsStructureOpen } = useAppNavigationContext();
   const { t } = useTranslation();
 
@@ -25,7 +27,7 @@ export function RibbonTabs() {
         >
           {t.ribbon.lyrics}
           {activeTab === 'lyrics' && (
-            <motion.div layoutId="activeTab" className="absolute bottom-[6px] left-0 right-0 h-0.5 bg-[var(--accent-color)]" />
+            <motion.div layoutId="activeTab" transition={motionDisabled ? { duration: 0 } : {}} className="absolute bottom-[6px] left-0 right-0 h-0.5 bg-[var(--accent-color)]" />
           )}
         </button>
       </Tooltip>
@@ -40,7 +42,7 @@ export function RibbonTabs() {
         >
           {t.ribbon.musical}
           {activeTab === 'musical' && (
-            <motion.div layoutId="activeMusicalTab" className="absolute bottom-[6px] left-0 right-0 h-0.5 bg-[var(--lcars-amber)]" />
+            <motion.div layoutId="activeMusicalTab" transition={motionDisabled ? { duration: 0 } : {}} className="absolute bottom-[6px] left-0 right-0 h-0.5 bg-[var(--lcars-amber)]" />
           )}
         </button>
       </Tooltip>
@@ -59,7 +61,7 @@ export function RibbonTabs() {
         >
           {t.ribbon.player ?? 'PLAYER'}
           {activeTab === 'player' && (
-            <motion.div layoutId="activePlayerTab" className="absolute bottom-[6px] left-0 right-0 h-0.5 bg-[var(--lcars-blue,#7eb3d8)]" />
+            <motion.div layoutId="activePlayerTab" transition={motionDisabled ? { duration: 0 } : {}} className="absolute bottom-[6px] left-0 right-0 h-0.5 bg-[var(--lcars-blue,#7eb3d8)]" />
           )}
         </button>
       </Tooltip>

@@ -26,6 +26,8 @@ import { loadSession, SESSION_SCHEMA_VERSION } from './lib/sessionPersistence';
 import type { SessionSnapshot } from './lib/sessionPersistence';
 import { parseShareHash, sharePayloadToSong } from './utils/exportUtils';
 import { DEFAULT_RHYME_SCHEME } from './constants/editor';
+import { useInterfacePreferences } from './hooks/useInterfacePreferences';
+import { InterfaceMotionProvider } from './contexts/InterfaceMotionContext';
 
 // ── Lazy-loaded heavy panels (conditionally visible — keep out of initial bundle) ──
 const AppEditorLayout = lazy(() =>
@@ -84,6 +86,7 @@ function ModalShortcutBindings({
 }
 
 function AppInnerContent() {
+  const display = useInterfacePreferences();
   const { undo, redo } = useSongContext();
   const { isGenerating } = useComposerContext();
   const { appState } = useAppStateContext();
@@ -129,6 +132,7 @@ function AppInnerContent() {
   });
 
   return (
+    <InterfaceMotionProvider disabled={display.motionDisabled}>
     <TranslationAdaptationProvider
       sectionTargetLanguages={sectionTargetLanguages}
       onSectionTargetLanguageChange={handleSectionTargetLanguageChange}
@@ -156,6 +160,7 @@ function AppInnerContent() {
           isGenerating={isGenerating}
           onBackdropClick={closeMobilePanels}
         >
+          <div className="vibe-workspace flex flex-col flex-1 min-h-0 min-w-0" style={{ zoom: display.zoom / 100 }}>
           <ErrorBoundary label="Editor">
             <Suspense fallback={<PanelFallback />}>
               <AppEditorLayout
@@ -165,6 +170,7 @@ function AppInnerContent() {
               />
             </Suspense>
           </ErrorBoundary>
+          </div>
 
           <StatusBar
             className="lcars-status-bar-desktop"
@@ -176,6 +182,9 @@ function AppInnerContent() {
             lastSavedAt={lastSavedAt}
             theme={theme} setTheme={setTheme}
             audioFeedback={audioFeedback} setAudioFeedback={setAudioFeedback}
+            zoom={display.zoom} setZoom={display.setZoom}
+            animationsPaused={display.animationsPaused} setAnimationsPaused={display.setAnimationsPaused}
+            systemReducedMotion={display.systemReducedMotion}
             onOpenAbout={handleOpenAbout}
             onOpenSettings={handleOpenSettings}
           />
@@ -206,6 +215,7 @@ function AppInnerContent() {
         </AppShell>
       </DragHandlersProvider>
     </TranslationAdaptationProvider>
+    </InterfaceMotionProvider>
   );
 }
 

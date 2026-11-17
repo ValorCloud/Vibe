@@ -52,6 +52,15 @@ export interface Translations {
     words_other: string;
     theme: string;
     audioFeedback: string;
+    zoom: string;
+    zoomIn: string;
+    zoomOut: string;
+    pauseAnimations: string;
+    resumeAnimations: string;
+    reducedMotion: string;
+    fullscreen: string;
+    exitFullscreen: string;
+    fullscreenUnavailable: string;
     language: string;
     settings: string;
     settingsTooltip?: string;

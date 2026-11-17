@@ -19,6 +19,7 @@ import {
   type StructureDragHandlers,
 } from '../../hooks/useStructureDragHandlers';
 import { CompositionSection } from './CompositionSection';
+import { useInterfaceMotionDisabled } from '../../contexts/InterfaceMotionContext';
 
 interface Props {
   isStructureOpen: boolean;
@@ -132,6 +133,7 @@ export const StructureSidebar = React.memo(function StructureSidebar({
   isMobileOverlay = false,
   className,
 }: Props) {
+  const motionDisabled = useInterfaceMotionDisabled();
   const { song, structure } = useSongContext();
   const { t } = useTranslation();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -176,7 +178,7 @@ export const StructureSidebar = React.memo(function StructureSidebar({
           initial={{ width: 0, opacity: 0 }}
           animate={{ width: 280, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          transition={motionDisabled ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 200 }}
           className={`flex flex-col z-50 shadow-2xl lcars-panel fluent-animate-panel${className ? ` ${className}` : ''}`}
           style={{ overflow: 'visible', position: 'relative' }}
         >

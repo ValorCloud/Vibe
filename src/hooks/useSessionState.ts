@@ -13,7 +13,8 @@
  * hasSavedSession is initialized to true when a session was restored from OPFS
  * (initialSession !== null). The boolean is passed down from AppStateProvider.
  */
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { safeGetItem, safeSetItem } from '../utils/safeStorage';
 import { useThemeState } from './useThemeState';
 import { useApiStatus } from './useApiStatus';
 import { useUiPreferences } from './useUiPreferences';
@@ -37,7 +38,11 @@ export function useSessionState(hasSavedSessionInit = false) {
   const [isSessionHydrated, setIsSessionHydrated] = useState(false);
   // Initialize to true if a session snapshot was loaded from OPFS
   const [hasSavedSession, setHasSavedSession] = useState(hasSavedSessionInit);
-  const [audioFeedback, setAudioFeedback] = useState(true);
+  const [audioFeedback, setAudioFeedbackState] = useState(() => safeGetItem('vibe_audio_feedback') !== 'false');
+  const setAudioFeedback = useCallback((value: boolean) => {
+    setAudioFeedbackState(value);
+    safeSetItem('vibe_audio_feedback', String(value));
+  }, []);
 
   return {
     theme, setTheme,

@@ -421,6 +421,10 @@
    --------------------------------------------------------------------------- */
 
 .lcars-status-bar {
+  min-height: 44px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8px;
   background: var(--status-bar-bg);
   backdrop-filter: var(--layer1-blur);
   -webkit-backdrop-filter: var(--layer1-blur);
@@ -432,9 +436,33 @@
 }
 
 .lcars-status-bar-desktop { display: flex; }
-@media (max-width: 1023px) {
-  .lcars-status-bar-desktop { display: none; }
+.vibe-status-kpis { flex-wrap: wrap; min-width: 0; }
+.vibe-status-controls { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; direction: ltr; }
+.vibe-status-zoom, .vibe-status-media { display: inline-flex; align-items: center; flex-wrap: nowrap; }
+.lcars-status-bar .lcars-meta-btn { min-width: 44px; min-height: 44px; justify-content: center; }
+.lcars-status-bar button[hidden] { display: none; }
+.vibe-status-choice { display: inline-flex; position: relative; }
+.vibe-status-options { position: absolute; bottom: 100%; left: 0; z-index: 100; display: grid;
+  width: max-content; max-width: calc(100vw - 16px); overflow: auto; overscroll-behavior: contain;
+  padding: 4px; border: 1px solid var(--border-color); border-radius: 4px;
+  background: var(--bg-app); color: var(--text-primary); box-shadow: 0 4px 16px #0004; }
+.vibe-status-options[hidden] { display: none; }
+.vibe-status-options[data-side='below'] { bottom: auto; top: 100%; }
+.vibe-status-options button { display: flex; align-items: center; gap: 12px; min-height: 44px;
+  padding: 6px 12px; text-align: start; background: transparent; border: 0; color: inherit; }
+.vibe-status-options button[aria-pressed='true']::after { content: '✓'; margin-inline-start: auto; }
+.vibe-status-options button:hover { text-decoration: underline; }
+.vibe-status-options button:focus-visible, .lcars-status-bar button:focus-visible { outline: 2px solid var(--accent-color); outline-offset: -2px; }
+
+/* Complete entrances immediately instead of freezing invisible content. Business
+   work, generation, playback and the metronome are independent of these effects. */
+html[data-interface-motion='off'] *, html[data-interface-motion='off'] *::before, html[data-interface-motion='off'] *::after {
+  animation-duration: .01ms !important; animation-iteration-count: 1 !important;
+  transition-duration: .01ms !important; scroll-behavior: auto !important;
 }
+html[data-interface-motion='off'] .fluent-animate-in,
+html[data-interface-motion='off'] .fluent-fade-in,
+html[data-interface-motion='off'] .fluent-animate-panel { animation: none; opacity: 1; transform: none; }
 
 .lcars-divider {
   width: 1px;
