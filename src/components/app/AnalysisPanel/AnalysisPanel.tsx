@@ -31,6 +31,7 @@ import {
 } from '@fluentui/react-icons';
 import { X } from '../../ui/icons';
 import { motion } from 'motion/react';
+import { useInterfaceMotionDisabled } from '../../../contexts/InterfaceMotionContext';
 import type { SelectTabData, SelectTabEventHandler } from '@fluentui/react-components';
 import type { AnalysisResult } from '../../../lib/workers/linguistics.types';
 import { InsightsTab } from './InsightsTab';
@@ -85,6 +86,7 @@ export const AnalysisPanel = React.memo(function AnalysisPanel({
   onClose,
   isMobileOverlay,
 }: AnalysisPanelProps) {
+  const motionDisabled = useInterfaceMotionDisabled();
   const [selectedTab, setSelectedTab] = useState<string>('insights');
 
   const handleTabSelect: SelectTabEventHandler = (_event, data: SelectTabData) => {
@@ -100,7 +102,7 @@ export const AnalysisPanel = React.memo(function AnalysisPanel({
       initial={{ width: 0, opacity: 0 }}
       animate={{ width: isMobileOverlay ? '100%' : PANEL_WIDTH, opacity: 1 }}
       exit={{ width: 0, opacity: 0 }}
-      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      transition={motionDisabled ? { duration: 0 } : { type: 'spring', damping: 25, stiffness: 200 }}
       className={`flex flex-col z-50 shadow-2xl lcars-panel${
         isMobileOverlay ? ' structure-sidebar-mobile-overlay' : ''
       }`}

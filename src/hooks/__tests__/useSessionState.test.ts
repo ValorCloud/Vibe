@@ -19,6 +19,18 @@ describe('useSessionState', () => {
   });
 
   describe('happy paths', () => {
+    it('persists the interface audio preference across sessions', () => {
+      (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+        json: async () => ({ available: false }),
+      });
+      const first = renderHook(() => useSessionState());
+      act(() => first.result.current.setAudioFeedback(false));
+      expect(localStorage.getItem('vibe_audio_feedback')).toBe('false');
+      first.unmount();
+      const second = renderHook(() => useSessionState());
+      expect(second.result.current.audioFeedback).toBe(false);
+    });
+
     it('initializes with default values', () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
         json: async () => ({ available: false }),

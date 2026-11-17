@@ -1,5 +1,5 @@
-import React from 'react';
-import { Info, Moon, Settings, Sun, FileText } from '../ui/icons';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Info, Moon, Settings, Sun, FileText, Pause, Play, Volume2, VolumeX } from '../ui/icons';
 import { Tooltip } from '../ui/Tooltip';
 import { StorageGauge } from '../ui/StorageGauge';
 import { StatusBarLanguagePicker } from './StatusBarLanguagePicker';
@@ -13,6 +13,8 @@ import { useOptionalLibraryContext } from '../../contexts/LibraryContext';
 import type { SaveStatus } from '../../hooks/useSessionAutoSave';
 import type { Translations } from '../../i18n/locales/types';
 import type { EditMode } from '../../types';
+import { mountFullscreen, nextZoom, statusZoomLevels, statusZoomPresets } from '../../vendor/valor-configuration/controls.mjs';
+import { StatusChoice } from './StatusChoice';
 
 interface Props {
   hasApiKey: boolean;
@@ -22,6 +24,11 @@ interface Props {
   setTheme: (v: 'light' | 'dark') => void;
   audioFeedback: boolean;
   setAudioFeedback: (v: boolean) => void;
+  zoom: number;
+  setZoom: (value: number) => void;
+  animationsPaused: boolean;
+  setAnimationsPaused: (value: boolean) => void;
+  systemReducedMotion: boolean;
   onOpenAbout: () => void;
   onOpenSettings: () => void;
   /** True when a valid OPFS session snapshot exists for this device. */
@@ -58,7 +65,8 @@ export function StatusBar({
   hasApiKey: _hasApiKey,
   isAnalyzing,
   currentEditMode: _currentEditMode,
-  theme, setTheme, audioFeedback: _audioFeedback, setAudioFeedback: _setAudioFeedback,
+  theme, setTheme, audioFeedback, setAudioFeedback,
+  zoom, setZoom, animationsPaused, setAnimationsPaused, systemReducedMotion,
   onOpenAbout, onOpenSettings, hasSavedSession,
   saveStatus = 'idle', lastSavedAt = null,
   className,
@@ -66,6 +74,27 @@ export function StatusBar({
   const { isGenerating, isSuggesting } = useComposerContext();
   const { sectionCount, wordCount, charCount } = useAppKpis();
   const { t, language } = useTranslation();
+  const fullscreenButton = useRef<HTMLButtonElement>(null);
+  const fullscreen = useRef<ReturnType<typeof mountFullscreen> | null>(null);
+  const fullscreenLabels = useRef({ enter: t.statusBar.fullscreen, exit: t.statusBar.exitFullscreen });
+  const [fullscreenError, setFullscreenError] = useState(false);
+  useEffect(() => {
+    fullscreenLabels.current = { enter: t.statusBar.fullscreen, exit: t.statusBar.exitFullscreen };
+    fullscreen.current?.update();
+  }, [t.statusBar.fullscreen, t.statusBar.exitFullscreen]);
+  useEffect(() => {
+    const target = document.querySelector<HTMLElement>('[data-vibe-app]');
+    if (!target || !fullscreenButton.current) return;
+    const controller = mountFullscreen({
+      target, button: fullscreenButton.current,
+      enterLabel: () => fullscreenLabels.current.enter,
+      exitLabel: () => fullscreenLabels.current.exit,
+      onChange: active => { if (active) setFullscreenError(false); },
+      onError: () => setFullscreenError(true),
+    });
+    fullscreen.current = controller;
+    return () => { controller.dispose(); fullscreen.current = null; };
+  }, []);
   const { activeTab } = useAppNavigationContext();
   const library = useOptionalLibraryContext();
 
@@ -114,9 +143,10 @@ export function StatusBar({
       ? { color: 'var(--accent-error, #ef4444)' }
       : { color: 'var(--accent-success, #10b981)' };
 
-  const themeAriaLabel = theme === 'dark'
-    ? (t.statusBar.themeSwitchToLight ?? `${t.statusBar.theme} \u2014 ${t.settings.theme.light}`)
-    : (t.statusBar.themeSwitchToDark  ?? `${t.statusBar.theme} \u2014 ${t.settings.theme.dark}`);
+  const selectZoom = useCallback((value: string) => setZoom(Number(value)), [setZoom]);
+  const selectTheme = useCallback((value: string) => {
+    if (value === 'light' || value === 'dark') setTheme(value);
+  }, [setTheme]);
 
   const insights: Translations['insights'] = t.insights;
   const isPlayerTab = activeTab === 'player';
@@ -128,9 +158,9 @@ export function StatusBar({
   const durationLabel = statusBarDict.duration ?? 'Duration';
 
   return (
-    <div className={`relative lcars-status-bar h-10 border-t border-fluent-border flex items-center justify-between px-3 lg:px-6 z-40 text-xs${className ? ` ${className}` : ''}`}>
-      {/* Left: system status + storage gauge + KPIs (desktop only) */}
-      <div className="flex items-center gap-2 lg:gap-4">
+    <div dir="ltr" className={`relative lcars-status-bar border-t border-fluent-border flex items-center justify-between px-3 lg:px-6 z-40 text-xs${className ? ` ${className}` : ''}`}>
+      {/* Left: system status, storage gauge and product KPIs */}
+      <div className="vibe-status-kpis flex items-center gap-2 lg:gap-4">
         <div className="flex items-center gap-1.5">
           <div className={`w-1.5 h-1.5 rounded-full transition-colors ${
             isBusy
@@ -230,8 +260,8 @@ export function StatusBar({
         </a>
       </div>
 
-      {/* Right: settings + theme + version */}
-      <div className="flex items-center gap-1">
+      {/* Right: configuration controls, with animation and audio last */}
+      <div className="vibe-status-controls flex items-center gap-1">
         <Tooltip title={t.statusBar.settingsTooltip ?? t.statusBar.settings}>
           <button
             onClick={onOpenSettings}
@@ -242,20 +272,24 @@ export function StatusBar({
             <span className="hidden sm:inline">{t.statusBar.settings}</span>
           </button>
         </Tooltip>
-        <Tooltip title={t.tooltips.theme}>
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            aria-label={themeAriaLabel}
-            aria-pressed={theme === 'dark'}
-            className="lcars-meta-btn min-h-[44px] lg:min-h-0"
-          >
-            {theme === 'dark' ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">
-              {theme === 'dark' ? t.settings.theme.light : t.settings.theme.dark}
-            </span>
-          </button>
-        </Tooltip>
+        <div className="vibe-status-zoom" role="group" aria-label={t.statusBar.zoom}>
+          <button type="button" className="lcars-meta-btn" aria-label={t.statusBar.zoomOut}
+            disabled={zoom <= 50} onClick={() => setZoom(nextZoom(zoom, -1, statusZoomLevels))}>−</button>
+          <StatusChoice label={`${t.statusBar.zoom} · ${zoom}%`} value={String(zoom)}
+            options={statusZoomPresets.map(value => ({ value: String(value), label: `${value}%` }))} onSelect={selectZoom}>
+            {zoom}%
+          </StatusChoice>
+          <button type="button" className="lcars-meta-btn" aria-label={t.statusBar.zoomIn}
+            disabled={zoom >= 150} onClick={() => setZoom(nextZoom(zoom, 1, statusZoomLevels))}>+</button>
+        </div>
+        <button ref={fullscreenButton} type="button" className="lcars-meta-btn" hidden
+          aria-label={t.statusBar.fullscreen}>⛶</button>
+        {fullscreenError && <span role="status">{t.statusBar.fullscreenUnavailable}</span>}
         <StatusBarLanguagePicker />
+        <StatusChoice label={t.statusBar.theme} value={theme} onSelect={selectTheme}
+          options={[{ value: 'light', label: t.settings.theme.light }, { value: 'dark', label: t.settings.theme.dark }]}>
+          {theme === 'dark' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+        </StatusChoice>
         <Tooltip title={t.tooltips.appInfo}>
           <button
             onClick={onOpenAbout}
@@ -263,9 +297,22 @@ export function StatusBar({
             className="lcars-meta-btn lcars-app-id min-h-[44px] lg:min-h-0"
           >
             <Info className="w-3.5 h-3.5" />
-            <span>{APP_VERSION_LABEL}</span>
+            <span className="hidden lg:inline">{APP_VERSION_LABEL}</span>
           </button>
         </Tooltip>
+        <div className="vibe-status-media">
+          <button type="button" className="lcars-meta-btn"
+            onClick={() => setAnimationsPaused(!animationsPaused)}
+            aria-label={systemReducedMotion ? t.statusBar.reducedMotion : animationsPaused ? t.statusBar.resumeAnimations : t.statusBar.pauseAnimations}
+            title={systemReducedMotion ? t.statusBar.reducedMotion : animationsPaused ? t.statusBar.resumeAnimations : t.statusBar.pauseAnimations}
+            aria-pressed={animationsPaused || systemReducedMotion} disabled={systemReducedMotion}>
+            {animationsPaused || systemReducedMotion ? <Play className="w-3.5 h-3.5" /> : <Pause className="w-3.5 h-3.5" />}
+          </button>
+          <button type="button" className="lcars-meta-btn" onClick={() => setAudioFeedback(!audioFeedback)}
+            aria-label={t.tooltips.audioFeedback} title={t.tooltips.audioFeedback} aria-pressed={!audioFeedback}>
+            {audioFeedback ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          </button>
+        </div>
       </div>
     </div>
   );

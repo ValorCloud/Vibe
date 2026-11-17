@@ -14,6 +14,7 @@ import React, { useId, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { SongMetaForm } from './SongMetaForm';
+import { useInterfaceMotionDisabled } from '../../contexts/InterfaceMotionContext';
 
 interface Props {
   isLeftPanelOpen: boolean;
@@ -40,6 +41,7 @@ export function LeftSettingsPanel({
   onGenerateSong,
   onRegenerateSong,
 }: Props) {
+  const motionDisabled = useInterfaceMotionDisabled();
   const panelRef = useRef<HTMLDivElement>(null);
   const headingId = useId();
 
@@ -92,7 +94,7 @@ export function LeftSettingsPanel({
           initial={{ width: 0, opacity: 0 }}
           animate={{ width: 352, opacity: 1 }}
           exit={{ width: 0, opacity: 0 }}
-          transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+          transition={motionDisabled ? { duration: 0 } : { type: 'spring', damping: 28, stiffness: 220 }}
           className="shrink-0 h-full flex flex-col relative lcars-panel"
           style={{
             overflow: 'hidden',
