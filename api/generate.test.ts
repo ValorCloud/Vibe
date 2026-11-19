@@ -53,6 +53,17 @@ describe('POST /api/generate', () => {
     await handler(makeReq({ method: 'GET' }), res);
     expect(ctx.statusCode).toBe(405);
   });
+  it('returns 503 without invoking the provider when quota authority is unavailable', async () => {
+    const { checkRateLimit } = await import('./_rateLimit');
+    const { GoogleGenAI } = await import('@google/genai');
+    vi.mocked(GoogleGenAI).mockClear();
+    vi.mocked(checkRateLimit).mockResolvedValueOnce({allowed:false,reason:'quota-unavailable',retryAfterSec:60});
+    const { res, ctx } = makeRes();
+    await handler(makeReq(), res);
+    expect(ctx.statusCode).toBe(503);
+    expect(GoogleGenAI).not.toHaveBeenCalled();
+    expect(res.setHeader).toHaveBeenCalledWith('Retry-After', '60');
+  });
 
   it('rejects disallowed model prefix', async () => {
     const { res, ctx } = makeRes();

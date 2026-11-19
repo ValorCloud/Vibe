@@ -28,6 +28,9 @@ describe('checkRateLimit — in-memory sliding window (no Upstash)', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.useFakeTimers();
+    vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('VERCEL', '');
+    vi.stubEnv('VERCEL_ENV', '');
     // Ensure Upstash env vars are absent so the in-memory path is exercised.
     delete process.env.UPSTASH_REDIS_REST_URL;
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
@@ -62,25 +65,58 @@ describe('checkRateLimit — in-memory sliding window (no Upstash)', () => {
   });
 });
 
-describe('checkRateLimit — fail-open when Upstash throws', () => {
+describe('checkRateLimit — distributed admission refuses uncertainty', () => {
   beforeEach(() => {
     vi.resetModules();
-    vi.useFakeTimers();
-    process.env.UPSTASH_REDIS_REST_URL = 'https://fake.upstash.io';
-    process.env.UPSTASH_REDIS_REST_TOKEN = 'fake-token';
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', 'https://fake.upstash.io');
+    vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', 'fake-token');
   });
 
   afterEach(() => {
-    delete process.env.UPSTASH_REDIS_REST_URL;
-    delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
-  it('falls back to in-memory when Upstash import fails', async () => {
-    // Simulate broken Upstash package by mocking the dynamic import to reject.
-    vi.mock('@upstash/ratelimit', () => { throw new Error('package unavailable'); });
+  it('refuses a lost response without retry or fallback', async () => {
+    const fetcher = vi.fn().mockRejectedValue(new Error('response lost'));
+    vi.stubGlobal('fetch', fetcher);
     const { checkRateLimit } = await import('./_rateLimit');
-    // Should still allow (in-memory, fresh bucket).
-    expect((await checkRateLimit('ip-fallback')).allowed).toBe(true);
+    expect(await checkRateLimit('ip-fallback')).toMatchObject({ allowed: false, reason: 'quota-unavailable' });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
+  it.each([{ error: 'denied' }, { result: [1, 10] }, { result: [0, 0] }, { result: [2, 0] }, { result: 'OK' }])('rejects invalid Redis result %j', async value => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(value))));
+    const { checkRateLimit } = await import('./_rateLimit');
+    expect(await checkRateLimit('ip')).toMatchObject({ allowed: false, reason: 'quota-unavailable' });
+  });
+  it('uses one EVAL with different members for calls at the same instant', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1234);
+    const fetcher = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ result: [1, 0] })));
+    vi.stubGlobal('fetch', fetcher);
+    const { checkRateLimit } = await import('./_rateLimit');
+    await Promise.all([checkRateLimit('ip'), checkRateLimit('ip'), checkRateLimit('ip')]);
+    const commands = fetcher.mock.calls.map(call => JSON.parse(call[1].body));
+    expect(commands.every(command => command[0] === 'EVAL' && command[2] === '2')).toBe(true);
+    expect(new Set(commands.map(command => command.at(-1))).size).toBe(3);
+    expect(commands[0][3]).not.toContain('ip');
+  });
+  it('refuses cloud use without durable quota configuration', async () => {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', ''); vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('VERCEL', '1');
+    const { checkRateLimit } = await import('./_rateLimit');
+    expect(await checkRateLimit('ip')).toMatchObject({ allowed: false, reason: 'quota-unavailable' });
+  });
+  it('also bounds different clients with a global local-development limit', async () => {
+    vi.stubEnv('UPSTASH_REDIS_REST_URL', ''); vi.stubEnv('UPSTASH_REDIS_REST_TOKEN', '');
+    vi.stubEnv('VERCEL', ''); vi.stubEnv('VERCEL_ENV', ''); vi.stubEnv('NODE_ENV', 'test');
+    vi.stubEnv('RATE_LIMIT_GLOBAL_MAX', '2');
+    const { checkRateLimit } = await import('./_rateLimit');
+    expect((await checkRateLimit('one')).allowed).toBe(true);
+    expect((await checkRateLimit('two')).allowed).toBe(true);
+    expect(await checkRateLimit('three')).toMatchObject({ allowed: false, reason: 'rate-limited' });
   });
 });
+
+afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); });
